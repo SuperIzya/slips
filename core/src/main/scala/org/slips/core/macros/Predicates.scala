@@ -1,14 +1,15 @@
 package org.slips.core.macros
 
+import org.slips.core.Condition.UsedSymbols
 import org.slips.core.{Condition, HasFact}
 
 import scala.quoted.{Expr, Quotes, Type}
 
 object Predicates {
-  private def parse(using quotes: Quotes)(expr: Expr[Boolean]): Set[String] = {
+  private def parse(using quotes: Quotes)(expr: Expr[Boolean]): UsedSymbols = {
     import quotes.reflect._
     import scala.language.postfixOps
-    def run(t: Tree, symbols: Set[String]): Set[String] = {
+    /*def run(t: Tree, symbols: Map[String, String]): Map[String, String] = {
       println(s"+++${t.symbol}")
       t match {
         case Inlined(treeM, definitions, term) => treeM.fold{
@@ -19,7 +20,7 @@ object Predicates {
           run(term, run(t, symbols))
         }
         case Apply(f: Term, args: List[Term]) =>
-          println(s"function ${f.asExprOf[Any].show}")
+          println(s"function ${f.symbol}")
 
           val runF = run(f, symbols)
           println(s"RunF: $runF")
@@ -30,7 +31,7 @@ object Predicates {
         case Select(t, _) => run(t, symbols)
 
         case Ident(symbol) =>
-          val res: Set[String] = symbols + symbol
+          val res: Set[String] = symbols + (symbol -> t.
           println(s">> $res")
           res
 
@@ -46,8 +47,33 @@ object Predicates {
           println("smth else")
           symbols
       }
+    }*/
+
+    def runTerm(t: Term, symbols: UsedSymbols): UsedSymbols = {
+      t match {
+        case Select(a, b) =>
+          println(s"tttt  '${a.symbol}'  tttt")
+          println(s"sssss $b sssss")
+          runTerm(a, symbols)
+        case Ident(x) => symbols + x
+        case _ => symbols
+      }
     }
-    val res = run(Expr.betaReduce(expr).asTerm, Set.empty)
+    def run(ev: Expr[Any], symbols: UsedSymbols): UsedSymbols = {
+      println(ev.show)
+      ev match {
+        case '{
+      type t
+      ($a: `t`) != ($b: `t`)
+      } => run(b, run(a, symbols))
+        case '{ $a: p } =>
+          println(s"++++ ${Type.show[p]} ")
+          runTerm(a.asTerm, symbols)
+        case _ => symbols
+      }
+    }
+
+    val res = run(Expr.betaReduce(expr), UsedSymbols.empty)
     println()
     println()
     println(res)
@@ -57,19 +83,17 @@ object Predicates {
 
   def singleFact[A](value: Expr[Boolean])(using Type[A], Quotes): Expr[Condition[HasFact[A], A]] = {
 
-    val usedSymbols: Expr[Set[String]] = Expr.apply(parse(value))
+    val usedSymbols: Expr[UsedSymbols] = Expr.apply(parse(value))
     val dummy: Expr[Condition[HasFact[A], A]] = '{
       Condition.Dummy[HasFact[A], A](_ => ${value})
     }
-
-    println(dummy.show)
 
     val dummies: Expr[List[Condition[HasFact[A], A]]] = Expr.ofList(
       List(dummy)
     )
     println(value)
     '{
-      Condition.Temp($dummies).usingSymbols($usedSymbols)
+      Condition.Temp($dummies, $usedSymbols)
     }
   }
 

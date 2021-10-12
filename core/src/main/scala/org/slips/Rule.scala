@@ -1,5 +1,6 @@
 package org.slips
 
+import org.slips.core.macros.Rules
 import org.slips.core.{Condition, HasFact}
 
 sealed trait Rule[A] {
@@ -18,7 +19,12 @@ object Rule {
     type Facts = F
   }
 
-  def apply[C, F <: HasFact[_], A](n: String)(c: Condition[F, C])(a: C => Context[A] => A): Rule.Aux[C, F, A] = {
+  inline private def collectConditions[F, C](inline c: Condition[F, C]): Unit = ${ Rules.conditions('c) }
+
+  inline def apply[C, F <: HasFact[_], A](n: String)
+                                         (inline c: Condition[F, C])
+                                         (a: C => Context[A] => A): Rule.Aux[C, F, A] = {
+    collectConditions(c)
     new Rule[A] {
       override type Argument = C
       override type Facts = F
@@ -27,5 +33,6 @@ object Rule {
       val name: String = n
     }
   }
+
 
 }
