@@ -1,5 +1,6 @@
 package org.slips
 import cats.{Id, Monad}
+import org.slips.core.data.Fact
 
 import scala.annotation.tailrec
 
@@ -18,10 +19,8 @@ object SimpleEnvironment extends Environment {
     }
   }
 
-  case class SimpleContext[T <: Tuple](facts: Fact.TMap[T], values: T) extends Context[T](facts, values) {
-    override def getValue[Q](fact: Fact[Q])(using ev: Action.InTuple[T, Q]): (Context[T], Q) = {
-      (this, values.productElement(facts.toList.indexOf(fact)).asInstanceOf[Q])
-    }
+  case class SimpleContext[T](facts: Fact.Val[T], values: T) extends Context[T](facts, values) {
+    override def getValue[Q](fact: Fact[Q]): (Context[T], Q) = ???
 
     override def assert[Q](q: Q): (Context[T], Unit) = (this, ())
   }
