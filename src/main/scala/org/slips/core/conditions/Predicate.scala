@@ -3,7 +3,6 @@ package org.slips.core.conditions
 import org.slips.core.Fact
 import org.slips.core.*
 import org.slips.core.conditions.Condition.Source
-import org.slips.core.Fact.Collection
 
 import scala.annotation.targetName
 import scala.util.NotGiven
@@ -28,16 +27,16 @@ object Predicate {
 
   object Test {
 
-    private inline def create[T](inline rep: Fact[T], test: T => Boolean, sign: Any): Test[T] =
+    private inline def create[T](rep: Fact[T], test: T => Boolean, inline sign: Any): Test[T] =
       Macros.createSigned(s => Test(s"${rep.signature} $s", test, rep), sign)
 
-    inline def fromFact[T](inline rep: Fact[T], test: T => Boolean): Test[T] =
+    inline def fromFact[T](rep: Fact[T], inline test: T => Boolean): Test[T] =
       create(rep, test, test)
 
-    inline def apply[T1, T2](inline rep1: Fact[T1], rep2: Fact[T2], test: (T1, T2) => Boolean): Test[(T1, T2)] =
+    inline def apply[T1, T2](rep1: Fact[T1], rep2: Fact[T2], inline test: (T1, T2) => Boolean): Test[(T1, T2)] =
       create(Fact.fromTuple(rep1, rep2), { case (t1, t2) => test(t1, t2)}, test)
 
-    inline def fromTuple[T <: NonEmptyTuple: Signature](inline rep: Fact.TMap[T], test: T => Boolean): Test[T] =
+    inline def fromTuple[T <: NonEmptyTuple: Signature](rep: Fact.TMap[T], inline test: T => Boolean): Test[T] =
       create(Fact.fromTuple(rep), test, test)
   }
 

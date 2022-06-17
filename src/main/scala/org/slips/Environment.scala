@@ -4,7 +4,7 @@ import cats.data.{State, StateT}
 import cats.Monad
 import org.slips.core.*
 import org.slips.core.conditions.*
-import org.slips.core.Fact.{Collection, fromTuple}
+import org.slips.core.Fact.{TMap, fromTuple}
 
 import scala.Tuple.{Head, IsMappedBy}
 import scala.annotation.{tailrec, targetName}
@@ -158,7 +158,8 @@ trait Environment {
   object Syntax extends Syntax {
 
     trait Conditions {
-      def all[T]: Condition.Source[T] = Condition.All()
+      def all[T <: NonEmptyTuple: Tuple.Size: Fact.Dummy.Creator]: Condition.Source[T] = Condition.all[T]
+      def all[T](using NotGiven[T <:< NonEmptyTuple], Fact[T] =:= Fact.Val[T]): Condition.Source[T] = Condition.all[T]
 
       @inline implicit def predicateToCondition(p: Predicate): Condition[Unit] = Condition.OpaquePredicate(p)
 
@@ -169,8 +170,7 @@ trait Environment {
         Fact.fromTuple(ev(x))(using Signature.Empty())
 
 
-      @inline implicit def liftToLiteralFact[T: Fact.CanBeLiteral](x: T): Fact[T] =
-        Fact.literal(x)
+      @inline implicit def liftToLiteralFact[T: Fact.CanBeLiteral](x: T): Fact[T] = Fact.literal(x)
 
     }
     trait Actions {
