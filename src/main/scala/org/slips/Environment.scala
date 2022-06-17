@@ -1,11 +1,10 @@
 package org.slips
 
 import cats.data.{State, StateT}
-import cats.{Monad, Monoid}
+import cats.Monad
 import org.slips.core.*
-import org.slips.core.data.*
 import org.slips.core.conditions.*
-import org.slips.core.data.Fact.{Collection, TMap, fromTuple, prepend}
+import org.slips.core.Fact.{Collection, fromTuple}
 
 import scala.Tuple.{Head, IsMappedBy}
 import scala.annotation.{tailrec, targetName}

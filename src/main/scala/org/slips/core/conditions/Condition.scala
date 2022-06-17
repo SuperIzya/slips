@@ -2,7 +2,7 @@ package org.slips.core.conditions
 
 import org.slips.core.*
 import org.slips.Environment
-import org.slips.core.data.Fact
+import org.slips.core.Fact
 
 import scala.annotation.targetName
 import scala.util.NotGiven
@@ -44,7 +44,7 @@ object Condition {
 
   sealed trait Source[T] extends Condition[T]
 
-  final case class All[T]() extends Source[T]
+  final case class All[T] private[slips]() extends Source[T]
 
   final case class Collector[T <: NonEmptyTuple](src: Fact.TMap[T])(using s: Signature[T]) extends Condition[T]:
     override val signature: String = s.extract(src).mkString("(", ", ", ")")

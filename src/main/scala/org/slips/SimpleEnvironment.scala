@@ -1,6 +1,6 @@
 package org.slips
 import cats.{Id, Monad}
-import org.slips.core.data.Fact
+import org.slips.core.Fact
 
 import scala.annotation.tailrec
 

@@ -1,9 +1,9 @@
 package org.slips.core.conditions
 
-import org.slips.core.data.Fact
+import org.slips.core.Fact
 import org.slips.core.*
 import org.slips.core.conditions.Condition.Source
-import org.slips.core.data.Fact.Collection
+import org.slips.core.Fact.Collection
 
 import scala.annotation.targetName
 import scala.util.NotGiven

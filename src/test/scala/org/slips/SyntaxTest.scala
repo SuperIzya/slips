@@ -3,7 +3,7 @@ package org.slips
 import org.slips.SyntaxTest.SE
 import org.slips.core.conditions.{Condition, Predicate}
 import org.slips.core.conditions.Condition.Res
-import org.slips.core.data.Fact
+import org.slips.core.Fact
 
 object SyntaxTest {
   case class Data1(count: Int, name: String)

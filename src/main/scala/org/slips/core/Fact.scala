@@ -1,15 +1,15 @@
-package org.slips.core.data
+package org.slips.core
 
 import org.slips.core.conditions.Predicate
-import org.slips.core.data.Fact.Collection.{Append, Collect, Concat, Empty}
-import org.slips.core.data.Fact.{Collection, fromTuple, prepend}
+import org.slips.core.Fact.Collection.{Append, Collect, Concat, Empty}
+import org.slips.core.Fact.{Collection, fromTuple, prepend}
 import org.slips.core.{Macros, Signature, Signed}
 
 import scala.annotation.targetName
 import scala.util.NotGiven
 
 sealed trait Fact[T] extends Signed {
-  override val signature: String = "_"
+  override def signature: String = "_"
 
   inline def value[I](inline f: T => I): Fact[I] = Fact.map(this, f)
 
@@ -79,8 +79,11 @@ object Fact {
     given[T](using NotGiven[T <:< Tuple], NotGiven[Fact[T]]): CanBeLiteral[T] = new CanBeLiteral[T] {}
   }
 
-  final case class Literal[I](override val signature: String, value: I) extends Fact[I]
-  def literal[T: CanBeLiteral](v: T): Fact[T] = Literal(v.toString, v)
+  final case class Literal[I] private[Fact] (valueFn: () => I) extends Fact[I] {
+    lazy val value: I = valueFn()
+    override lazy val signature: String = value.toString
+  }
+  def literal[T: CanBeLiteral](v: => T): Fact[T] = Literal(() => v)
 
   sealed trait Collection[T <: Tuple] extends Fact[T]:
     def collect: Fact.TMap[T] = ???
