@@ -4,4 +4,3 @@ import scala.deriving.Mirror
 
 trait Signed:
   def signature: String
-

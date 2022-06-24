@@ -14,12 +14,13 @@ object SimpleEnvironment extends Environment {
     @tailrec
     override def tailRecM[A, B](a: A)(f: A => Id[Either[A, B]]): Id[B] = {
       f(a) match
-        case Left(a) => tailRecM(a)(f)
+        case Left(a)  => tailRecM(a)(f)
         case Right(b) => b
     }
   }
 
-  case class SimpleContext[T](facts: Fact.Val[T], values: T) extends Context[T](facts, values) {
+  case class SimpleContext[T](facts: Fact.Val[T], values: T)
+      extends Context[T](facts, values) {
     override def getValue[Q](fact: Fact[Q]): (Context[T], Q) = ???
 
     override def assert[Q](q: Q): (Context[T], Unit) = (this, ())
