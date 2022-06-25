@@ -179,20 +179,8 @@ trait Environment {
       def all[T : TypeOps : TypeOps.Size]: Condition.Source[T] =
         Condition.all[T]
 
-      @inline implicit def predicateToCondition(p: Predicate): Condition[Unit] =
+      inline implicit def predicateToCondition(p: Predicate): Condition[Unit] =
         Condition.OpaquePredicate(p)
-      /*
-      extension [T <: NonEmptyTuple](facts: T) {
-        inline def test[Q <: NonEmptyTuple](
-          inline t: Q ⇒ Boolean
-        )(
-          using Q: TypeOps.TupleOps[Q],
-          ev1: Q =:= Fact.TInverseMap[T],
-          ev2: T =:= Fact.TMap[Q]
-        ): Predicate = {
-          Fact.fromTuple(ev2(facts)).test(t)
-        }
-      }*/
 
       inline implicit def tupleToFact[T <: NonEmptyTuple, Q <: NonEmptyTuple](
         x: T
