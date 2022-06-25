@@ -35,11 +35,10 @@ object Predicate {
       rep: Fact[T],
       test: T ⇒ Boolean,
       inline sign: Any
-    ): Test[T] =
-      Macros.createSigned[Test[T]](
-        s ⇒ Test(s"${ rep.signature } $s", test, rep),
-        sign
-      )
+    ): Test[T] = Macros.createSigned[Test[T]](
+      s ⇒ Test(s"${ rep.signature } $s", test, rep),
+      sign
+    )
 
     inline def fromFact[T](rep: Fact[T], inline test: T ⇒ Boolean): Test[T] =
       create(rep, test, test)
@@ -48,16 +47,18 @@ object Predicate {
       rep1: Fact[T1],
       rep2: Fact[T2],
       inline test: (T1, T2) ⇒ Boolean
-    )(using TypeOps[(T1, T2)]
+    )(
+      using TypeOps.TupleOps[(T1, T2)],
+      Fact[T1] =:= Fact.Val[T1],
+      Fact[T2] =:= Fact.Val[T2]
     ): Test[(T1, T2)] = {
       create(Fact.fromTuple(rep1 → rep2), test.tupled, test)
     }
 
-    inline def fromTuple[T <: NonEmptyTuple : TypeOps.TupleTypeOps](
+    inline def fromTuple[T <: NonEmptyTuple : TypeOps.TupleOps](
       rep: Fact.TMap[T],
       inline test: T ⇒ Boolean
-    ): Test[T] =
-      create(Fact.fromTuple(rep), test, test)
+    ): Test[T] = create(Fact.fromTuple[T](rep), test, test)
   }
 
   final case class FilterMany[Q <: NonEmptyTuple](
@@ -71,8 +72,9 @@ object Predicate {
     override val signature: String = s"!${ p.signature }"
   }
   object Not {
-    def apply(p: Predicate)(using DummyImplicit): Predicate = p match
-      case Not(pp) ⇒ pp
-      case _       ⇒ new Not(p)
+    def apply(p: Predicate)(using DummyImplicit): Predicate =
+      p match
+        case Not(pp) ⇒ pp
+        case _       ⇒ new Not(p)
   }
 }

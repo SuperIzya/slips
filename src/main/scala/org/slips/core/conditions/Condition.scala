@@ -11,13 +11,8 @@ sealed trait Condition[T] extends Signed {
   def flatMap[Q](f: Fact.Val[T] ⇒ Condition[Q]): Condition.Res[Q] =
     Condition.FlatMap[T, Q](this, f)
 
-  def map[R](f: Fact.Val[T] ⇒ Fact.Val[R]): Condition.Res[R] =
-    Condition.mapFacts[T, R](this, f)
-  /*
-  @targetName("mapFacts")
-  inline def map[R, Q <: NonEmptyTuple](f: Fact.TMap[Q] => Fact[R])
-                                       (using T <:< NonEmptyTuple,
-                                        T =:= Fact.TMap[Q]): Condition.Res[R] = ???*/
+  def map[R, Q](f: Fact.Val[T] ⇒ R)(using ev: Fact.ReverseVal[R] =:= Q, ev2: R =:= Fact.Val[Q]): Condition.Res[Q] =
+    Condition.mapFacts[T, Q](this, f.andThen(ev2(_)))
 
   def withFilter(f: Fact.Val[T] ⇒ Predicate): Condition.Res[T] =
     Condition.Filter(this, f)
@@ -75,8 +70,7 @@ object Condition {
     inline src: Condition[T],
     f: Fact.Val[T] ⇒ Fact.Val[Q]
   ): Map[T, Q] =
-    Macros
-      .createSigned[Map[T, Q]](s ⇒ Map(s"${ src.signature } => $s", src, f), f)
+    Macros.createSigned[Map[T, Q]](s ⇒ Map(s"${ src.signature } => $s", src, f), f)
 
   sealed trait Source[T](private[slips] val fact: Fact.Val[T])
       extends Condition[T]:
@@ -105,19 +99,9 @@ object Condition {
       extends Condition[Q] {
     override val signature: String = ""
 
-    override private[slips] val build: BuildStep[Q] = src
-      .build
-      .map {
-        f(_) match {
-          case f: Fact[Q]     ⇒ f.toVal
-          case t: Fact.Val[Q] ⇒ t
-        }
-      }
+    override private[slips] val build: BuildStep[Q] = src.build.map(f)
   }
-  private def mapFacts[T, Q](
-    src: Condition[T],
-    f: Fact.Val[T] ⇒ Fact.Val[Q]
-  ): MapFacts[T, Q] =
+  private def mapFacts[T, Q](src: Condition[T], f: Fact.Val[T] ⇒ Fact.Val[Q]): MapFacts[T, Q] =
     MapFacts(src, f)
 
 }

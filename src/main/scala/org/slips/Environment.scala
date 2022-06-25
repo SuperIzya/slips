@@ -4,6 +4,7 @@ import cats.Monad
 import cats.data.State
 import cats.data.StateT
 import org.slips.core.*
+import org.slips.core.TypeOps
 import org.slips.core.conditions.*
 import scala.Tuple.Head
 import scala.Tuple.IsMappedBy
@@ -37,7 +38,7 @@ trait Environment {
       )
       def modify(f: BuildContext ⇒ BuildContext): BuildStep[Unit]     =
         State.modify(f)
-      def pure[T](p: T): BuildStep[T] = State.pure(p)
+      def pure[T](p: T): BuildStep[T]                                 = State.pure(p)
       // def newNode[T](node: Node[T]): BuildStep[Node[T]] = apply(_.add(node))
     }
 
@@ -57,7 +58,8 @@ trait Environment {
       val nodes: Nodes
       def add[T, N[x] <: Node[x]](
         node: N[T]
-      )(using Builder[N],
+      )(
+        using Builder[N],
         TypeTest[Node[_], N[T]]
       ): BuildStep[N[T]] = {
         nodes
@@ -174,27 +176,34 @@ trait Environment {
   object Syntax extends Syntax {
 
     trait Conditions {
-      def all[
-        T <: NonEmptyTuple : TypeOps : TypeOps.Size
-      ]: Condition.Source[T] =
+      def all[T : TypeOps : TypeOps.Size]: Condition.Source[T] =
         Condition.all[T]
 
       @inline implicit def predicateToCondition(p: Predicate): Condition[Unit] =
         Condition.OpaquePredicate(p)
+      /*
+      extension [T <: NonEmptyTuple](facts: T) {
+        inline def test[Q <: NonEmptyTuple](
+          inline t: Q ⇒ Boolean
+        )(
+          using Q: TypeOps.TupleOps[Q],
+          ev1: Q =:= Fact.TInverseMap[T],
+          ev2: T =:= Fact.TMap[Q]
+        ): Predicate = {
+          Fact.fromTuple(ev2(facts)).test(t)
+        }
+      }*/
 
-      @inline implicit def tupleToFact[
-        T <: NonEmptyTuple,
-        Q <: NonEmptyTuple : TypeOps
-      ](
+      inline implicit def tupleToFact[T <: NonEmptyTuple, Q <: NonEmptyTuple](
         x: T
-      )(using ev0: Fact.TInverseMap[T] =:= Q,
-        ev: T =:= Fact.TMap[Q]
+      )(
+        using ev0: Q =:= Fact.TInverseMap[T],
+        ev: T =:= Fact.TMap[Q],
+        ev1: TypeOps.TupleOps[Q]
       ): Fact[Q] =
         Fact.fromTuple(ev(x))
 
-      @inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : TypeOps](
-        x: T
-      ): Fact[T] = Fact.literal(x)
+      inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : TypeOps](x: T): Fact[T] = Fact.literal(x)
 
     }
     trait Actions {
@@ -202,13 +211,18 @@ trait Environment {
 
       def getValue[T, Q <: Tuple](
         f: Fact[T]
-      )(using Action.InTuple[Q, T]
+      )(
+        using Action.InTuple[Q, T]
       ): Action[Q, T] = Action(_.getValue(f))
 
       @inline implicit def toAction[T <: Tuple, Q](
         f: Context[T] ?=> Effect[(Context[T], Q)]
       ): Action[T, Q] =
-        Action(e ⇒ f(using e))
+        Action(e ⇒
+          f(
+            using e
+          )
+        )
     }
 
     object Conditions extends Conditions
