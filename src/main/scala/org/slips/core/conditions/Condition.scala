@@ -3,7 +3,7 @@ package org.slips.core.conditions
 import org.slips.Environment
 import org.slips.core.*
 import org.slips.core.Fact
-import org.slips.core.builder.BuildStep
+import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
 import scala.util.NotGiven
 
@@ -23,7 +23,7 @@ sealed trait Condition[T] extends Signed {
 
   override val signature: String = ""
 
-  private[slips] val build: BuildStep[T]
+  private[slips] val parse: ParseStep[T]
 }
 
 object Condition {
@@ -33,16 +33,16 @@ object Condition {
     left: Condition[T],
     f: Fact.Val[T] ⇒ Condition[Q])
       extends Condition[Q] {
-    override private[slips] val build: BuildStep[Q] =
-      left.build.flatMap(f(_).build)
+    override private[slips] val parse: ParseStep[Q] =
+      left.parse.flatMap(f(_).parse)
   }
 
   private[slips] final case class ScalarFilter[T](
     src: Condition[T],
     f: Fact.Val[T] ⇒ Boolean)
       extends Condition[T] {
-    override private[slips] val build: BuildStep[T] = src
-      .build
+    override private[slips] val parse: ParseStep[T] = src
+      .parse
       .map {
         case x if f(x) ⇒ x
       }
@@ -52,22 +52,27 @@ object Condition {
     cond: Condition[T],
     f: Fact.Val[T] ⇒ Predicate)
       extends Condition[T] {
-    override private[slips] val build: BuildStep[T] = for {
-      t ← cond.build
-      _ ← BuildStep.modify(_.addPredicate(f(t)))
+    override private[slips] val parse: ParseStep[T] = for {
+      t ← cond.parse
+      _ ← ParseStep.modify(_.addPredicate(f(t)))
     } yield t
   }
 
   sealed trait Source[T](private[slips] val fact: Fact.Val[T])
-      extends Condition[T]:
-    override private[slips] val build: BuildStep[T] = BuildStep.pure(fact)
+      extends Condition[T] {
+    override private[slips] val parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ ⇒ fact)
+  }
 
   final case class All[T] private[Condition] (
-    private[slips] override val fact: Fact.Val[T])
-      extends Source[T](fact)
-  def all[T : TypeOps : TypeOps.Size]: All[T] = {
-    lazy val fact: Fact.Val[T] = summon[TypeOps[T]].forSource(res)
-    lazy val res               = All[T](fact)
+    override val signature: String,
+    private[slips] override val fact: Fact.Val[T]
+  )(
+    using T: TypeOps[T]) extends Source[T](fact)
+
+  inline def all[T : TypeOps : TypeOps.Size]: All[T] = {
+    val signature: String = s"All[${ Macros.signType[T] }]"
+    val fact: Fact.Val[T] = Fact.Source[T](signature).toVal
+    val res               = All[T](signature, fact)
     res
   }
 
@@ -75,8 +80,8 @@ object Condition {
       extends Condition[Unit] {
     override val signature: String = p.signature
 
-    override private[slips] val build: BuildStep[Unit] =
-      BuildStep.modify(_.addPredicate(p))
+    override private[slips] val parse: ParseStep[Unit] =
+      ParseStep.modify(_.addPredicate(p))
   }
 
   final case class Map[T, Q] private[Condition] (
@@ -85,7 +90,7 @@ object Condition {
       extends Condition[Q] {
     override val signature: String = ""
 
-    override private[slips] val build: BuildStep[Q] = src.build.map(f)
+    override private[slips] val parse: ParseStep[Q] = src.parse.map(f)
   }
   private def map[T, Q](src: Condition[T], f: Fact.Val[T] ⇒ Fact.Val[Q]): Map[T, Q] =
     Map(src, f)

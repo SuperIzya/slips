@@ -5,7 +5,9 @@ import cats.data.State
 import cats.data.StateT
 import org.slips.core.*
 import org.slips.core.TypeOps
+import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
+import org.slips.core.predicates.Predicate
 import scala.Tuple.Head
 import scala.Tuple.IsMappedBy
 import scala.annotation.tailrec
@@ -22,7 +24,7 @@ trait Environment {
 
   type Effect[_]
   given effectMonad: Monad[Effect]
-
+  /*
   sealed trait Node[T] {
     val signature: String
     val intake: Node.Intake[_]
@@ -39,7 +41,6 @@ trait Environment {
       def modify(f: BuildContext ⇒ BuildContext): BuildStep[Unit]     =
         State.modify(f)
       def pure[T](p: T): BuildStep[T]                                 = State.pure(p)
-      // def newNode[T](node: Node[T]): BuildStep[Node[T]] = apply(_.add(node))
     }
 
     sealed trait Builder[N[x] <: Node[x]] {
@@ -92,27 +93,7 @@ trait Environment {
       override val intake: Intake[Any] = EmptyIntake
     }
 
-    /*
-    private def build[T, C[x] <: Condition[x]](condition: C[T]): BuildStep[T] = {
-      condition match
-        case Condition.FlatMap
-    }*/
-
-    /*def dryRun[T](condition: Condition[T]): Result[T] = {
-      @tailrec
-      def traverse[Q](cond: Condition[Q], col: Nodes): Result[Q] = {
-        cond match {
-          case Condition.Filter(c, f, ev) =>
-            val cRes = traverse(c, col)
-            val fRes = traverse(f(ev(cRes.fact)), cRes.nodes)
-            fRes.copy(fact = cRes.fact)
-
-        }
-      }
-
-      traverse(condition, List.empty)
-    }*/
-  }
+  }*/
 
   trait Context[T](facts: Fact.Val[T], values: T) {
     def getValue[Q](fact: Fact[Q]): Effect[(Context[T], Q)]
@@ -176,8 +157,7 @@ trait Environment {
   object Syntax extends Syntax {
 
     trait Conditions {
-      def all[T : TypeOps : TypeOps.Size]: Condition.Source[T] =
-        Condition.all[T]
+      inline def all[T : TypeOps : TypeOps.Size]: Condition.Source[T] = Condition.all[T]
 
       inline implicit def predicateToCondition(p: Predicate): Condition[Unit] =
         Condition.OpaquePredicate(p)
@@ -216,5 +196,7 @@ trait Environment {
     object Conditions extends Conditions
     object Actions    extends Actions
   }
+
+  val predicateSelectionStrategy: PredicateSelection
 
 }

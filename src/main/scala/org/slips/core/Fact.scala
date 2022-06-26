@@ -1,18 +1,19 @@
 package org.slips.core
 
 import TypeOps.TupleOps
+import cats.Id
 import cats.Monoid
 import org.slips.core.Fact.Tuples
 import org.slips.core.Macros
 import org.slips.core.Signed
 import org.slips.core.conditions.Condition
-import org.slips.core.conditions.Predicate
+import org.slips.core.predicates.Predicate
 import scala.Tuple.Size
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
 
-sealed trait Fact[T](val sample: T)(using O: TypeOps[T]) extends Signed {
+sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
 
   override def signature: String = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]($sample)"
 
@@ -32,7 +33,8 @@ sealed trait Fact[T](val sample: T)(using O: TypeOps[T]) extends Signed {
   inline def ===(other: Fact[T])(using TupleOps[(T, T)], Fact[T] =:= Fact.Val[T]): Predicate =
     Predicate.Test(this, other, _ == _)
 
-  lazy val toVal: Fact.Val[T] = O.toVal(this)
+  lazy val toVal: Fact.Val[T] = T.toVal(this)
+  def sources: List[Fact[_]]
 }
 
 object Fact {
@@ -54,13 +56,19 @@ object Fact {
     src: Fact[T],
     extract: T ⇒ Q,
     override val sample: Q)
-      extends Fact[Q](sample)
+      extends Fact[Q](sample) {
+    override def sources: List[Fact[_]] = src.sources
+  }
 
-  final case class Tuples[T <: NonEmptyTuple : TupleOps] private[slips] (
+  final case class Tuples[T <: NonEmptyTuple] private[slips] (
     override val signature: String,
     facts: TMap[T],
-    override val sample: T)
-      extends Fact[T](sample)
+    override val sample: T
+  )(
+    using T: TupleOps[T])
+      extends Fact[T](sample) {
+    override def sources: List[Fact[_]] = T.sources(facts)
+  }
 
   def fromFactTuple[T <: NonEmptyTuple, Q](
     f: Fact[T],
@@ -87,7 +95,9 @@ object Fact {
     override val signature: String,
     f: T ⇒ Q,
     rep: Fact[T])
-      extends Fact[Q](f(rep.sample))
+      extends Fact[Q](f(rep.sample)) {
+    override def sources: List[Fact[_]] = rep.sources
+  }
 
   sealed trait CanBeLiteral[T]
   object CanBeLiteral {
@@ -106,6 +116,8 @@ object Fact {
   final case class Literal[I: TypeOps] private[slips] (value: I)
       extends Fact[I](value) {
     override lazy val signature: String = value.toString
+
+    override def sources: List[Fact[_]] = List.empty
   }
   def literal[T : CanBeLiteral : TypeOps](v: T): Fact[T] = Literal(v)
 
@@ -115,6 +127,8 @@ object Fact {
       extends Fact[T](sample) {
     override val signature: String =
       s"${ src.signature } -> Fact[${ Macros.signType[T] }]"
+
+    override def sources: List[Fact[_]] = List.empty
   }
 
   final case class FromTuple[T <: Tuple, Q: TypeOps] private[slips] (
@@ -124,17 +138,18 @@ object Fact {
       extends Fact[Q](sample) {
     override val signature: String =
       s"${ src.signature } ~> ${ Macros.signType[T] }($index) -> Fact[${ Macros.signType[Q] }]"
+
+    override def sources: List[Fact[_]] = List.empty
   }
 
-  def dummy[T <: NonEmptyTuple](src: Condition[T])(using T: TypeOps[T]): Fact.Val[T] =
-    T.forSource(src)
+  final case class Source[T: TypeOps] private (override val signature: String, override val sample: T)
+      extends Fact[T](sample) {
 
-  inline def dummy[T: TypeOps](
-    src: Condition[T]
-  )(
-    using ev: Fact[T] =:= Val[T],
-    T: Monoid[T]
-  ): Fact.Val[T] = Dummy(src, T.empty)
+    override def sources: List[Fact[_]] = List.empty
+  }
+  object Source:
+    inline def apply[T](signature: String)(using T: TypeOps[T]): Source[T] =
+      Source(signature, T.empty)
 
-  private[slips] val unit: Fact[Unit] = new Fact[Unit](()) {}
+  val unit: Fact[Unit] = literal(())
 }

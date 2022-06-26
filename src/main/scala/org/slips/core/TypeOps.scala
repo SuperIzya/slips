@@ -1,7 +1,6 @@
 package org.slips.core
 
 import cats.Monoid
-import org.slips.core.Fact.*
 import org.slips.core.conditions.Condition
 import scala.annotation.tailrec
 import scala.compiletime.error
@@ -15,8 +14,9 @@ sealed trait TypeOps[T](using TypeOps.Size[T]) {
 
   def empty: T
   def forSource(src: Condition[T]): Fact.Val[T]
-  def toVal(f: Fact[T]): Val[T]
+  def toVal(f: Fact[T]): Fact.Val[T]
   def extract(r: Fact.Val[T]): TypeOps.TupleSignature
+  def sources(f: Fact.Val[T]): List[Fact[_]]
 }
 
 object TypeOps {
@@ -90,14 +90,15 @@ object TypeOps {
   }
 
   given genTypeOpsSingle[T: Size](
-    using ev: Fact[T] =:= Fact.Val[T],
+    using ev: Fact.Val[T] =:= Fact[T],
     T: Empty[T],
     ev3: NotGiven[T <:< Tuple]
   ): TypeOps[T] with {
     override def empty: T                                  = T.empty
-    override def forSource(src: Condition[T]): Fact.Val[T] = Dummy(src, empty)
-    override def toVal(f: Fact[T]): Val[T]                 = f
-    override def extract(r: Fact.Val[T]): TupleSignature   = List(ev.flip(r).signature)
+    override def forSource(src: Condition[T]): Fact.Val[T] = ev.flip(Fact.Dummy(src, empty))
+    override def toVal(f: Fact[T]): Fact.Val[T]            = ev.flip(f)
+    override def extract(r: Fact.Val[T]): TupleSignature   = List(ev(r).signature)
+    def sources(f: Fact.Val[T]): List[Fact[_]]             = ev(f).sources
   }
 
   private type TupleFactF = [x] ⇒ Int ⇒ TypeOps[x] ?=> Fact[x]
@@ -109,20 +110,18 @@ object TypeOps {
 
     def chainT[Q <: NonEmptyTuple](f: TupleFactF)(using size: Size[Q]): Fact.TMap[T]
 
-    def forSource(src: Condition[T]): Fact.Val[T] = chainT {
-      [H] ⇒ (index: Int) ⇒ (H: TypeOps[H]) ?=> FromTuple[T, H](src, index, H.empty)
+    override def forSource(src: Condition[T]): Fact.Val[T] = chainT {
+      [H] ⇒ (index: Int) ⇒ (H: TypeOps[H]) ?=> Fact.FromTuple[T, H](src, index, H.empty)
     }
 
-    def toVal(f: Fact[T]): Val[T] = {
-      chainT {
-        [x] ⇒
-          (index: Int) ⇒
-            (to: TypeOps[x]) ?=>
-              fromFactTuple[T, x](f, getElement[T, x](index)(_), index)(
-                using to,
-                size
-            )
-      }
+    override def toVal(f: Fact[T]): Fact.Val[T] = chainT {
+      [x] ⇒
+        (index: Int) ⇒
+          (to: TypeOps[x]) ?=>
+            Fact.fromFactTuple[T, x](f, getElement[T, x](index)(_), index)(
+              using to,
+              size
+          )
     }
   }
 
@@ -139,9 +138,9 @@ object TypeOps {
         f[H](Q.size - index) *: EmptyTuple
       }
 
-      override def extract(r: Fact.Val[H *: EmptyTuple]): TupleSignature = List(
-        r.head.signature
-      )
+      override def extract(r: Fact.Val[H *: EmptyTuple]): TupleSignature = List(r.head.signature)
+
+      def sources(f: Fact.Val[H *: EmptyTuple]): List[Fact[_]] = f.head.sources
     }
 
     given genTupleOpsStep[H, T <: NonEmptyTuple](
@@ -162,6 +161,11 @@ object TypeOps {
       override def extract(r: Fact.Val[H *: T]): TupleSignature = {
         val head *: tail = r
         head.signature +: T.extract(tail)
+      }
+
+      def sources(f: Fact.Val[H *: T]): List[Fact[_]] = {
+        val head *: tail = f
+        head.sources ++ T.sources(tail)
       }
     }
   }

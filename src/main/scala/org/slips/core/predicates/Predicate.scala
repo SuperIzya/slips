@@ -1,8 +1,8 @@
-package org.slips.core.conditions
+package org.slips.core.predicates
 
 import cats.Monoid
 import org.slips.core.*
-import org.slips.core.Fact
+import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Source
 import scala.annotation.targetName
 import scala.util.NotGiven
@@ -19,15 +19,14 @@ sealed trait Predicate extends Signed {
 
   override val signature: String = this.getClass.getSimpleName
 
+  lazy val sources: Set[Fact[_]]
+
 }
 
 object Predicate {
 
-  final case class Test[T](
-    override val signature: String,
-    test: T ⇒ Boolean,
-    rep: Fact[T])
-      extends Predicate
+  final case class Test[T](override val signature: String, test: T ⇒ Boolean, rep: Fact[T]) extends Predicate:
+    override lazy val sources: Set[Fact[_]] = rep.sources.toSet
 
   object Test {
 
@@ -61,16 +60,22 @@ object Predicate {
     ): Test[T] = create(Fact.fromTuple[T](rep), test, test)
   }
 
-  final case class FilterMany[Q <: NonEmptyTuple](
-    src: Condition[Q],
-    f: Fact.TMap[Q] ⇒ Predicate)
-      extends Predicate
+  final case class And(left: Predicate, right: Predicate) extends Predicate {
+    override val signature: String = s"${ left.signature } && ${ right.signature }"
 
-  final case class And(left: Predicate, right: Predicate) extends Predicate
-  final case class Or(left: Predicate, right: Predicate)  extends Predicate
-  final case class Not private (p: Predicate)             extends Predicate {
-    override val signature: String = s"!${ p.signature }"
+    override lazy val sources: Set[Fact[_]] = left.sources ++ right.sources
   }
+
+  final case class Or(left: Predicate, right: Predicate) extends Predicate {
+    override val signature: String          = s"${ left.signature } || ${ right.signature }"
+    override lazy val sources: Set[Fact[_]] = left.sources ++ right.sources
+  }
+
+  final case class Not private (p: Predicate) extends Predicate {
+    override val signature: String          = s"!${ p.signature }"
+    override lazy val sources: Set[Fact[_]] = p.sources
+  }
+
   object Not {
     def apply(p: Predicate)(using DummyImplicit): Predicate =
       p match
