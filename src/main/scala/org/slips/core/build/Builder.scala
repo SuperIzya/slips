@@ -23,9 +23,10 @@ object Builder {
       p match {
         case Nil       ⇒ res
         case h :: tail ⇒
+          val next = h.sources.map(_.signature).foldLeft(res)((m, s) ⇒ m + (s → (h +: m.getOrElse(s, List.empty))))
           collectPredicates(
             tail,
-            h.sources.map(_.signature).foldLeft(res)((m, s) ⇒ m + (s → (h +: m.getOrElse(s, List.empty))))
+            next
           )
       }
     }

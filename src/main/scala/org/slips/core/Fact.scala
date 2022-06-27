@@ -145,7 +145,7 @@ object Fact {
   final case class Source[T: TypeOps] private (override val signature: String, override val sample: T)
       extends Fact[T](sample) {
 
-    override def sources: List[Fact[_]] = List.empty
+    override def sources: List[Fact[_]] = List(this)
   }
   object Source:
     inline def apply[T](signature: String)(using T: TypeOps[T]): Source[T] =

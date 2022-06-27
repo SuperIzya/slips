@@ -6,7 +6,7 @@ import org.slips.core.Fact
 import org.slips.core.build.strategy.PredicateSelection
 import scala.annotation.tailrec
 
-object SimpleEnvironment extends Environment {
+trait SimpleEnvironment  extends Environment {
   override type Effect[x] = cats.Id[x]
   override given effectMonad: Monad[Id] = new Monad[Id] {
     override def pure[T](v: T): Id[T] = v
@@ -31,6 +31,7 @@ object SimpleEnvironment extends Environment {
   }
 
   def apply[T](f: Environment ?=> T): T = f(
-    using SimpleEnvironment
+    using this
   )
 }
+object SimpleEnvironment extends SimpleEnvironment

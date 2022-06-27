@@ -13,8 +13,8 @@ object SyntaxTest {
   val mapFunction: (Data1, Data2) ⇒ Double        = _.count + _.points
   val predicateFunction: (Data2, Data1) ⇒ Boolean = _.points > _.count
 
-  val SE          = SimpleEnvironment
-  val conditions1 = SE {
+  val SE                                                         = SimpleEnvironment
+  val conditions1: Condition[(Data1, Data2, Double, Int, Float)] = SE {
     import SE.Syntax.Conditions.*
 
     val testFacts: (Fact[Data1], Fact[Data2]) ⇒ Predicate = (f1, f2) ⇒
@@ -30,17 +30,18 @@ object SyntaxTest {
       i = Fact.literal(2)
       _  ← Fact.literal(3) === f1.value(_.count)
       _  ← testFacts(f1, f2)
-      f3 ← all[Data1] if f1 =!= f3
+      f3 ← all[Data1] if f3.value(_.count) === 2
       g = (f1, f2).value(mapFunction.tupled)
       f = Fact.literal(3f)
-      _ ← f3.value(_.count.toDouble) =!= g
-    } yield (f1, f3, g, i, Fact.literal(2f))
+      _ ← f3.value(_.count.toDouble) =!= g && f1.value(_.count) === i
+    } yield (f1, f2, g, i, Fact.literal(2f))
   }
+
   val conditions2 = SE {
     import SE.Syntax.Conditions.*
     for {
       (f1, f2, _, _, _) ← conditions1
-      f3                ← all[Data2] if f2.value(_.count) =!= 3
+      f3                ← all[Data2] if f2.value(_.points) =!= 3.0
     } yield (f3, f1)
   }
 
