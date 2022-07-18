@@ -4,6 +4,8 @@ import cats.Monoid
 import org.slips.core.*
 import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Source
+import org.slips.core.conditions.ParseStep
+import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
 
@@ -21,9 +23,40 @@ sealed trait Predicate extends Signed {
 
   lazy val sources: Set[Fact[_]]
 
+  def toKNF: Predicate = {
+    import Predicate._
+    this match {
+      case Test(_, _, _)    ⇒ this
+      case And(left, right) ⇒ left.toKNF && right.toKNF
+      case Not(p)           ⇒
+        p.toKNF match {
+          case And(left, right) ⇒ (Not(left) || Not(right)).toKNF
+          case Or(left, right)  ⇒ (Not(left) && Not(right)).toKNF
+          case Test(_, _, _)    ⇒ this
+          case Not(p1)          ⇒ p1.toKNF
+        }
+      case Or(left, right)  ⇒
+        (left.toKNF, right.toKNF) match {
+          case (And(l, r), p) ⇒ (l.toKNF || p.toKNF).toKNF && (r.toKNF || p.toKNF).toKNF
+          case (Or(l, r), p)  ⇒ (l.toKNF || p.toKNF).toKNF || (r.toKNF || p.toKNF).toKNF
+          case (p, And(l, r)) ⇒ (p.toKNF || l.toKNF).toKNF && (p.toKNF || r.toKNF).toKNF
+          case (p, Or(l, r))  ⇒ (p.toKNF || l.toKNF).toKNF || (p.toKNF || r.toKNF).toKNF
+          case (l, r)        ⇒ l || r
+        }
+    }
+  }
 }
 
 object Predicate {
+
+  def add(p: Predicate): ParseStep[Unit] = p match {
+    case And(left, right) ⇒
+      for {
+        _ ← add(left)
+        _ ← add(right)
+      } yield Fact.unit
+    case _                ⇒ ParseStep.modify(_.addPredicate(p))
+  }
 
   final case class Test[T](override val signature: String, test: T ⇒ Boolean, rep: Fact[T]) extends Predicate:
     override lazy val sources: Set[Fact[_]] = rep.sources.toSet

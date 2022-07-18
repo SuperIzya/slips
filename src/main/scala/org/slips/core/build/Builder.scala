@@ -16,7 +16,7 @@ object Builder {
     condition: Condition[T]
   )(
     using T: TypeOps[T]
-  ): Environment ?=> (Set[Predicate], Set[Condition.Source[_]]) = (env: Environment) ?=> {
+  ): Environment ?=> (Map[String, Predicate], Set[Condition.Source[_]]) = (env: Environment) ?=> {
     val (Parser.Context(predicates, allSources), result) = Parser(condition)
     @tailrec
     def collectPredicates(p: List[Predicate], res: Map[String, List[Predicate]]): Map[String, List[Predicate]] = {

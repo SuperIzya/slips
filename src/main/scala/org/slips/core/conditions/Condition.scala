@@ -80,8 +80,8 @@ object Condition {
       extends Condition[Unit] {
     override val signature: String = p.signature
 
-    override private[slips] val parse: ParseStep[Unit] =
-      ParseStep.modify(_.addPredicate(p))
+    override private[slips] val parse: ParseStep[Unit] = Predicate.add(p.toKNF)
+
   }
 
   final case class Map[T, Q] private[Condition] (

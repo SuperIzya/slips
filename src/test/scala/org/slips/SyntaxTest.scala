@@ -9,6 +9,7 @@ import org.slips.core.predicates.Predicate
 object SyntaxTest {
   case class Data1(count: Int, name: String)
   case class Data2(fullName: String, points: Double)
+  case class Data3(price: Long, weight: Double)
 
   val mapFunction: (Data1, Data2) ⇒ Double        = _.count + _.points
   val predicateFunction: (Data2, Data1) ⇒ Boolean = _.points > _.count
@@ -18,22 +19,25 @@ object SyntaxTest {
     import SE.Syntax.Conditions.*
 
     val testFacts: (Fact[Data1], Fact[Data2]) ⇒ Predicate = (f1, f2) ⇒
-      (f2.test(_.fullName.isEmpty) && f1.value(_.name) === "abc") ||
+      ((f2, f1).test { case (d2, d1) ⇒
+        d2.points > d1.count
+      } &&
+        f2.test(_.fullName.isEmpty) && f1.value(_.name) === "abc") ||
         f2.test(_.points > 0)
 
     for {
       f1 ← all[Data1]
       f2 ← all[Data2] if f2.value(_.points) === 2
-      _  ← (f2, f1).test { case (d1, d2) ⇒
-        d1.points > d2.count
+      _  ← (f2, f1).test { case (d2, d1) ⇒
+        d2.points > d1.count
       }
       i = Fact.literal(2)
       _  ← Fact.literal(3) === f1.value(_.count)
       _  ← testFacts(f1, f2)
-      f3 ← all[Data1] if f3.value(_.count) === 2
+      f3 ← all[Data3] if f3.value(_.price) === 2
       g = (f1, f2).value(mapFunction.tupled)
       f = Fact.literal(3f)
-      _ ← f3.value(_.count.toDouble) =!= g && f1.value(_.count) === i
+      _ ← f3.value(_.weight) =!= 3.0 && f1.value(_.count) === i
     } yield (f1, f2, g, i, Fact.literal(2f))
   }
 

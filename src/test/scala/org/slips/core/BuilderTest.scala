@@ -13,12 +13,12 @@ class BuilderTest extends AnyFreeSpec with Matchers {
       object SEClean extends SimpleEnvironment {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
-      val (predicatesClean, sourcesClean) = SEClean {
+      val (predicates, sources) = SEClean {
         Builder.sourcesAndPredicates(SyntaxTest.conditions1)
       }
 
-      sourcesClean should have size 2
-      predicatesClean should have size 6
+      sources should have size 2
+      predicates should have size 10
     }
 
     "PredicateSelection.Keep" in {
@@ -26,12 +26,12 @@ class BuilderTest extends AnyFreeSpec with Matchers {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Keep
       }
 
-      val (predicatesKeep, sourcesKeep) = SEKeep {
+      val (predicates, sources) = SEKeep {
         Builder.sourcesAndPredicates(SyntaxTest.conditions1)
       }
 
-      sourcesKeep should have size 2
-      predicatesKeep should have size 9
+      sources should have size 3
+      predicates should have size 12
     }
   }
 }
