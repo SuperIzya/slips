@@ -16,7 +16,8 @@ lazy val root = (project in file(".")).settings(
 //    "-Xprint-suspension",
     "-Yprint-debug",
     "-print-lines",
-    "-Xcheck-macros"
+    "-Xcheck-macros",
+    "-deprecation"
     //   "-Yshow-suppressed-errors"
   ),
   libraryDependencies ++= Seq(

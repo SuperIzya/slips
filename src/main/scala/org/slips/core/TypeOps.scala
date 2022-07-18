@@ -20,8 +20,42 @@ sealed trait TypeOps[T](using TypeOps.Size[T]) {
 }
 
 object TypeOps {
+  type TupleSignature     = List[String]
+  private type TupleFactF = [x] => Int => TypeOps[x] ?=> Fact[x]
+
+  given typeFromTuple[T <: NonEmptyTuple](
+    using T: TupleOps[T]
+  ): TypeOps[T] = T
+
+  private def getElement[T <: NonEmptyTuple, Q](index: Int)(v: T): Q = v.productElement(index).asInstanceOf[Q]
+
   sealed trait Size[T]:
     val size: Int
+
+  sealed trait TupleOps[T <: NonEmptyTuple](using size: Size[T])
+      extends TypeOps[T] {
+
+    val index: Int
+
+    def chainT[Q <: NonEmptyTuple](f: TupleFactF)(using size: Size[Q]): Fact.TMap[T]
+
+    override def forSource(src: Condition[T]): Fact.Val[T] = chainT {
+      [H] => (index: Int) => (H: TypeOps[H]) ?=> Fact.FromTuple[T, H](src, index, H.empty)
+    }
+
+    override def toVal(f: Fact[T]): Fact.Val[T] = chainT {
+      [x] =>
+        (index: Int) =>
+          (to: TypeOps[x]) ?=>
+            Fact.fromFactTuple[T, x](f, getElement[T, x](index)(_), index)(
+              using to,
+              size
+          )
+    }
+  }
+
+  trait Empty[T]:
+    def empty: T
 
   object Size {
 
@@ -42,22 +76,19 @@ object TypeOps {
     }
   }
 
-  type TupleSignature = List[String]
-
-  private def getElement[T <: NonEmptyTuple, Q](index: Int)(v: T): Q = v.productElement(index).asInstanceOf[Q]
-
-  trait Empty[T]:
-    def empty: T
-
   object Empty {
-    given Empty[Unit] with   { override def empty: Unit = ()   }
-    given Empty[Char] with   { override def empty: Char = 0    }
-    given Empty[Byte] with   { override def empty: Byte = 0    }
-    given Empty[Short] with  { override def empty: Short = 0   }
-    given Empty[Int] with    { override def empty: Int = 0     }
-    given Empty[Long] with   { override def empty: Long = 0L   }
-    given Empty[Float] with  { override def empty: Float = 0f  }
-    given Empty[Double] with { override def empty: Double = 0  }
+    inline def derived[T](using gen: K0.ProductGeneric[T]): Empty[T] =
+      genEmptyCaseClass[T]
+
+    given Empty[Unit] with   { override def empty: Unit = ()  }
+    given Empty[Char] with   { override def empty: Char = 0   }
+    given Empty[Byte] with   { override def empty: Byte = 0   }
+    given Empty[Short] with  { override def empty: Short = 0  }
+    given Empty[Int] with    { override def empty: Int = 0    }
+    given Empty[Long] with   { override def empty: Long = 0L  }
+    given Empty[Float] with  { override def empty: Float = 0f }
+    given Empty[Double] with { override def empty: Double = 0 }
+
     given Empty[String] with { override def empty: String = "" }
 
     given genEmptyStart[T](
@@ -82,46 +113,7 @@ object TypeOps {
     given genEmptyCaseClass[T](
       using inst: K0.ProductInstances[Empty, T]
     ): Empty[T] with {
-      override def empty: T = inst.construct([t] ⇒ (e: Empty[t]) ⇒ e.empty)
-    }
-
-    inline def derived[T](using gen: K0.ProductGeneric[T]): Empty[T] =
-      genEmptyCaseClass[T]
-  }
-
-  given genTypeOpsSingle[T: Size](
-    using ev: Fact.Val[T] =:= Fact[T],
-    T: Empty[T],
-    ev3: NotGiven[T <:< Tuple]
-  ): TypeOps[T] with {
-    override def empty: T                                  = T.empty
-    override def forSource(src: Condition[T]): Fact.Val[T] = ev.flip(Fact.Dummy(src, empty))
-    override def toVal(f: Fact[T]): Fact.Val[T]            = ev.flip(f)
-    override def extract(r: Fact.Val[T]): TupleSignature   = List(ev(r).signature)
-    def sources(f: Fact.Val[T]): List[Fact[_]]             = ev(f).sources
-  }
-
-  private type TupleFactF = [x] ⇒ Int ⇒ TypeOps[x] ?=> Fact[x]
-
-  sealed trait TupleOps[T <: NonEmptyTuple](using size: Size[T])
-      extends TypeOps[T] {
-
-    val index: Int
-
-    def chainT[Q <: NonEmptyTuple](f: TupleFactF)(using size: Size[Q]): Fact.TMap[T]
-
-    override def forSource(src: Condition[T]): Fact.Val[T] = chainT {
-      [H] ⇒ (index: Int) ⇒ (H: TypeOps[H]) ?=> Fact.FromTuple[T, H](src, index, H.empty)
-    }
-
-    override def toVal(f: Fact[T]): Fact.Val[T] = chainT {
-      [x] ⇒
-        (index: Int) ⇒
-          (to: TypeOps[x]) ?=>
-            Fact.fromFactTuple[T, x](f, getElement[T, x](index)(_), index)(
-              using to,
-              size
-          )
+      override def empty: T = inst.construct([t] => (e: Empty[t]) => e.empty)
     }
   }
 
@@ -170,8 +162,18 @@ object TypeOps {
     }
   }
 
-  given typeFromTuple[T <: NonEmptyTuple](
-    using T: TupleOps[T]
-  ): TypeOps[T] = T
+  given genTypeOpsSingle[T: Size](
+    using ev: Fact.Val[T] =:= Fact[T],
+    T: Empty[T],
+    ev3: NotGiven[T <:< Tuple]
+  ): TypeOps[T] with {
+    override def forSource(src: Condition[T]): Fact.Val[T] = ev.flip(Fact.Dummy(src, empty))
+
+    override def empty: T = T.empty
+
+    override def toVal(f: Fact[T]): Fact.Val[T]          = ev.flip(f)
+    override def extract(r: Fact.Val[T]): TupleSignature = List(ev(r).signature)
+    def sources(f: Fact.Val[T]): List[Fact[_]]           = ev(f).sources
+  }
 
 }

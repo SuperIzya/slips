@@ -5,9 +5,9 @@ import scala.quoted.*
 import scala.util.matching.Regex
 
 object Macros {
-  inline def createSigned[R](res: String ⇒ R, inline toSign: Any): R = ${ createSignedImp('res, 'toSign) }
+  inline def createSigned[R](res: String => R, inline toSign: Any): R = ${ createSignedImp('res, 'toSign) }
 
-  def createSignedImp[R: Type](res: Expr[String ⇒ R], toSign: Expr[Any])(using quotes: Quotes): Expr[R] = {
+  def createSignedImp[R: Type](res: Expr[String => R], toSign: Expr[Any])(using quotes: Quotes): Expr[R] = {
     import quotes.*
     import reflect.*
 
@@ -28,9 +28,9 @@ object Macros {
         .toList
         .distinct
         .zipWithIndex
-        .foldLeft(in) { (res, x) ⇒
+        .foldLeft(in) { (res, x) =>
           x match {
-            case (v, i) ⇒
+            case (v, i) =>
               res
                 .replace(s"$v: ", "")
                 .replace(s"$v:", "")

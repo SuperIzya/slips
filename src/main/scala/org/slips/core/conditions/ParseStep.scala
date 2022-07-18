@@ -4,7 +4,7 @@ import cats.data.State
 import org.slips.core.Fact
 
 object ParseStep {
-  def pure[T](v: Fact.Val[T]): ParseStep[T]                       = State.pure(v)
-  def modify(f: Parser.Context ⇒ Parser.Context): ParseStep[Unit] =
-    State.modify(f).map(_ ⇒ Fact.unit)
+  def pure[T](v: Fact.Val[T]): ParseStep[T]                        = State.pure(v)
+  def modify(f: Parser.Context => Parser.Context): ParseStep[Unit] =
+    State.modify(f).map(_ => Fact.unit)
 }

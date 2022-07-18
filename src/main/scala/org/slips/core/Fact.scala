@@ -1,11 +1,11 @@
 package org.slips.core
 
-import TypeOps.TupleOps
 import cats.Id
 import cats.Monoid
 import org.slips.core.Fact.Tuples
 import org.slips.core.Macros
 import org.slips.core.Signed
+import org.slips.core.TypeOps.TupleOps
 import org.slips.core.conditions.Condition
 import org.slips.core.predicates.Predicate
 import scala.Tuple.Size
@@ -15,15 +15,17 @@ import scala.util.NotGiven
 
 sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
 
-  override def signature: String = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]($sample)"
+  lazy val toVal: Fact.Val[T] = T.toVal(this)
 
-  inline def value[I: TypeOps](inline f: T ⇒ I): Fact[I] =
+  inline def value[I: TypeOps](inline f: T => I): Fact[I] =
     Macros.createSigned[Fact.Map[T, I]](
-      s ⇒ Fact.Map(s"$signature => $s", f, this),
+      s => Fact.Map(s"$signature => $s", f, this),
       f
     )
 
-  inline def test(inline f: T ⇒ Boolean): Predicate = Predicate.Test.fromFact(this, f)
+  override def signature: String = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]($sample)"
+
+  inline def test(inline f: T => Boolean): Predicate = Predicate.Test.fromFact(this, f)
 
   @targetName("repNotEq")
   inline def =!=(other: Fact[T])(using TupleOps[(T, T)], Fact[T] =:= Fact.Val[T]): Predicate =
@@ -33,7 +35,6 @@ sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
   inline def ===(other: Fact[T])(using TupleOps[(T, T)], Fact[T] =:= Fact.Val[T]): Predicate =
     Predicate.Test(this, other, _ == _)
 
-  lazy val toVal: Fact.Val[T] = T.toVal(this)
   def sources: List[Fact[_]]
 }
 
@@ -44,35 +45,17 @@ object Fact {
   type TIsMapped   = [x <: Tuple] =>> Tuple.IsMappedBy[Fact][x]
 
   type Val[X] = X match
-    case Tuple ⇒ TMap[X]
-    case _     ⇒ Fact[X]
+    case Tuple => TMap[X]
+    case _     => Fact[X]
 
   type ReverseVal[X] = X match
-    case Tuple   ⇒ TInverseMap[X]
-    case Fact[x] ⇒ x
-
-  final case class ExtractFromTuple[T <: NonEmptyTuple, Q: TypeOps] private[slips] (
-    override val signature: String,
-    src: Fact[T],
-    extract: T ⇒ Q,
-    override val sample: Q)
-      extends Fact[Q](sample) {
-    override def sources: List[Fact[_]] = src.sources
-  }
-
-  final case class Tuples[T <: NonEmptyTuple] private[slips] (
-    override val signature: String,
-    facts: TMap[T],
-    override val sample: T
-  )(
-    using T: TupleOps[T])
-      extends Fact[T](sample) {
-    override def sources: List[Fact[_]] = T.sources(facts)
-  }
+    case Tuple   => TInverseMap[X]
+    case Fact[x] => x
+  val unit: Fact[Unit] = literal(())
 
   def fromFactTuple[T <: NonEmptyTuple, Q](
     f: Fact[T],
-    extract: T ⇒ Q,
+    extract: T => Q,
     index: Int
   )(
     using Q: TypeOps[Q],
@@ -91,26 +74,35 @@ object Fact {
       T.empty
     )
 
+  def literal[T : CanBeLiteral : TypeOps](v: T): Fact[T] = Literal(v)
+
+  sealed trait CanBeLiteral[T]
+
+  final case class ExtractFromTuple[T <: NonEmptyTuple, Q: TypeOps] private[slips] (
+    override val signature: String,
+    src: Fact[T],
+    extract: T => Q,
+    override val sample: Q)
+      extends Fact[Q](sample) {
+    override def sources: List[Fact[_]] = src.sources
+  }
+
+  final case class Tuples[T <: NonEmptyTuple] private[slips] (
+    override val signature: String,
+    facts: TMap[T],
+    override val sample: T
+  )(
+    using T: TupleOps[T])
+      extends Fact[T](sample) {
+    override def sources: List[Fact[_]] = T.sources(facts)
+  }
+
   final case class Map[T, Q: TypeOps](
     override val signature: String,
-    f: T ⇒ Q,
+    f: T => Q,
     rep: Fact[T])
       extends Fact[Q](f(rep.sample)) {
     override def sources: List[Fact[_]] = rep.sources
-  }
-
-  sealed trait CanBeLiteral[T]
-  object CanBeLiteral {
-    given [T <: Tuple](
-      using NotGiven[TIsMapped[T]]
-    ): CanBeLiteral[T] =
-      new CanBeLiteral[T] {}
-
-    given [T](
-      using NotGiven[T <:< Tuple],
-      NotGiven[T =:= Fact[?]]
-    ): CanBeLiteral[T] =
-      new CanBeLiteral[T] {}
   }
 
   final case class Literal[I: TypeOps] private[slips] (value: I)
@@ -119,7 +111,6 @@ object Fact {
 
     override def sources: List[Fact[_]] = List.empty
   }
-  def literal[T : CanBeLiteral : TypeOps](v: T): Fact[T] = Literal(v)
 
   final case class Dummy[T: TypeOps] private[slips] (
     src: Condition[T],
@@ -147,9 +138,21 @@ object Fact {
 
     override def sources: List[Fact[_]] = List(this)
   }
+
+  object CanBeLiteral {
+    given [T <: Tuple](
+      using NotGiven[TIsMapped[T]]
+    ): CanBeLiteral[T] =
+      new CanBeLiteral[T] {}
+
+    given [T](
+      using NotGiven[T <:< Tuple],
+      NotGiven[T =:= Fact[?]]
+    ): CanBeLiteral[T] =
+      new CanBeLiteral[T] {}
+  }
+
   object Source:
     inline def apply[T](signature: String)(using T: TypeOps[T]): Source[T] =
       Source(signature, T.empty)
-
-  val unit: Fact[Unit] = literal(())
 }

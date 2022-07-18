@@ -10,20 +10,22 @@ import scala.annotation.tailrec
 
 object Builder {
 
-  def apply[T](condition: Condition[T])(using T: TypeOps[T]): Environment ?=> Unit = sourcesAndPredicates(condition)
+  def apply[T](condition: Condition[T])(using T: TypeOps[T]): Environment ?=> Unit = {
+    val (sources, predicates) = sourcesAndPredicates(condition)
+  }
 
   def sourcesAndPredicates[T](
     condition: Condition[T]
   )(
     using T: TypeOps[T]
-  ): Environment ?=> (Map[String, Predicate], Set[Condition.Source[_]]) = (env: Environment) ?=> {
+  ): Environment ?=> (Set[Condition.Source[_]], Map[String, Predicate]) = (env: Environment) ?=> {
     val (Parser.Context(predicates, allSources), result) = Parser(condition)
     @tailrec
     def collectPredicates(p: List[Predicate], res: Map[String, List[Predicate]]): Map[String, List[Predicate]] = {
       p match {
-        case Nil       ⇒ res
-        case h :: tail ⇒
-          val next = h.sources.map(_.signature).foldLeft(res)((m, s) ⇒ m + (s → (h +: m.getOrElse(s, List.empty))))
+        case Nil       => res
+        case h :: tail =>
+          val next = h.sources.map(_.signature).foldLeft(res)((m, s) => m + (s -> (h +: m.getOrElse(s, List.empty))))
           collectPredicates(
             tail,
             next
@@ -40,8 +42,8 @@ object Builder {
         collectedP
       )
 
-    val allSourcesMap = allSources.map(x ⇒ x.signature → x).toMap
-    selectedP → sources.map(_.signature).map(allSourcesMap(_))
+    val allSourcesMap = allSources.map(x => x.signature -> x).toMap
+    sources.map(_.signature).map(allSourcesMap(_)) -> selectedP
 
   }
 }

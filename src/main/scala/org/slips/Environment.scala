@@ -4,7 +4,6 @@ import cats.Monad
 import cats.data.State
 import cats.data.StateT
 import org.slips.core.*
-import org.slips.core.TypeOps
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.predicates.Predicate
@@ -23,7 +22,7 @@ import scala.util.NotGiven
 trait Environment {
 
   type Effect[_]
-  given effectMonad: Monad[Effect]
+  type Action[t, q] = StateT[Effect, Context[t], q]
   /*
   sealed trait Node[T] {
     val signature: String
@@ -94,6 +93,7 @@ trait Environment {
     }
 
   }*/
+  val predicateSelectionStrategy: PredicateSelection
 
   trait Context[T](facts: Fact.Val[T], values: T) {
     def getValue[Q](fact: Fact[Q]): Effect[(Context[T], Q)]
@@ -101,16 +101,36 @@ trait Environment {
   }
 
   trait ContextBuilder
+
+  trait Syntax {
+    extension [T <: Tuple](c: Condition[T]) {
+      def makeRule(name: String): Rule.ThenBuilder[T] =
+        Rule.ThenBuilder(name, c)
+    }
+
+  }
+
+  final case class Rule[T, Q] private (
+    condition: Condition[T],
+    action: Fact.Val[T] => Action[T, Q],
+    name: String)
+
   object ContextBuilder {
     type Step[x] = StateT[Effect, ContextBuilder, x]
   }
 
-  type Action[t, q] = StateT[Effect, Context[t], q]
   object Action {
+    def apply[T <: Tuple, Q](
+      f: Context[T] => Effect[(Context[T], Q)]
+    ): Action[T, Q] = StateT(f)
+
+    def pure[T <: Tuple, Q](q: => Q): Action[T, Q] = StateT.pure(q)
+
     sealed trait InTuple[T <: Tuple, Q] {
       val pos: Int
     }
-    object InTuple                      {
+
+    object InTuple {
       given [T <: Tuple, Q]: InTuple[Q *: T, Q] with
         override val pos = 0
       given [T <: NonEmptyTuple, Q](
@@ -119,18 +139,11 @@ trait Environment {
       ): InTuple[T, Q] with
         override val pos: Int = prev.pos + 1
     }
-
-    def apply[T <: Tuple, Q](
-      f: Context[T] ⇒ Effect[(Context[T], Q)]
-    ): Action[T, Q] = StateT(f)
-    def pure[T <: Tuple, Q](q: ⇒ Q): Action[T, Q] = StateT.pure(q)
   }
 
-  final case class Rule[T, Q] private (
-    condition: Condition[T],
-    action: Fact.Val[T] ⇒ Action[T, Q],
-    name: String)
-  object Rule   {
+  object Rule {
+
+    def apply(name: String): WhenBuilder = WhenBuilder(name)
 
     case class ThenBuilder[T <: Tuple] private[Environment] (
       name: String,
@@ -141,16 +154,6 @@ trait Environment {
     case class WhenBuilder private[Environment] (name: String):
       def apply[T <: Tuple](condition: Condition[T]): ThenBuilder[T] =
         ThenBuilder(name, condition)
-
-    def apply(name: String): WhenBuilder = WhenBuilder(name)
-
-  }
-
-  trait Syntax {
-    extension [T <: Tuple](c: Condition[T]) {
-      def makeRule(name: String): Rule.ThenBuilder[T] =
-        Rule.ThenBuilder(name, c)
-    }
 
   }
 
@@ -186,7 +189,7 @@ trait Environment {
       @inline implicit def toAction[T <: Tuple, Q](
         f: Context[T] ?=> Effect[(Context[T], Q)]
       ): Action[T, Q] =
-        Action(e ⇒
+        Action(e =>
           f(
             using e
           )
@@ -197,6 +200,6 @@ trait Environment {
     object Actions    extends Actions
   }
 
-  val predicateSelectionStrategy: PredicateSelection
+  given effectMonad: Monad[Effect]
 
 }
