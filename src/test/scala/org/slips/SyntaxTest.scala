@@ -7,6 +7,11 @@ import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 
 object SyntaxTest {
+
+  extension (f: Fact[Data1]) {
+    def bid: Predicate = f.test(_.count > 0)
+  }
+
   val mapFunction: (Data1, Data2) => Double        = _.count + _.points
   val predicateFunction: (Data2, Data1) => Boolean = _.points > _.count
   val SE                                           = SimpleEnvironment

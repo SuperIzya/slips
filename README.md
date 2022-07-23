@@ -62,6 +62,24 @@ Parse strategy answers the question should the lines 1 & 4 be in resulting netwo
 #### Rule
 Rule consists of set of conditions and an action that should be taken when a set of facts satisfies all the conditions.
 DSL for scala provides set of monadic types to define rules.
+ 
+```scala
+Rule("pancakes"){
+  for {
+    z <- all[Vegetable] if v.test(_.name == "zucchini")
+    a <- all[Fruit] if a.test(_.name == "apple") && a.value(_.color) =:= Color.Red
+  } yield (z, a)
+}{
+  case (zF, aF) =>
+    for {
+      z <- getValue(zF)
+      a <- getValue(aF)
+      _ <- makePancakes(z, a)
+      _ <- remove(zF)
+      _ <- remove(aF)
+    } yield ()
+}
+```
 
 ###### Condition
 Since condition is on a fact, each condition should start with one.
@@ -112,7 +130,24 @@ val cheesePlate = for {
   c <- all[Cheese] if c.test(_.weight >= 0.25)
 } yield (f, c)
 ```
+###### Predicate
+Predicate is one of condition's possible parts, but this part is most commonly used. It represents an actual condition as simple as it may be.
+One of the main advantages of [RETE](https://en.wikipedia.org/wiki/Rete_algorithm) in reuse of these predicates. So it is much advisable to reuse predicates as well
+```scala
+extension (f: Fact[Cheese]) {
+  def isBigEnough: Predicate = f.test(_.weight >= 0.65)
+}
+val bigCheesePlate = for {
+  (f, v) <- vegan
+  _ <- v.test(goodWithCheese)
+  _ <- f.value(_.name) =:= "grape"
+  c <- all[Cheese] if c.isBigEnough
+} yield (f, v, c)
 
+val bigCheese = all[Cheese].withFilter(_.isBigEnough)
+```
 
+###### Action
+This is the part of the rule that is being executed with a set of facts that satisfies all the conditions. 
 
 
