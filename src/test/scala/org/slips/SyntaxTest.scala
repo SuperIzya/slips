@@ -1,9 +1,9 @@
 package org.slips
 
 import org.slips.SyntaxTest.SE
-import org.slips.core.Fact
 import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Res
+import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 
 object SyntaxTest {

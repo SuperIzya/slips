@@ -1,17 +1,24 @@
 package org.slips.core.build
 
+import cats.data.State
+import cats.syntax.traverse.*
 import org.slips.Environment
-import org.slips.core.Fact
 import org.slips.core.TypeOps
 import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Parser
+import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 import scala.annotation.tailrec
 
 object Builder {
 
-  def apply[T](condition: Condition[T])(using T: TypeOps[T]): Environment ?=> Unit = {
-    val (sources, predicates) = sourcesAndPredicates(condition)
+  case class Chain[T, F <: Fact.Val[T]](sources: F, predicates: Set[Predicate])
+
+  def apply[T](condition: Condition[T])(using T: TypeOps[T]): Environment ?=> Unit = env ?=> {
+    val (sources: Set[Condition.Source[_]], predicates) = sourcesAndPredicates(condition)
+    val buildNet                                        = for {
+      _ <- sources.toList.traverse(_.build)
+    } yield ()
   }
 
   def sourcesAndPredicates[T](
@@ -38,7 +45,7 @@ object Builder {
     val (sources, selectedP) = env
       .predicateSelectionStrategy
       .selectPredicates(
-        T.sources(result).toSet,
+        T.predecessors(result).toSet,
         collectedP
       )
 

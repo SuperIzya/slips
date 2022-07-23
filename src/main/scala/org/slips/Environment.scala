@@ -1,11 +1,15 @@
 package org.slips
 
 import cats.Monad
-import cats.data.State
 import cats.data.StateT
+import cats.syntax.functor.*
 import org.slips.core.*
+import org.slips.core.build.BuildContext
+import org.slips.core.build.BuildStep
+import org.slips.core.build.Node
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
+import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 import scala.Tuple.Head
 import scala.Tuple.IsMappedBy
@@ -23,76 +27,25 @@ trait Environment {
 
   type Effect[_]
   type Action[t, q] = StateT[Effect, Context[t], q]
-  /*
-  sealed trait Node[T] {
-    val signature: String
-    val intake: Node.Intake[_]
-    val sink: Node.Sink[T] = Node.Sink()
+
+  trait BufferFactory  {
+    def create[T]: Buffer[T]
   }
-  object Node          {
-
-    type BuildStep = [x] =>> State[BuildContext, x]
-
-    object BuildStep {
-      def apply[T](f: BuildContext ⇒ (BuildContext, T)): BuildStep[T] = State(
-        f
-      )
-      def modify(f: BuildContext ⇒ BuildContext): BuildStep[Unit]     =
-        State.modify(f)
-      def pure[T](p: T): BuildStep[T]                                 = State.pure(p)
+  object BufferFactory {
+    def apply(buffer: [x] => () => Buffer[x]): BufferFactory = new BufferFactory {
+      override def create[T]: Buffer[T] = buffer[T]()
     }
+  }
 
-    sealed trait Builder[N[x] <: Node[x]] {
-      extension [T](x: N[T])
-        def add: BuildStep[N[T]]
-        def equalNode(y: N[T]): Boolean
-    }
+  trait Buffer[T] {
+    type BufferType <: Iterable[T]
+    protected def buffer: Effect[BufferType]
+    def add(key: String, v: T): Effect[Unit]
+    def get(key: String): Effect[Option[T]]
+    def iterator(using Monad[Effect]): Effect[Iterator[T]] = buffer.map(_.iterator)
+  }
 
-    object Builder {}
-
-    type Nodes = List[Node[_]]
-    object Nodes              {
-      val empty: Nodes = List.empty
-    }
-    sealed trait BuildContext {
-      val nodes: Nodes
-      def add[T, N[x] <: Node[x]](
-        node: N[T]
-      )(
-        using Builder[N],
-        TypeTest[Node[_], N[T]]
-      ): BuildStep[N[T]] = {
-        nodes
-          .collectFirst {
-            case n: N[T] if n.signature == node.signature && node.equalNode(n) ⇒
-              n
-          }
-          .map(BuildStep.pure)
-          .getOrElse(node.add)
-
-      }
-    }
-    object BuildContext       {
-      def empty: BuildContext = new BuildContext:
-        override val nodes: Nodes = Nodes.empty
-    }
-
-    case class Sink[T]()
-
-    sealed trait Intake[T]
-    case object EmptyIntake                      extends Intake[Any]
-    final case class Intake1[T](source: Sink[T]) extends Intake[T]
-    final case class Intake2[T1, T2](source1: Sink[T1], source2: Sink[T2])
-        extends Intake[T1 *: T2 *: EmptyTuple]
-
-    sealed trait AlphaNode[X, Y]   extends Node[Y]
-    sealed trait BetaNode[X, Y, Z] extends Node[Z]
-    final case class SourceNode[T](signature: String, f: ContextBuilder.Step[T])
-        extends Node[T] {
-      override val intake: Intake[Any] = EmptyIntake
-    }
-
-  }*/
+  val bufferFactory: BufferFactory
   val predicateSelectionStrategy: PredicateSelection
 
   trait Context[T](facts: Fact.Val[T], values: T) {
@@ -113,7 +66,8 @@ trait Environment {
   final case class Rule[T, Q] private (
     condition: Condition[T],
     action: Fact.Val[T] => Action[T, Q],
-    name: String)
+    name: String
+  )
 
   object ContextBuilder {
     type Step[x] = StateT[Effect, ContextBuilder, x]
@@ -147,7 +101,8 @@ trait Environment {
 
     case class ThenBuilder[T <: Tuple] private[Environment] (
       name: String,
-      condition: Condition[T]):
+      condition: Condition[T]
+    ):
       def apply[Q](f: PartialFunction[Fact.Val[T], Action[T, Q]]): Rule[T, Q] =
         Rule(condition, f, name)
 

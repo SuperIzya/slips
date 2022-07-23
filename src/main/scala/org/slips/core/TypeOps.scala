@@ -2,6 +2,7 @@ package org.slips.core
 
 import cats.Monoid
 import org.slips.core.conditions.Condition
+import org.slips.core.fact.Fact
 import scala.annotation.tailrec
 import scala.compiletime.error
 import scala.compiletime.ops.int.S
@@ -13,10 +14,10 @@ sealed trait TypeOps[T](using TypeOps.Size[T]) {
   val signature: String = Macros.signType[T]
 
   def empty: T
-  def forSource(src: Condition[T]): Fact.Val[T]
   def toVal(f: Fact[T]): Fact.Val[T]
   def extract(r: Fact.Val[T]): TypeOps.TupleSignature
-  def sources(f: Fact.Val[T]): List[Fact[_]]
+  def predecessors(f: Fact.Val[T]): Set[Fact[_]]
+  def sources(f: Fact.Val[T]): Set[Condition.Source[_]]
 }
 
 object TypeOps {
@@ -38,10 +39,6 @@ object TypeOps {
     val index: Int
 
     def chainT[Q <: NonEmptyTuple](f: TupleFactF)(using size: Size[Q]): Fact.TMap[T]
-
-    override def forSource(src: Condition[T]): Fact.Val[T] = chainT {
-      [H] => (index: Int) => (H: TypeOps[H]) ?=> Fact.FromTuple[T, H](src, index, H.empty)
-    }
 
     override def toVal(f: Fact[T]): Fact.Val[T] = chainT {
       [x] =>
@@ -132,11 +129,19 @@ object TypeOps {
 
       override def extract(r: Fact.Val[H *: EmptyTuple]): TupleSignature = List(r.head.signature)
 
-      def sources(f: Fact.Val[H *: EmptyTuple]): List[Fact[_]] = f.head.sources
+      def predecessors(f: Fact.Val[H *: EmptyTuple]): Set[Fact[_]]        = {
+        val head *: EmptyTuple = f
+        H.predecessors(head.toVal)
+      }
+      def sources(f: Fact.Val[H *: EmptyTuple]): Set[Condition.Source[_]] = {
+        val head *: EmptyTuple = f
+        H.sources(head.toVal)
+      }
     }
 
     given genTupleOpsStep[H, T <: NonEmptyTuple](
       using H: TypeOps[H],
+      evF: Fact.Val[H] =:= Fact[H],
       T: TupleOps[T],
       S: Size[H *: T],
       ev: Fact.Val[H *: T] <:< NonEmptyTuple
@@ -155,10 +160,15 @@ object TypeOps {
         head.signature +: T.extract(tail)
       }
 
-      def sources(f: Fact.Val[H *: T]): List[Fact[_]] = {
+      override def predecessors(f: Fact.Val[H *: T]): Set[Fact[_]]        = {
+        val head *: tail = f
+        head.predecessors ++ T.predecessors(tail)
+      }
+      override def sources(f: Fact.Val[H *: T]): Set[Condition.Source[_]] = {
         val head *: tail = f
         head.sources ++ T.sources(tail)
       }
+
     }
   }
 
@@ -167,13 +177,13 @@ object TypeOps {
     T: Empty[T],
     ev3: NotGiven[T <:< Tuple]
   ): TypeOps[T] with {
-    override def forSource(src: Condition[T]): Fact.Val[T] = ev.flip(Fact.Dummy(src, empty))
 
     override def empty: T = T.empty
 
-    override def toVal(f: Fact[T]): Fact.Val[T]          = ev.flip(f)
-    override def extract(r: Fact.Val[T]): TupleSignature = List(ev(r).signature)
-    def sources(f: Fact.Val[T]): List[Fact[_]]           = ev(f).sources
+    override def toVal(f: Fact[T]): Fact.Val[T]           = ev.flip(f)
+    override def extract(r: Fact.Val[T]): TupleSignature  = List(ev(r).signature)
+    def predecessors(f: Fact.Val[T]): Set[Fact[_]]        = ev(f).predecessors
+    def sources(f: Fact.Val[T]): Set[Condition.Source[_]] = ev(f).sources
   }
 
 }

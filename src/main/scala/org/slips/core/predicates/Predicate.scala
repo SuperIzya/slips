@@ -5,6 +5,7 @@ import org.slips.core.*
 import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Source
 import org.slips.core.conditions.ParseStep
+import org.slips.core.fact.Fact
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
@@ -61,7 +62,7 @@ object Predicate {
   }
 
   final case class Test[T](override val signature: String, test: T => Boolean, rep: Fact[T]) extends Predicate:
-    override lazy val sources: Set[Fact[_]] = rep.sources.toSet
+    override lazy val sources: Set[Fact[_]] = rep.predecessors.toSet
 
   final case class And(left: Predicate, right: Predicate) extends Predicate {
     override lazy val sources: Set[Fact[_]] = left.sources ++ right.sources

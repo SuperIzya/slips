@@ -13,7 +13,7 @@ class BuilderTest extends AnyFreeSpec with Matchers {
       object SEClean extends SimpleEnvironment {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
-      val (predicates, sources) = SEClean {
+      val (sources, predicates) = SEClean {
         Builder.sourcesAndPredicates(SyntaxTest.conditions1)
       }
 
@@ -26,7 +26,7 @@ class BuilderTest extends AnyFreeSpec with Matchers {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Keep
       }
 
-      val (predicates, sources) = SEKeep {
+      val (sources, predicates) = SEKeep {
         Builder.sourcesAndPredicates(SyntaxTest.conditions1)
       }
 

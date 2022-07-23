@@ -1,6 +1,6 @@
 package org.slips.core.build.strategy
 
-import org.slips.core.Fact
+import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
@@ -73,11 +73,11 @@ object PredicateSelection {
                   case None           => newSources -> newPredicates
                 }
               p match {
-                case Predicate.Test(_, _, rep) if initialSources.intersect(rep.sources.toSet).nonEmpty =>
-                  val newSources    = collectedS ++ rep.sources
+                case Predicate.Test(_, _, rep) if initialSources.intersect(rep.predecessors.toSet).nonEmpty =>
+                  val newSources    = collectedS ++ rep.predecessors
                   val newPredicates = collectedP + (p.signature -> p)
                   dequeue(newSources, newPredicates)
-                case Predicate.Test(_, _, _)                                                           =>
+                case Predicate.Test(_, _, _)                                                                =>
                   dequeue(collectedS, collectedP)
                 case Predicate.Not(pred) => collectSources(pred, collectedS, collectedP + (p.signature -> p), queue)
                 case Predicate.Or(left, right)                                                     =>

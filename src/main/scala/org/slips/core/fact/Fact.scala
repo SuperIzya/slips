@@ -1,12 +1,14 @@
-package org.slips.core
+package org.slips.core.fact
 
 import cats.Id
 import cats.Monoid
-import org.slips.core.Fact.Tuples
 import org.slips.core.Macros
 import org.slips.core.Signed
+import org.slips.core.TypeOps
 import org.slips.core.TypeOps.TupleOps
 import org.slips.core.conditions.Condition
+import org.slips.core.fact.*
+import org.slips.core.fact.Fact.*
 import org.slips.core.predicates.Predicate
 import scala.Tuple.Size
 import scala.annotation.tailrec
@@ -35,7 +37,8 @@ sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
   inline def ===(other: Fact[T])(using TupleOps[(T, T)], Fact[T] =:= Fact.Val[T]): Predicate =
     Predicate.Test(this, other, _ == _)
 
-  def sources: List[Fact[_]]
+  def predecessors: Set[Fact[_]]
+  def sources: Set[Condition.Source[_]]
 }
 
 object Fact {
@@ -82,9 +85,10 @@ object Fact {
     override val signature: String,
     src: Fact[T],
     extract: T => Q,
-    override val sample: Q)
-      extends Fact[Q](sample) {
-    override def sources: List[Fact[_]] = src.sources
+    override val sample: Q
+  ) extends Fact[Q](sample) {
+    override val predecessors: Set[Fact[_]]        = src.predecessors + src
+    override val sources: Set[Condition.Source[_]] = src.sources
   }
 
   final case class Tuples[T <: NonEmptyTuple] private[slips] (
@@ -92,51 +96,49 @@ object Fact {
     facts: TMap[T],
     override val sample: T
   )(
-    using T: TupleOps[T])
-      extends Fact[T](sample) {
-    override def sources: List[Fact[_]] = T.sources(facts)
+    using T: TupleOps[T]
+  ) extends Fact[T](sample) {
+    override val predecessors: Set[Fact[_]]        = T.predecessors(facts)
+    override val sources: Set[Condition.Source[_]] = T.sources(facts)
   }
 
   final case class Map[T, Q: TypeOps](
     override val signature: String,
     f: T => Q,
-    rep: Fact[T])
-      extends Fact[Q](f(rep.sample)) {
-    override def sources: List[Fact[_]] = rep.sources
+    rep: Fact[T]
+  ) extends Fact[Q](f(rep.sample)) {
+    override def predecessors: Set[Fact[_]] = rep.predecessors + rep
+
+    override def sources: Set[Condition.Source[_]] = rep.sources
   }
 
   final case class Literal[I: TypeOps] private[slips] (value: I)
       extends Fact[I](value) {
     override lazy val signature: String = value.toString
 
-    override def sources: List[Fact[_]] = List.empty
+    override def predecessors: Set[Fact[_]]        = Set.empty
+    override def sources: Set[Condition.Source[_]] = Set.empty
   }
 
   final case class Dummy[T: TypeOps] private[slips] (
     src: Condition[T],
-    override val sample: T)
-      extends Fact[T](sample) {
+    override val sample: T
+  ) extends Fact[T](sample) {
     override val signature: String =
       s"${ src.signature } -> Fact[${ Macros.signType[T] }]"
 
-    override def sources: List[Fact[_]] = List.empty
+    override def predecessors: Set[Fact[_]] = Set.empty
+
+    override def sources: Set[Condition.Source[_]] = Set.empty
   }
 
-  final case class FromTuple[T <: Tuple, Q: TypeOps] private[slips] (
-    src: Condition[T],
-    index: Int,
-    override val sample: Q)
-      extends Fact[Q](sample) {
-    override val signature: String =
-      s"${ src.signature } ~> ${ Macros.signType[T] }($index) -> Fact[${ Macros.signType[Q] }]"
+  final case class Source[T: TypeOps] private (
+    override val signature: String,
+    override val sample: T,
+    override val sources: Set[Condition.Source[_]]
+  ) extends Fact[T](sample) {
 
-    override def sources: List[Fact[_]] = List.empty
-  }
-
-  final case class Source[T: TypeOps] private (override val signature: String, override val sample: T)
-      extends Fact[T](sample) {
-
-    override def sources: List[Fact[_]] = List(this)
+    override def predecessors: Set[Fact[_]] = Set.empty
   }
 
   object CanBeLiteral {
@@ -153,6 +155,6 @@ object Fact {
   }
 
   object Source:
-    inline def apply[T](signature: String)(using T: TypeOps[T]): Source[T] =
-      Source(signature, T.empty)
+    inline def apply[T](source: Condition.Source[T])(using T: TypeOps[T]): Source[T] =
+      Source(source.signature, T.empty, Set(source))
 }

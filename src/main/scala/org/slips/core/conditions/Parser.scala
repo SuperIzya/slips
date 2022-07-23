@@ -1,7 +1,7 @@
 package org.slips.core.conditions
 
 import org.slips.Environment
-import org.slips.core.Fact
+import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 
 object Parser {

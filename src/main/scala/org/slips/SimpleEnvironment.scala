@@ -2,11 +2,12 @@ package org.slips
 
 import cats.Id
 import cats.Monad
-import org.slips.core.Fact
 import org.slips.core.build.strategy.PredicateSelection
+import org.slips.core.fact.Fact
 import scala.annotation.tailrec
+import scala.collection.mutable.ArrayBuffer
 
-trait SimpleEnvironment  extends Environment {
+trait SimpleEnvironment extends Environment {
   override type Effect[x] = cats.Id[x]
   override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
 
@@ -33,5 +34,17 @@ trait SimpleEnvironment  extends Environment {
 
     override def assert[Q](q: Q): (Context[T], Unit) = (this, ())
   }
+
+  class SimpleBuffer[T] private[SimpleEnvironment] (
+    override val buffer: Effect[ArrayBuffer[T]] = new ArrayBuffer[T]()
+  ) extends Buffer[T] {
+    override type BufferType = ArrayBuffer[T]
+
+    override def add(key: String, v: T): Effect[Unit] = ???
+    override def get(key: String): Effect[Option[T]]  = ???
+  }
+
+  override val bufferFactory: BufferFactory = BufferFactory([x] => () => new SimpleBuffer[x]())
+
 }
 object SimpleEnvironment extends SimpleEnvironment
