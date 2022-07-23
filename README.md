@@ -70,13 +70,12 @@ Rule("pancakes"){
     a <- all[Fruit] if a.test(_.name == "apple") && a.value(_.color) =:= Color.Red
   } yield (z, a)
 }{
-  case (zF, aF) =>
+  case (fZucchini, fApple) =>
     for {
-      z <- getValue(zF)
-      a <- getValue(aF)
-      _ <- makePancakes(z, a)
-      _ <- remove(zF)
-      _ <- remove(aF)
+      zucchini <- getValue(fZucchini)
+      apple <- getValue(fApple)
+      _ <- makePancakes(zucchini, apple)
+      _ <- remove((fZucchini, fApple))
     } yield ()
 }
 ```
