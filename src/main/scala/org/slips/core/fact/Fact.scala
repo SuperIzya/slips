@@ -19,12 +19,6 @@ sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
 
   lazy val toVal: Fact.Val[T] = T.toVal(this)
 
-  inline def value[I: TypeOps](inline f: T => I): Fact[I] =
-    Macros.createSigned[Fact.Map[T, I]](
-      s => Fact.Map(s"$signature => $s", f, this),
-      f
-    )
-
   override def signature: String = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]($sample)"
 
   inline def test(inline f: T => Boolean): Predicate = Predicate.Test.fromFact(this, f)

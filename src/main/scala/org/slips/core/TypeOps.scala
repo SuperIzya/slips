@@ -131,11 +131,11 @@ object TypeOps {
 
       def predecessors(f: Fact.Val[H *: EmptyTuple]): Set[Fact[_]]        = {
         val head *: EmptyTuple = f
-        H.predecessors(head.toVal)
+        head.predecessors
       }
       def sources(f: Fact.Val[H *: EmptyTuple]): Set[Condition.Source[_]] = {
         val head *: EmptyTuple = f
-        H.sources(head.toVal)
+        head.sources
       }
     }
 

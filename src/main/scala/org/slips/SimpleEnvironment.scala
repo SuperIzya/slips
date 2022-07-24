@@ -17,11 +17,11 @@ trait SimpleEnvironment extends Environment {
     override def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
 
     @tailrec
-    override def tailRecM[A, B](a: A)(f: A => Id[Either[A, B]]): Id[B] = {
+    override def tailRecM[A, B](a: A)(f: A => Id[Either[A, B]]): Id[B] = 
       f(a) match
         case Left(a)  => tailRecM(a)(f)
         case Right(b) => b
-    }
+    
   }
 
   def apply[T](f: Environment ?=> T): T = f(
@@ -33,6 +33,9 @@ trait SimpleEnvironment extends Environment {
     override def getValue[Q](fact: Fact[Q]): (Context[T], Q) = ???
 
     override def assert[Q](q: Q): (Context[T], Unit) = (this, ())
+
+    override def remove[Q](facts: Fact.Val[Q]): (Context[T], Unit) = (this, ())
+
   }
 
   class SimpleBuffer[T] private[SimpleEnvironment] (

@@ -4,53 +4,55 @@ import cats.data.State
 import cats.syntax.traverse.*
 import org.slips.Environment
 import org.slips.core.TypeOps
+import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.Condition
+import org.slips.core.conditions.Condition.Source
 import org.slips.core.conditions.Parser
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
+import org.slips.Env
 import scala.annotation.tailrec
 
 object Builder {
 
-  case class Chain[T, F <: Fact.Val[T]](sources: F, predicates: Set[Predicate])
+  type PredicateMap = Map[Fact[_], Set[Predicate]]
 
-  def apply[T](condition: Condition[T])(using T: TypeOps[T]): Environment ?=> Unit = env ?=> {
-    val (sources: Set[Condition.Source[_]], predicates) = sourcesAndPredicates(condition)
-    val buildNet                                        = for {
+  case class SelectedPredicatesAndSources(predicates: PredicateMap, sources: Set[Source[_]], facts: Set[Fact[_]]) {
+    def addPredicate(p: Predicate): PredicateMap  = {
+      predicates ++ p.facts.flatMap(f => f.predecessors + f).map { f => f -> (predicates.getOrElse(f, Set.empty) + p) }
+    }
+    def withPredicate(p: Predicate): SelectedPredicatesAndSources = copy(predicates = addPredicate(p))
+  }
+
+  object SelectedPredicatesAndSources {
+    def apply[T](start: Fact.Val[T])(using T: TypeOps[T]): SelectedPredicatesAndSources = {
+      SelectedPredicatesAndSources(
+        Map.empty,
+        T.sources(start),
+        T.predecessors(start)
+      )
+    }
+    def empty = SelectedPredicatesAndSources(Map.empty, Set.empty, Set.empty)
+  }
+
+  def apply[T](condition: Condition[T])(using T: TypeOps[T]): Env[Unit] = env ?=> {
+    val SelectedPredicatesAndSources(predicates, sources, facts) = sourcesAndPredicates(condition)
+    val buildNet                                          = for {
       _ <- sources.toList.traverse(_.build)
     } yield ()
   }
 
-  def sourcesAndPredicates[T](
-    condition: Condition[T]
-  )(
-    using T: TypeOps[T]
-  ): Environment ?=> (Set[Condition.Source[_]], Map[String, Predicate]) = (env: Environment) ?=> {
+  def sourcesAndPredicates[T](condition: Condition[T])(using T: TypeOps[T]): Env[SelectedPredicatesAndSources] = {
     val (Parser.Context(predicates, allSources), result) = Parser(condition)
     @tailrec
-    def collectPredicates(p: List[Predicate], res: Map[String, List[Predicate]]): Map[String, List[Predicate]] = {
+    def collectPredicates(p: List[Predicate], res: SelectedPredicatesAndSources): SelectedPredicatesAndSources = {
       p match {
         case Nil       => res
         case h :: tail =>
-          val next = h.sources.map(_.signature).foldLeft(res)((m, s) => m + (s -> (h +: m.getOrElse(s, List.empty))))
-          collectPredicates(
-            tail,
-            next
-          )
+          collectPredicates(tail, res.withPredicate(h))
       }
     }
-
-    val collectedP = collectPredicates(predicates.toList, Map.empty).withDefaultValue(List.empty)
-
-    val (sources, selectedP) = env
-      .predicateSelectionStrategy
-      .selectPredicates(
-        T.predecessors(result).toSet,
-        collectedP
-      )
-
-    val allSourcesMap = allSources.map(x => x.signature -> x).toMap
-    sources.map(_.signature).map(allSourcesMap(_)) -> selectedP
-
+    val collected = collectPredicates(predicates.toList, SelectedPredicatesAndSources(result))
+    PredicateSelection.select(collected)
   }
 }

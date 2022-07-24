@@ -1,17 +1,11 @@
 package org.slips
 
-import org.slips.SyntaxTest.SE
 import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Res
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 
 object SyntaxTest {
-
-  extension (f: Fact[Data1]) {
-    def bid: Predicate = f.test(_.count > 0)
-  }
-
   val mapFunction: (Data1, Data2) => Double        = _.count + _.points
   val predicateFunction: (Data2, Data1) => Boolean = _.points > _.count
   val SE                                           = SimpleEnvironment
@@ -50,12 +44,11 @@ object SyntaxTest {
     } yield (f3, f1)
   }
   val rule        = SE {
-    import SE.Syntax.Conditions.*
     import SE.Syntax.Actions.*
 
     SE.Rule("test")(conditions2) { case (f2, f1) =>
       for {
-        d2 <- getValue(f2)
+        d2 <- f2.value
         _  <- assert(Data2("foo", d2.points))
       } yield ()
     }

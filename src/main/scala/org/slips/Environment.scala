@@ -51,6 +51,7 @@ trait Environment {
   trait Context[T](facts: Fact.Val[T], values: T) {
     def getValue[Q](fact: Fact[Q]): Effect[(Context[T], Q)]
     def assert[Q](q: Q): Effect[(Context[T], Unit)]
+    def remove[Q](facts: Fact.Val[Q]): Effect[(Context[T], Unit)]
   }
 
   trait ContextBuilder
@@ -131,15 +132,22 @@ trait Environment {
 
       inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : TypeOps](x: T): Fact[T] = Fact.literal(x)
 
+      extension [T](fact: Fact[T]) {
+        inline def value[I: TypeOps](inline f: T => I): Fact[I] =
+          Macros.createSigned[Fact.Map[T, I]](
+            s => Fact.Map(s"${fact.signature} => $s", f, fact),
+            f
+          )
+      }
+
     }
     trait Actions {
       def assert[T <: Tuple, Q](q: Q): Action[T, Unit] = Action(_.assert(q))
 
-      def getValue[T, Q <: Tuple](
-        f: Fact[T]
-      )(
-        using Action.InTuple[Q, T]
-      ): Action[Q, T] = Action(_.getValue(f))
+      extension [T](f: Fact[T]) {
+        def value[Q <: Tuple](using Action.InTuple[Q, T]): Action[Q, T]     = Action(_.getValue(f))
+        def remove[Q <: Tuple](using Action.InTuple[Q, T]): Action[Q, Unit] = Action(_.remove(f.toVal))
+      }
 
       @inline implicit def toAction[T <: Tuple, Q](
         f: Context[T] ?=> Effect[(Context[T], Q)]

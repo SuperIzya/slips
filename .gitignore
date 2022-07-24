@@ -5,3 +5,6 @@
 **/target/*
 target/*
 /.vscode/
+.metals/
+.bloop/
+metals.sbt
