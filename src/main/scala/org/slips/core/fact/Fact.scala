@@ -9,8 +9,10 @@ import org.slips.core.TypeOps.TupleOps
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
+import org.slips.core.FactSize
 import org.slips.core.predicates.Predicate
 import scala.Tuple.Size
+import org.slips.core
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
@@ -32,6 +34,7 @@ sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
     Predicate.Test(this, other, _ == _)
 
   def predecessors: Set[Fact[_]]
+  lazy val sourceFacts: Set[Fact.Source[_]] = predecessors.collect { case x: Fact.Source[_] => x }
   def sources: Set[Condition.Source[_]]
 }
 
@@ -48,15 +51,15 @@ object Fact {
   type ReverseVal[X] = X match
     case Tuple   => TInverseMap[X]
     case Fact[x] => x
+
   val unit: Fact[Unit] = literal(())
 
   def fromFactTuple[T <: NonEmptyTuple, Q](
     f: Fact[T],
     extract: T => Q,
     index: Int
-  )(
-    using Q: TypeOps[Q],
-    T: TypeOps.Size[T]
+  )(using Q: TypeOps[Q],
+    T: FactSize[T]
   ): Fact[Q] = ExtractFromTuple(
     s"${ f.signature }($index of ${ T.size })[${ Q.signature }]",
     f,
@@ -89,8 +92,7 @@ object Fact {
     override val signature: String,
     facts: TMap[T],
     override val sample: T
-  )(
-    using T: TupleOps[T]
+  )(using T: TupleOps[T]
   ) extends Fact[T](sample) {
     override val predecessors: Set[Fact[_]]        = T.predecessors(facts)
     override val sources: Set[Condition.Source[_]] = T.sources(facts)
@@ -126,13 +128,18 @@ object Fact {
     override def sources: Set[Condition.Source[_]] = Set.empty
   }
 
-  final case class Source[T: TypeOps] private (
+  final class Source[T: TypeOps] private (
     override val signature: String,
     override val sample: T,
     override val sources: Set[Condition.Source[_]]
   ) extends Fact[T](sample) {
 
-    override def predecessors: Set[Fact[_]] = Set.empty
+    override val predecessors: Set[Fact[_]]       = Set.empty
+    override lazy val sourceFacts: Set[Source[_]] = Set(this)
+  }
+  object Source              {
+    def apply[T](source: Condition.Source[T])(using T: TypeOps[T]): Source[T] =
+      new Source(source.signature, T.empty, Set(source))
   }
 
   object CanBeLiteral {
@@ -148,7 +155,4 @@ object Fact {
       new CanBeLiteral[T] {}
   }
 
-  object Source:
-    inline def apply[T](source: Condition.Source[T])(using T: TypeOps[T]): Source[T] =
-      Source(source.signature, T.empty, Set(source))
 }

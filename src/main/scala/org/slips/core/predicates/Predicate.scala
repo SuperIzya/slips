@@ -12,6 +12,9 @@ import scala.util.NotGiven
 
 sealed trait Predicate extends Signed {
   def facts: Set[Fact[_]]
+  lazy val sourceFacts: Set[Fact.Source[_]] = facts.collect{
+    case x: Fact.Source[_] => x
+  }
   def sources: Set[Condition.Source[_]] = facts.flatMap(_.sources)
   override val signature: String = this.getClass.getSimpleName
 

@@ -8,6 +8,7 @@ import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
 import scala.util.NotGiven
+import org.slips.core.FactSize
 
 sealed trait Condition[T] extends Signed {
   override val signature: String = ""
@@ -30,7 +31,7 @@ sealed trait Condition[T] extends Signed {
 object Condition {
   type Res[x] = Environment ?=> Condition[x]
 
-  inline def all[T : TypeOps : TypeOps.Size]: All[T] = {
+  inline def all[T : TypeOps : FactSize]: All[T] = {
     All[T](s"All[${ Macros.signType[T] }]")
   }
 
@@ -38,7 +39,7 @@ object Condition {
     Map(src, f)
 
   sealed trait Source[T: TypeOps] extends Condition[T] {
-    private[slips] def fact: Fact.Source[T]         = Fact.Source(this)
+    private def fact: Fact.Source[T]                = Fact.Source(this)
     override private[slips] val parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ => fact.toVal)
 
     private[slips] def build: BuildStep[Unit]

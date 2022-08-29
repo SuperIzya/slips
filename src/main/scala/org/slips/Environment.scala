@@ -4,6 +4,7 @@ import cats.Monad
 import cats.data.StateT
 import cats.syntax.functor.*
 import org.slips.core.*
+import org.slips.core.FactSize
 import org.slips.core.build.BuildContext
 import org.slips.core.build.BuildStep
 import org.slips.core.build.Node
@@ -11,8 +12,7 @@ import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
-import scala.Tuple.Head
-import scala.Tuple.IsMappedBy
+import scala.Tuple._
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.deriving.Mirror
@@ -88,8 +88,7 @@ trait Environment {
     object InTuple {
       given [T <: Tuple, Q]: InTuple[Q *: T, Q] with
         override val pos = 0
-      given [T <: NonEmptyTuple, Q](
-        using
+      given [T <: NonEmptyTuple, Q](using
         prev: InTuple[Tuple.Tail[T], Q]
       ): InTuple[T, Q] with
         override val pos: Int = prev.pos + 1
@@ -116,15 +115,14 @@ trait Environment {
   object Syntax extends Syntax {
 
     trait Conditions {
-      inline def all[T : TypeOps : TypeOps.Size]: Condition.Source[T] = Condition.all[T]
+      inline def all[T : TypeOps : FactSize]: Condition.Source[T] = Condition.all[T]
 
       inline implicit def predicateToCondition(p: Predicate): Condition[Unit] =
         Condition.OpaquePredicate(p)
 
       inline implicit def tupleToFact[T <: NonEmptyTuple, Q <: NonEmptyTuple](
         x: T
-      )(
-        using ev0: Q =:= Fact.TInverseMap[T],
+      )(using ev0: Q =:= Fact.TInverseMap[T],
         ev: T =:= Fact.TMap[Q],
         ev1: TypeOps.TupleOps[Q]
       ): Fact[Q] =
@@ -135,7 +133,7 @@ trait Environment {
       extension [T](fact: Fact[T]) {
         inline def value[I: TypeOps](inline f: T => I): Fact[I] =
           Macros.createSigned[Fact.Map[T, I]](
-            s => Fact.Map(s"${fact.signature} => $s", f, fact),
+            s => Fact.Map(s"${ fact.signature } => $s", f, fact),
             f
           )
       }

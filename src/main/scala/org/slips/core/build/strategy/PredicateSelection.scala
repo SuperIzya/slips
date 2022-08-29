@@ -98,26 +98,28 @@ object PredicateSelection {
       queue: Queue[Predicate] = Queue.empty
     ): SelectedPredicatesAndSources = {
       p match {
-        case Predicate.Test(_, _, rep) if col.facts.intersect(rep.predecessors).nonEmpty =>
+        case Predicate.Test(_, _, rep) if col.facts.intersect(rep.sourceFacts).nonEmpty   =>
           queue.deq(
             col.copy(
               sources = col.sources ++ rep.sources,
               predicates = col.addPredicate(p),
-              facts = col.facts ++ rep.predecessors
+              facts = col.facts ++ rep.sourceFacts
             )
           )
-        case Predicate.Test(_, _, _)                                                     =>
-          queue.deq(col)
-        case Predicate.Not(pred)                                                         =>
+        case Predicate.Test(_, _, _)                                                      =>
+          queue.deq(col.withDiscard(p))
+        case Predicate.Not(pred) if col.facts.intersect(pred.sourceFacts).nonEmpty        =>
           collectSources(pred, col.withPredicate(p), queue)
-        case Predicate.Or(left, right)                                                   =>
+        case Predicate.Not(_)                                                             =>
+          queue.deq(col.withDiscard(p))
+        case Predicate.Or(left, right)                                                    =>
           collectSources(left, col.withPredicate(p), queue.enqueue(right))
-        case Predicate.And(left, right) if col.facts.intersect(left.facts).nonEmpty      =>
+        case Predicate.And(left, right) if col.facts.intersect(left.sourceFacts).nonEmpty =>
           collectSources(left, col, queue.enqueue(right))
-        case Predicate.And(_, right) if col.facts.intersect(right.facts).nonEmpty        =>
-          collectSources(right, col, queue)
-        case _                                                                           =>
-          queue.deq(col)
+        case Predicate.And(l, right) if col.facts.intersect(right.sourceFacts).nonEmpty   =>
+          collectSources(right, col.withDiscard(l), queue)
+        case _                                                                            =>
+          queue.deq(col.withDiscard(p))
       }
     }
     @tailrec
@@ -132,6 +134,16 @@ object PredicateSelection {
         case Nil                  => collected
       }
     }
+
+    @tailrec
+    private def processPredicates(
+      toCheck: List[Predicate],
+      collected: SelectedPredicatesAndSources
+    ): SelectedPredicatesAndSources = {
+      val result = selectPredicates(toCheck, collected)
+      if (result.discarded == collected.discarded) result
+      else processPredicates(result.discarded.toList, result.copy(discarded = Set.empty))
+    }
     override def selectPredicatesAndSources(initial: SelectedPredicatesAndSources) = {
 
       val allPredicatesMap: Map[Source[_], Set[Predicate]] = initial
@@ -144,7 +156,7 @@ object PredicateSelection {
         initial.sources.flatMap { allPredicatesMap(_) }.toList,
         initial.copy(
           predicates = Map.empty,
-          facts = initial.facts.flatMap(_.predecessors)
+          facts = initial.facts
         )
       )
     }
