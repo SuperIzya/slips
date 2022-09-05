@@ -72,15 +72,8 @@ object Builder {
 
   def sourcesAndPredicates[T](condition: Condition[T])(using T: TypeOps[T]): Env[SelectedPredicatesAndSources] = {
     val (Parser.Context(predicates, allSources), result) = Parser(condition)
-    @tailrec
-    def collectPredicates(p: List[Predicate], res: SelectedPredicatesAndSources): SelectedPredicatesAndSources = {
-      p match {
-        case Nil       => res
-        case h :: tail =>
-          collectPredicates(tail, res.withPredicate(h))
-      }
-    }
-    val collected = collectPredicates(predicates.toList, SelectedPredicatesAndSources(result))
+
+    val collected = SelectedPredicatesAndSources(result).withPredicates(predicates.toSeq)
     PredicateSelection.select(collected)
   }
 }

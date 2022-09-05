@@ -144,7 +144,7 @@ object PredicateSelection {
       if (result.discarded == collected.discarded) result
       else processPredicates(result.discarded.toList, result.copy(discarded = Set.empty))
     }
-    override def selectPredicatesAndSources(initial: SelectedPredicatesAndSources) = {
+    override def selectPredicatesAndSources(initial: SelectedPredicatesAndSources): SelectedPredicatesAndSources = {
 
       val allPredicatesMap: Map[Source[_], Set[Predicate]] = initial
         .predicates

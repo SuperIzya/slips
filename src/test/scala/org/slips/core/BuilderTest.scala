@@ -1,6 +1,5 @@
 package org.slips.core
 
-import Assertion._
 import cats.Eval
 import cats.data.State
 import org.slips.{Environment => SEnv}
@@ -14,6 +13,7 @@ import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 import zio.Scope
 import zio.test._
+import zio.test.Assertion._
 
 object BuilderTest extends ZIOSpecDefault {
   enum Origin {

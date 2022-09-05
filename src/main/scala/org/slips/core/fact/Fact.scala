@@ -2,6 +2,8 @@ package org.slips.core.fact
 
 import cats.Id
 import cats.Monoid
+import org.slips.core
+import org.slips.core.FactSize
 import org.slips.core.Macros
 import org.slips.core.Signed
 import org.slips.core.TypeOps
@@ -9,10 +11,8 @@ import org.slips.core.TypeOps.TupleOps
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
-import org.slips.core.FactSize
 import org.slips.core.predicates.Predicate
 import scala.Tuple.Size
-import org.slips.core
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
