@@ -45,9 +45,9 @@ sealed trait Predicate extends Signed {
       case Or(left, right)  =>
         (left.toKNF, right.toKNF) match {
           case (And(l, r), p) => (l.toKNF || p.toKNF).toKNF && (r.toKNF || p.toKNF).toKNF
-          case (Or(l, r), p)  => (l.toKNF || p.toKNF).toKNF || (r.toKNF || p.toKNF).toKNF
+          case (Or(l, r), p)  => (l.toKNF || r.toKNF || p.toKNF).toKNF
           case (p, And(l, r)) => (p.toKNF || l.toKNF).toKNF && (p.toKNF || r.toKNF).toKNF
-          case (p, Or(l, r))  => (p.toKNF || l.toKNF).toKNF || (p.toKNF || r.toKNF).toKNF
+          case (p, Or(l, r))  => (p.toKNF || l.toKNF || r.toKNF).toKNF
           case (l, r)         => l || r
         }
     }

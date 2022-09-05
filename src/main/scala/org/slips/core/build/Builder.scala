@@ -16,7 +16,6 @@ import scala.annotation.tailrec
 object Builder {
 
   type PredicateMap = Map[Fact.Source[_], Set[Predicate]]
-  private val emptyPredicateMap: PredicateMap = Map.empty[Fact.Source[_], Set[Predicate]]
 
   case class SelectedPredicatesAndSources(
     predicates: PredicateMap,
@@ -34,20 +33,11 @@ object Builder {
       facts = facts ++ p.sourceFacts
     )
 
-    def withPredicates(p: Seq[Predicate]): SelectedPredicatesAndSources = {
-      val (newFacts, newPredicates) = p.foldLeft((facts, predicates)) { (col, predicate) =>
-        (col._1 ++ predicate.sourceFacts) -> addToMap(col._2, predicate)
-      }
-      copy(
-        facts = newFacts,
-        predicates = newPredicates
-      )
-    }
-
     def withDiscard(p: Predicate): SelectedPredicatesAndSources = copy(discarded = discarded + p)
   }
 
   object SelectedPredicatesAndSources {
+    val empty: SelectedPredicatesAndSources = SelectedPredicatesAndSources(Map.empty, Set.empty, Set.empty, Set.empty)
     private inline def addToMap(map: PredicateMap, p: Predicate): PredicateMap          = {
       map ++ p.facts.flatMap(f => f.sourceFacts).map { f => f -> (map.getOrElse(f, Set.empty) + p) }
     }
@@ -59,7 +49,6 @@ object Builder {
         Set.empty
       )
     }
-    def empty = SelectedPredicatesAndSources(Map.empty, Set.empty, Set.empty, Set.empty)
   }
 
   def apply[T](condition: Condition[T])(using T: TypeOps[T]): Env[Unit] = env ?=> {
@@ -71,9 +60,11 @@ object Builder {
   }
 
   def sourcesAndPredicates[T](condition: Condition[T])(using T: TypeOps[T]): Env[SelectedPredicatesAndSources] = {
-    val (Parser.Context(predicates, allSources), result) = Parser(condition)
+    val (Parser.Context(predicates, _), result) = Parser(condition)
 
-    val collected = SelectedPredicatesAndSources(result).withPredicates(predicates.toSeq)
-    PredicateSelection.select(collected)
+    PredicateSelection.select(
+      result,
+      predicates.flatMap(f => f.sourceFacts.map(_ -> f)).groupBy(_._1).view.mapValues(_.map(_._2)).toMap
+    )
   }
 }
