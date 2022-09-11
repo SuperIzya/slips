@@ -1,14 +1,16 @@
 package org.slips.core.conditions
 
 import org.slips.Environment
+import org.slips.NotTuple
 import org.slips.core.*
+import org.slips.core.FactSize
 import org.slips.core.build.*
 import org.slips.core.build.BuildStep
 import org.slips.core.fact.Fact
+import org.slips.core.network.AlphaNode
+import org.slips.core.network.Node
 import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
-import scala.util.NotGiven
-import org.slips.core.FactSize
 
 sealed trait Condition[T] extends Signed {
   override val signature: String = ""
@@ -31,25 +33,23 @@ sealed trait Condition[T] extends Signed {
 object Condition {
   type Res[x] = Environment ?=> Condition[x]
 
-  inline def all[T : TypeOps : FactSize]: All[T] = {
+  inline def all[T : TypeOps : FactSize : NotTuple]: All[T] = {
     All[T](s"All[${ Macros.signType[T] }]")
   }
 
   private def map[T, Q](src: Condition[T], f: Fact.Val[T] => Fact.Val[Q]): Map[T, Q] =
     Map(src, f)
 
-  sealed trait Source[T: TypeOps] extends Condition[T] {
+  sealed trait Source[T : TypeOps : NotTuple] extends Condition[T] {
     private def fact: Fact.Source[T]                = Fact.Source(this)
     override private[slips] val parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ => fact.toVal)
 
-    private[slips] def build: BuildStep[Unit]
+    private[slips] def build: BuildStep[Node] = BuildStep.addNode(AlphaNode.Source(this))
   }
 
-  final case class All[T] private[Condition] (override val signature: String)(using T: TypeOps[T])
-      extends Source[T] {
-
-    override private[slips] def build: BuildStep[Unit] = ???
-  }
+  final case class All[T : TypeOps : NotTuple] private[Condition] (
+    override val signature: String
+  ) extends Source[T]
 
   final case class OpaquePredicate private[slips] (p: Predicate)
       extends Condition[Unit] {

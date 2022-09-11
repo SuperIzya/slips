@@ -12,11 +12,9 @@ import scala.util.NotGiven
 
 sealed trait Predicate extends Signed {
   def facts: Set[Fact[_]]
-  lazy val sourceFacts: Set[Fact.Source[_]] = facts.collect{
-    case x: Fact.Source[_] => x
-  }
-  def sources: Set[Condition.Source[_]] = facts.flatMap(_.sources)
-  override val signature: String = this.getClass.getSimpleName
+  lazy val sourceFacts: Set[Fact.Source[_]] = facts.flatMap(_.sourceFacts)
+  def sources: Set[Condition.Source[_]]     = facts.flatMap(_.sources)
+  override val signature: String            = this.getClass.getSimpleName
 
   def and(other: Predicate): Predicate = Predicate.And(this, other)
 
@@ -70,17 +68,17 @@ object Predicate {
 
   final case class And(left: Predicate, right: Predicate) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
-    override val signature: String          = s"${ left.signature } && ${ right.signature }"
+    override val signature: String        = s"${ left.signature } && ${ right.signature }"
   }
 
   final case class Or(left: Predicate, right: Predicate) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
-    override val signature: String          = s"${ left.signature } || ${ right.signature }"
+    override val signature: String        = s"${ left.signature } || ${ right.signature }"
   }
 
   final case class Not private (p: Predicate) extends Predicate {
     override lazy val facts: Set[Fact[_]] = p.facts
-    override val signature: String          = s"!${ p.signature }"
+    override val signature: String        = s"!${ p.signature }"
   }
 
   object Test {
@@ -101,8 +99,7 @@ object Predicate {
       rep1: Fact[T1],
       rep2: Fact[T2],
       inline test: (T1, T2) => Boolean
-    )(
-      using TypeOps.TupleOps[(T1, T2)],
+    )(using TypeOps.TupleOps[(T1, T2)],
       Fact[T1] =:= Fact.Val[T1],
       Fact[T2] =:= Fact.Val[T2]
     ): Test[(T1, T2)] = {

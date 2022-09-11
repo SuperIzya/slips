@@ -6,7 +6,7 @@ import org.slips.{Environment => SEnv}
 import org.slips.SimpleEnvironment
 import org.slips.core.Empty
 import org.slips.core.build.Builder
-import org.slips.core.build.Builder.SelectedPredicatesAndSources
+import org.slips.core.build.SelectedPredicatesAndSources
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
@@ -31,13 +31,17 @@ object BuilderTest extends ZIOSpecDefault {
   case class Herb(name: String, origin: Origin)
   case class Berry(name: String, origin: Origin)
 
-  val condition1 = (env: SEnv) ?=> {
+  def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
+
+  val notApple: Fact[Fruit] => Predicate = _.test(_.name != "apple")
+  private val testFruitAndVegie          = (testFruitAndVegieF _).tupled
+
+  def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
+
+  private val vegie2Fruits = vegie2FruitsF.tupled
+
+  private val condition1 = (env: SEnv) ?=> {
     import env.Syntax.Conditions.*
-    def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean        = false
-    val notApple: Fact[Fruit] => Predicate                         = _.test(_.name != "apple")
-    val testFruitAndVegie                                          = (testFruitAndVegieF _).tupled
-    def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
-    val vegie2Fruits                                               = vegie2FruitsF.tupled
     for {
       h     <- all[Herb]
       b     <- all[Herb]
@@ -54,9 +58,18 @@ object BuilderTest extends ZIOSpecDefault {
     } yield (f1, f2, v, _5)
   }
 
+  private val rule1 = (env: SEnv) ?=> {
+    import env.Syntax.Actions.*
+    condition1.makeRule("Test rule 1") { case (f1, f2, v, c5) =>
+      for {
+        x1 <- f1.value
+      } yield ()
+    }
+  }
+
   override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(predicates, strategy)
 
-  val predicates = suite("Predicates should have same signature")({
+  private val predicates = suite("Predicates should have same signature")({
     case class Asserts(seq: Seq[(String, TestResult)]) {
       def addStep(s: (String, TestResult)): Asserts       = copy(seq = seq :+ s)
       def addSteps(s: Seq[(String, TestResult)]): Asserts = copy(seq = seq ++ s)
@@ -69,7 +82,7 @@ object BuilderTest extends ZIOSpecDefault {
     val testSeq = SimpleEnvironment { env ?=>
       type Step[T] = State[Asserts, T]
       def predicate(name: String)(cond: Condition[Fruit]): Step[Option[String]] = State { asserts =>
-        val set: Set[Predicate] = Builder.sourcesAndPredicates(cond).predicates.values.toSet.flatten
+        val set: Set[Predicate] = Builder.selectPredicatesAndSources(cond).predicates.values.toSet.flatten
 
         asserts.addStep {
           s"condition created by $name should have only one predicate" -> assert(set)(hasSize(equalTo(1)))
@@ -115,7 +128,7 @@ object BuilderTest extends ZIOSpecDefault {
     }
   }: _*)
 
-  val strategy = suite(
+  private val strategy = suite(
     "Condition parser should find all predicates and sources with respect to Environment.predicateSelectionStrategy"
   )(
     test("PredicateSelection.Keep") {
@@ -124,7 +137,7 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       val res = SEKeep {
-        Builder.sourcesAndPredicates(condition1)
+        Builder.selectPredicatesAndSources(condition1)
       }
 
       assert(res.sources)(hasSize(equalTo(4))) &&
@@ -135,7 +148,7 @@ object BuilderTest extends ZIOSpecDefault {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
       val res = SEClean {
-        Builder.sourcesAndPredicates(condition1)
+        Builder.selectPredicatesAndSources(condition1)
       }
 
       assert(res.sources)(hasSize(equalTo(3))) &&

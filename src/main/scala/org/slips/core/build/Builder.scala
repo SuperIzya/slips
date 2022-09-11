@@ -1,5 +1,6 @@
 package org.slips.core.build
 
+import cats.data.IndexedStateT
 import cats.data.State
 import cats.syntax.traverse.*
 import org.slips.Env
@@ -10,56 +11,69 @@ import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Source
 import org.slips.core.conditions.Parser
 import org.slips.core.fact.Fact
+import org.slips.core.network.AlphaNetwork
 import org.slips.core.predicates.Predicate
+import org.slips.core.rule.Rule.RuleM
 import scala.annotation.tailrec
 
 object Builder {
 
-  type PredicateMap = Map[Fact.Source[_], Set[Predicate]]
+  val materializeAlphaNetwork: BuildStep[Unit] = BuildStep { ctx => ctx -> () }
 
-  case class SelectedPredicatesAndSources(
-    predicates: PredicateMap,
-    sources: Set[Source[_]],
-    facts: Set[Fact.Source[_]],
-    discarded: Set[Predicate]
-  ) {
-    import SelectedPredicatesAndSources._
-    def addPredicate(p: Predicate): PredicateMap = {
-      addToMap(predicates, p)
+  val buildAlphaNetwork: Env[BuildStep[AlphaNetwork]] = env ?=>
+    BuildStep { ctx =>
+      val network = ctx
+        .alphaPredicates
+        .toList
+        .sortBy(-_._2.size)
+        .foldLeft(AlphaNetwork(ctx.sources))(env.alphaNodeStrategy.fold)
+        .toAlphaNetwork
+
+      ctx.addAlphaNetwork(network) -> network
     }
 
-    def withPredicate(p: Predicate): SelectedPredicatesAndSources = copy(
-      predicates = addPredicate(p),
-      facts = facts ++ p.sourceFacts
-    )
-
-    def withDiscard(p: Predicate): SelectedPredicatesAndSources = copy(discarded = discarded + p)
+  def parse(using env: Environment)(rules: RuleM*): BuildStep[Unit] = {
+    rules.toList.traverse(parseOne(_)).map(_ => ())
   }
 
-  object SelectedPredicatesAndSources {
-    val empty: SelectedPredicatesAndSources = SelectedPredicatesAndSources(Map.empty, Set.empty, Set.empty, Set.empty)
-    private inline def addToMap(map: PredicateMap, p: Predicate): PredicateMap          = {
-      map ++ p.facts.flatMap(f => f.sourceFacts).map { f => f -> (map.getOrElse(f, Set.empty) + p) }
+  private def parseOne(using env: Environment)(rule: RuleM): BuildStep[ParseResult] = {
+    val ps @ SelectedPredicatesAndSources(predicates: PredicateSelectionMap, sources: Set[Source[_]], _, _) = rule
+      .sourcesAndPredicates
+
+    case class Partial(alpha: PredicateMap, beta: PredicateMap, gamma: PredicateMap)
+    object Partial {
+      val empty: Partial = Partial(Map.empty, Map.empty, Map.empty)
+
+      extension (m: PredicateMap)
+        def getM(p: Predicate): Set[Fact.Source[_]] = m.getOrElse(p, Set.empty) ++ p.sourceFacts
+
+      extension (pt: Partial) {
+        def addPredicate(p: Predicate): Partial = {
+          if (p.sourceFacts.size == 1)
+            pt.copy(alpha = pt.alpha + (p -> pt.alpha.getM(p)))
+          else if (p.sourceFacts.size == 2)
+            pt.copy(beta = pt.beta + (p -> pt.beta.getM(p)))
+          else pt.copy(gamma = pt.gamma + (p -> pt.gamma.getM(p)))
+        }
+      }
+
     }
-    def apply[T](start: Fact.Val[T])(using T: TypeOps[T]): SelectedPredicatesAndSources = {
-      SelectedPredicatesAndSources(
-        Map.empty,
-        T.sources(start),
-        T.sourceFacts(start),
-        Set.empty
+
+    val Partial(alpha, beta, gamma) = predicates.values.flatten.foldLeft(Partial.empty)(_ addPredicate _)
+
+    BuildStep.addParsingResult(
+      ParseResult(
+        rule = rule,
+        alphaPredicates = alpha,
+        betaPredicates = beta,
+        gammaPredicates = gamma,
+        sources = sources,
+        predicatesAndSources = ps
       )
-    }
+    )
   }
 
-  def apply[T](condition: Condition[T])(using T: TypeOps[T]): Env[Unit] = env ?=> {
-    val SelectedPredicatesAndSources(predicates, sources, facts, _) = sourcesAndPredicates(condition)
-    predicates.values.flatten.groupBy(_.sourceFacts.size)
-    val buildNet                                                    = for {
-      _ <- sources.toList.traverse(_.build)
-    } yield ()
-  }
-
-  def sourcesAndPredicates[T](condition: Condition[T])(using T: TypeOps[T]): Env[SelectedPredicatesAndSources] = {
+  def selectPredicatesAndSources[T](condition: Condition[T])(using T: TypeOps[T]): Env[SelectedPredicatesAndSources] = {
     val (Parser.Context(predicates, _), result) = Parser(condition)
 
     PredicateSelection.select(

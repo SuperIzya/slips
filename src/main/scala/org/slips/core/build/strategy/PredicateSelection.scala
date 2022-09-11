@@ -3,8 +3,7 @@ package org.slips.core.build.strategy
 import org.slips.Env
 import org.slips.Environment
 import org.slips.core.TypeOps
-import org.slips.core.build.Builder.PredicateMap
-import org.slips.core.build.Builder.SelectedPredicatesAndSources
+import org.slips.core.build.*
 import org.slips.core.conditions.Condition.Source
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
@@ -12,16 +11,16 @@ import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
 /** Selection of predicates from condition of the rule */
-sealed trait PredicateSelection {
+trait PredicateSelection {
   def selectPredicatesAndSources[T: TypeOps](
     initial: Fact.Val[T],
-    predicates: PredicateMap
+    predicates: PredicateSelectionMap
   ): SelectedPredicatesAndSources
 }
 
 object PredicateSelection {
 
-  def select[T: TypeOps](initial: Fact.Val[T], predicates: PredicateMap): Env[SelectedPredicatesAndSources] =
+  def select[T: TypeOps](initial: Fact.Val[T], predicates: PredicateSelectionMap): Env[SelectedPredicatesAndSources] =
     env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, predicates)
 
   /** Keep all predicates */
@@ -54,7 +53,7 @@ object PredicateSelection {
 
     override def selectPredicatesAndSources[T: TypeOps](
       initial: Fact.Val[T],
-      predicates: PredicateMap
+      predicates: PredicateSelectionMap
     ): SelectedPredicatesAndSources = {
 
       collectPredicates(
@@ -149,7 +148,7 @@ object PredicateSelection {
     }
     override def selectPredicatesAndSources[T](
       initial: Fact.Val[T],
-      predicates: PredicateMap
+      predicates: PredicateSelectionMap
     )(using T: TypeOps[T]
     ): SelectedPredicatesAndSources = {
 

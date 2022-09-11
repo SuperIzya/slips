@@ -2,20 +2,27 @@ package org.slips.core.fact
 
 import cats.Id
 import cats.Monoid
+import cats.data.IndexedStateT
 import org.slips.core
 import org.slips.core.FactSize
 import org.slips.core.Macros
 import org.slips.core.Signed
 import org.slips.core.TypeOps
 import org.slips.core.TypeOps.TupleOps
+import org.slips.core.build.BuildContext
+import org.slips.core.build.BuildStep
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
+import org.slips.core.network.materialized.Publisher
 import org.slips.core.predicates.Predicate
+import scala.Tuple.Append
+import scala.Tuple.Head
 import scala.Tuple.Size
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
+import shapeless3.deriving.K0.Tail
 
 sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
 
@@ -36,6 +43,7 @@ sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
   def predecessors: Set[Fact[_]]
   lazy val sourceFacts: Set[Fact.Source[_]] = predecessors.collect { case x: Fact.Source[_] => x }
   def sources: Set[Condition.Source[_]]
+
 }
 
 object Fact {
@@ -96,8 +104,8 @@ object Fact {
   ) extends Fact[T](sample) {
     override val predecessors: Set[Fact[_]]        = T.predecessors(facts)
     override val sources: Set[Condition.Source[_]] = T.sources(facts)
-  }
 
+  }
   final case class Map[T, Q: TypeOps](
     override val signature: String,
     f: T => Q,
