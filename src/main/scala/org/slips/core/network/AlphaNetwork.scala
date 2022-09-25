@@ -14,11 +14,11 @@ case class AlphaNetwork(
 object AlphaNetwork {
   case class Intermediate(
     sources: Map[Condition.Source[_], AlphaNode] = Map.empty,
-    topNodes: List[(Set[Fact.Source[_]], AlphaNode)] = List.empty
+    topNodes: Map[Set[Fact.Source[_]], AlphaNode] = Map.empty
   ) {
     def toAlphaNetwork: AlphaNetwork = AlphaNetwork(
       sources = sources,
-      topNodes = topNodes.flatMap { case (f, n) => f.map(_ -> n) }.toMap
+      topNodes = topNodes.flatMap { case (f, n) => f.map(_ -> n) }
     )
   }
 
@@ -38,6 +38,6 @@ object AlphaNetwork {
         case Some(value) => AlphaNode.Predicate(p, value)
         case None        => AlphaNode.Predicate(p, n.sources(facts.head.sources.head))
       }
-      n.copy(topNodes = (facts -> node) +: n.topNodes)
+      n.copy(topNodes = n.topNodes + (facts -> node))
     }
 }

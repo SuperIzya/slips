@@ -2,6 +2,7 @@ package org.slips
 
 import cats.Id
 import cats.Monad
+import org.slips.core.action.FactId
 import org.slips.core.build.strategy.AlphaNodeStrategy
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.fact.Fact
@@ -11,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 trait SimpleEnvironment extends Environment {
   override type Effect[x] = cats.Id[x]
   override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
-  override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MaximumUtil
+  override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MaximizeChains
 
   override given effectMonad: Monad[Id] = new Monad[Id] {
     override def pure[T](v: T): Id[T] = v
@@ -26,17 +27,17 @@ trait SimpleEnvironment extends Environment {
 
   }
 
-  def apply[T](f: Environment ?=> T): T = f(
+  def apply[T, E >: SimpleEnvironment <: Environment](f: E ?=> T): T = f(
     using this
   )
 
-  case class SimpleContext[T](facts: Fact.Val[T], values: T)
-      extends Context[T](facts, values) {
-    override def getValue[Q](fact: Fact[Q]): (Context[T], Q) = ???
+  case class SimpleContext(facts: Map[FactId[_], Any])
+      extends org.slips.core.action.Context[Effect](facts) {
+    override def getValue[Q](fact: FactId[Q]): (SimpleContext, Q) = ???
 
-    override def assert[Q](q: Q): (Context[T], Unit) = (this, ())
+    override def assert[Q](q: Q): (SimpleContext, Unit) = (this, ())
 
-    override def remove[Q](facts: Fact.Val[Q]): (Context[T], Unit) = (this, ())
+    override def remove[Q](fact: FactId[Q]): (SimpleContext, Unit) = (this, ())
 
   }
 

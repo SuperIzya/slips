@@ -2,18 +2,25 @@ package org.slips.core
 
 import cats.Eval
 import cats.data.State
-import org.slips.{Environment => SEnv}
+import cats.syntax.*
+import org.slips.Env
+import org.slips.Environment as SEnv
 import org.slips.SimpleEnvironment
 import org.slips.core.Empty
+import org.slips.core.build.BuildContext
 import org.slips.core.build.Builder
+import org.slips.core.build.BuildStep
 import org.slips.core.build.SelectedPredicatesAndSources
+import org.slips.core.build.strategy.AlphaNodeStrategy
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
+import org.slips.core.network.AlphaNetwork
 import org.slips.core.predicates.Predicate
+import org.slips.core.rule.Rule
 import zio.Scope
-import zio.test._
-import zio.test.Assertion._
+import zio.test.*
+import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
   enum Origin {
@@ -40,8 +47,8 @@ object BuilderTest extends ZIOSpecDefault {
 
   private val vegie2Fruits = vegie2FruitsF.tupled
 
-  private val condition1 = (env: SEnv) ?=> {
-    import env.Syntax.Conditions.*
+  private val condition1 = {
+    import SEnv.Syntax.Conditions.*
     for {
       h     <- all[Herb]
       b     <- all[Herb]
@@ -58,8 +65,8 @@ object BuilderTest extends ZIOSpecDefault {
     } yield (f1, f2, v, _5)
   }
 
-  private val rule1 = (env: SEnv) ?=> {
-    import env.Syntax.Actions.*
+  private val rule1 = (env: SimpleEnvironment) ?=> {
+    import SEnv.Syntax.Actions.*
     condition1.makeRule("Test rule 1") { case (f1, f2, v, c5) =>
       for {
         x1 <- f1.value
@@ -92,19 +99,19 @@ object BuilderTest extends ZIOSpecDefault {
 
       for {
         m       <- predicate("pure method") {
-          import env.Syntax.Conditions.*
+          import SEnv.Syntax.Conditions.*
           all[Fruit].withFilter(method)
         }
         param   <- predicate("parametric method") {
-          import env.Syntax.Conditions.*
+          import SEnv.Syntax.Conditions.*
           all[Fruit].withFilter(paramMethod("apple"))
         }
         partial <- predicate("funtion from parial application of pure method") {
-          import env.Syntax.Conditions.*
+          import SEnv.Syntax.Conditions.*
           all[Fruit].withFilter(notApleF)
         }
         literal <- predicate("inplace typing") {
-          import env.Syntax.Conditions.*
+          import SEnv.Syntax.Conditions.*
           all[Fruit].withFilter(_.test(_.name != "apple"))
         }
         _       <- State.modify[Asserts](_.addSteps {
@@ -128,7 +135,7 @@ object BuilderTest extends ZIOSpecDefault {
     }
   }: _*)
 
-  private val strategy = suite(
+  private val predicateSelectionStrategy = suite(
     "Condition parser should find all predicates and sources with respect to Environment.predicateSelectionStrategy"
   )(
     test("PredicateSelection.Keep") {
@@ -147,12 +154,52 @@ object BuilderTest extends ZIOSpecDefault {
       object SEClean extends SimpleEnvironment {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
-      val res = SEClean {
+      val res: SelectedPredicatesAndSources = SEClean {
         Builder.selectPredicatesAndSources(condition1)
       }
 
       assert(res.sources)(hasSize(equalTo(3))) &&
       assert(res.predicates.values.flatten.toSet)(hasSize(equalTo(6)))
     }
+  )
+
+  private val alphaNodeStrategy = suite("Alpha network should be build with respect to Environment.alphaNodeStrategy")(
+    test("AlphaNodeStrategy.MaximumUtil") {
+      object SEMaxUtil extends SimpleEnvironment {
+        override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MaximizeChains
+        override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
+      }
+      val res: AlphaNetwork = SEMaxUtil {
+        val steps: BuildStep[AlphaNetwork] = for {
+          _       <- Builder.parse(rule1)
+          network <- Builder.buildAlphaNetwork
+        } yield network
+
+        steps.runA(BuildContext.empty).value
+      }
+      assertTrue(res.sources.isEmpty) &&
+      assertTrue(res.topNodes.isEmpty)
+    },
+    test("AlphaNodeStrategy.MinimumBuffers") {
+      object SEMinBuffs extends SimpleEnvironment {
+        override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MinimumBuffers
+        override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
+      }
+      val res: AlphaNetwork = SEMinBuffs {
+        val steps: BuildStep[AlphaNetwork] = for {
+          _       <- Builder.parse(rule1)
+          network <- Builder.buildAlphaNetwork
+        } yield network
+
+        steps.runA(BuildContext.empty).value
+      }
+      assertTrue(res.sources.isEmpty) &&
+      assertTrue(res.topNodes.isEmpty)
+    }
+  )
+
+  private val strategy = suite("Strategies should work")(
+    predicateSelectionStrategy,
+    alphaNodeStrategy
   )
 }

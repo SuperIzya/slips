@@ -5,7 +5,8 @@ import org.slips.core.*
 import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Source
 import org.slips.core.conditions.ParseStep
-import org.slips.core.fact.Fact
+import org.slips.core.fact.{Fact, FactOps}
+
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
@@ -99,14 +100,14 @@ object Predicate {
       rep1: Fact[T1],
       rep2: Fact[T2],
       inline test: (T1, T2) => Boolean
-    )(using TypeOps.TupleOps[(T1, T2)],
+    )(using FactOps.TupleOps[(T1, T2)],
       Fact[T1] =:= Fact.Val[T1],
       Fact[T2] =:= Fact.Val[T2]
     ): Test[(T1, T2)] = {
       create(Fact.fromTuple(rep1 -> rep2), test.tupled, test)
     }
 
-    inline def fromTuple[T <: NonEmptyTuple : TypeOps.TupleOps](
+    inline def fromTuple[T <: NonEmptyTuple : FactOps.TupleOps](
       rep: Fact.TMap[T],
       inline test: T => Boolean
     ): Test[T] = create(Fact.fromTuple[T](rep), test, test)

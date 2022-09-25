@@ -10,6 +10,7 @@ private[slips] sealed trait AlphaNode extends Node {
 }
 
 private[slips] object AlphaNode {
+
   case class Source[T](src: Condition.Source[T]) extends AlphaNode {
     override def signature: String = src.signature
   }

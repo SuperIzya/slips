@@ -8,6 +8,7 @@ import org.slips.SimpleEnvironment
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.fact.Fact.Tuples
+import org.slips.core.fact.FactOps
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 import scala.annotation.tailrec
 import scala.util.NotGiven
@@ -24,10 +25,9 @@ class ConditionTest extends AnyFunSuiteLike {
   test("flatMap is stack-safe") {
     inline def flatMap[T](
       count: Int
-    )(
-      using NotGiven[T <:< Tuple],
+    )(using NotGiven[T <:< Tuple],
       Fact[T] =:= Fact.Val[T],
-      TypeOps[T]
+      FactOps[T]
     ): Condition[T] = {
       @tailrec
       def work(left: Int, current: Condition[T]): Condition[T] = {

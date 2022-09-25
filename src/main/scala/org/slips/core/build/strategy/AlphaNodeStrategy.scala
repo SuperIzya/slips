@@ -6,6 +6,7 @@ import org.slips.core.network.AlphaNode
 import org.slips.core.predicates.Predicate
 import scala.annotation.tailrec
 
+/** Strategy to place alpha-nodes */
 trait AlphaNodeStrategy {
   def fold(network: AlphaNetwork.Intermediate, pair: (Predicate, Set[Fact.Source[_]])): AlphaNetwork.Intermediate =
     addAlphaNode(network, pair._1, pair._2)
@@ -18,7 +19,13 @@ trait AlphaNodeStrategy {
 }
 
 object AlphaNodeStrategy {
-  object MaximumUtil extends AlphaNodeStrategy {
+
+  /**
+    * Maximizing the chains of predicate for facts, possibly
+    * having the same alpha node several times in the
+    * network
+    */
+  object MaximizeChains extends AlphaNodeStrategy {
     override def addAlphaNode(
       network: AlphaNetwork.Intermediate,
       predicate: Predicate,
@@ -28,13 +35,13 @@ object AlphaNodeStrategy {
       def add(tFacts: Set[Fact.Source[_]], n: AlphaNetwork.Intermediate): AlphaNetwork.Intermediate = {
         if (tFacts.isEmpty) n
         else {
-          network.topNodes.map { case (f, n) => facts.intersect(f) -> n }.sortBy(-_._1.size).headOption match {
+          network.topNodes.map { case (f, n) => tFacts.intersect(f) -> n }.maxByOption(_._1.size) match {
             case Some((f, prev)) =>
               val node = AlphaNode.Predicate(predicate, prev)
-              add(tFacts -- f, n.copy(topNodes = (f -> node) +: n.topNodes))
+              add(tFacts -- f, n.copy(topNodes = n.topNodes + (f -> node)))
             case None            =>
               val node = AlphaNode.Predicate(predicate, n.sources(predicate.sources.head))
-              n.copy(topNodes = (tFacts -> node) +: n.topNodes)
+              n.copy(topNodes = n.topNodes + (tFacts -> node))
           }
         }
       }
@@ -42,6 +49,10 @@ object AlphaNodeStrategy {
     }
   }
 
+  /**
+    * Allocate alpha node only once, thus reducing number of
+    * buffers.
+    */
   object MinimumBuffers extends AlphaNodeStrategy {
     override def addAlphaNode(
       network: AlphaNetwork.Intermediate,
@@ -57,7 +68,7 @@ object AlphaNodeStrategy {
         case None        => AlphaNode.Predicate(predicate, network.sources(predicate.sources.head))
       }
       network.copy(
-        topNodes = (facts -> node) +: network.topNodes
+        topNodes = network.topNodes + (facts -> node)
       )
     }
   }

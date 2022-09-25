@@ -3,10 +3,10 @@ package org.slips.core.conditions
 import org.slips.Environment
 import org.slips.NotTuple
 import org.slips.core.*
-import org.slips.core.FactSize
 import org.slips.core.build.*
 import org.slips.core.build.BuildStep
 import org.slips.core.fact.Fact
+import org.slips.core.fact.FactOps
 import org.slips.core.network.AlphaNode
 import org.slips.core.network.Node
 import org.slips.core.predicates.Predicate
@@ -16,38 +16,38 @@ sealed trait Condition[T] extends Signed {
   override val signature: String = ""
   private[slips] val parse: ParseStep[T]
 
-  def flatMap[Q](f: Fact.Val[T] => Condition[Q]): Condition.Res[Q] =
+  def flatMap[Q](f: Fact.Val[T] => Condition[Q]): Condition[Q] =
     Condition.FlatMap[T, Q](this, f)
 
-  def map[R, Q](f: Fact.Val[T] => R)(using ev: Fact.ReverseVal[R] =:= Q, ev2: R =:= Fact.Val[Q]): Condition.Res[Q] =
+  def map[R, Q](f: Fact.Val[T] => R)(using ev: Fact.ReverseVal[R] =:= Q, ev2: R =:= Fact.Val[Q]): Condition[Q] =
     Condition.map[T, Q](this, f.andThen(ev2(_)))
 
-  def withFilter(f: Fact.Val[T] => Predicate): Condition.Res[T] =
+  def withFilter(f: Fact.Val[T] => Predicate): Condition[T] =
     Condition.Filter(this, f)
 
   @targetName("withFilterSingle")
-  def withFilter(f: Fact.Val[T] => Boolean): Condition.Res[T] =
+  def withFilter(f: Fact.Val[T] => Boolean): Condition[T] =
     Condition.ScalarFilter(this, f)
 }
 
 object Condition {
   type Res[x] = Environment ?=> Condition[x]
 
-  inline def all[T : TypeOps : FactSize : NotTuple]: All[T] = {
+  inline def all[T : FactOps : NotTuple]: All[T] = {
     All[T](s"All[${ Macros.signType[T] }]")
   }
 
   private def map[T, Q](src: Condition[T], f: Fact.Val[T] => Fact.Val[Q]): Map[T, Q] =
     Map(src, f)
 
-  sealed trait Source[T : TypeOps : NotTuple] extends Condition[T] {
+  sealed trait Source[T : FactOps : NotTuple] extends Condition[T] {
     private def fact: Fact.Source[T]                = Fact.Source(this)
     override private[slips] val parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ => fact.toVal)
 
     private[slips] def build: BuildStep[Node] = BuildStep.addNode(AlphaNode.Source(this))
   }
 
-  final case class All[T : TypeOps : NotTuple] private[Condition] (
+  final case class All[T : FactOps : NotTuple] private[Condition] (
     override val signature: String
   ) extends Source[T]
 

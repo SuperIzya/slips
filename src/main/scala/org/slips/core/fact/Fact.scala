@@ -1,14 +1,12 @@
 package org.slips.core.fact
 
+import FactOps.TupleOps
 import cats.Id
 import cats.Monoid
 import cats.data.IndexedStateT
 import org.slips.core
-import org.slips.core.FactSize
 import org.slips.core.Macros
 import org.slips.core.Signed
-import org.slips.core.TypeOps
-import org.slips.core.TypeOps.TupleOps
 import org.slips.core.build.BuildContext
 import org.slips.core.build.BuildStep
 import org.slips.core.conditions.Condition
@@ -22,9 +20,8 @@ import scala.Tuple.Size
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
-import shapeless3.deriving.K0.Tail
 
-sealed trait Fact[T](val sample: T)(using T: TypeOps[T]) extends Signed {
+sealed trait Fact[T](val sample: T)(using T: FactOps[T]) extends Signed {
 
   lazy val toVal: Fact.Val[T] = T.toVal(this)
 
@@ -66,27 +63,26 @@ object Fact {
     f: Fact[T],
     extract: T => Q,
     index: Int
-  )(using Q: TypeOps[Q],
-    T: FactSize[T]
+  )(using Q: FactOps[Q]
   ): Fact[Q] = ExtractFromTuple(
-    s"${ f.signature }($index of ${ T.size })[${ Q.signature }]",
+    s"${ f.signature }($index of ${ Q.size })[${ Q.signature }]",
     f,
     extract,
     Q.empty
   )
 
-  def fromTuple[T <: NonEmptyTuple](t: TMap[T])(using T: TypeOps.TupleOps[T]): Fact[T] =
+  def fromTuple[T <: NonEmptyTuple](t: TMap[T])(using T: FactOps.TupleOps[T]): Fact[T] =
     Tuples(
       T.extract(t).mkString("(", ", ", ")"),
       t,
       T.empty
     )
 
-  def literal[T : CanBeLiteral : TypeOps](v: T): Fact[T] = Literal(v)
+  def literal[T : CanBeLiteral : FactOps](v: T): Fact[T] = Literal(v)
 
   sealed trait CanBeLiteral[T]
 
-  final case class ExtractFromTuple[T <: NonEmptyTuple, Q: TypeOps] private[slips] (
+  final case class ExtractFromTuple[T <: NonEmptyTuple, Q: FactOps] private[slips] (
     override val signature: String,
     src: Fact[T],
     extract: T => Q,
@@ -106,7 +102,7 @@ object Fact {
     override val sources: Set[Condition.Source[_]] = T.sources(facts)
 
   }
-  final case class Map[T, Q: TypeOps](
+  final case class Map[T, Q: FactOps](
     override val signature: String,
     f: T => Q,
     rep: Fact[T]
@@ -116,7 +112,7 @@ object Fact {
     override def sources: Set[Condition.Source[_]] = rep.sources
   }
 
-  final case class Literal[I: TypeOps] private[slips] (value: I)
+  final case class Literal[I: FactOps] private[slips] (value: I)
       extends Fact[I](value) {
     override lazy val signature: String = value.toString
 
@@ -124,7 +120,7 @@ object Fact {
     override def sources: Set[Condition.Source[_]] = Set.empty
   }
 
-  final case class Dummy[T: TypeOps] private[slips] (
+  final case class Dummy[T: FactOps] private[slips] (
     src: Condition[T],
     override val sample: T
   ) extends Fact[T](sample) {
@@ -136,7 +132,7 @@ object Fact {
     override def sources: Set[Condition.Source[_]] = Set.empty
   }
 
-  final class Source[T: TypeOps] private (
+  final class Source[T: FactOps] private (
     override val signature: String,
     override val sample: T,
     override val sources: Set[Condition.Source[_]]
@@ -146,7 +142,7 @@ object Fact {
     override lazy val sourceFacts: Set[Source[_]] = Set(this)
   }
   object Source              {
-    def apply[T](source: Condition.Source[T])(using T: TypeOps[T]): Source[T] =
+    def apply[T](source: Condition.Source[T])(using T: FactOps[T]): Source[T] =
       new Source(source.signature, T.empty, Set(source))
   }
 

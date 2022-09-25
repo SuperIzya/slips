@@ -1,8 +1,7 @@
 package org.slips.core.build
 
-import org.slips.core.TypeOps
 import org.slips.core.conditions.Condition
-import org.slips.core.fact.Fact
+import org.slips.core.fact.{Fact, FactOps}
 import org.slips.core.predicates.Predicate
 
 case class SelectedPredicatesAndSources(
@@ -41,7 +40,7 @@ object SelectedPredicatesAndSources {
 
   def apply[T](
     start: Fact.Val[T]
-  )(using T: TypeOps[T]
+  )(using T: FactOps[T]
   ): SelectedPredicatesAndSources = {
     new SelectedPredicatesAndSources(
       predicates = Map.empty,
