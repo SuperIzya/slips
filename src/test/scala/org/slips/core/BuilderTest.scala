@@ -18,7 +18,7 @@ import org.slips.core.network.AlphaNetwork
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
-import zio.Scope
+import zio.*
 import zio.test.*
 import zio.test.Assertion.*
 
@@ -71,7 +71,10 @@ object BuilderTest extends ZIOSpecDefault {
         } yield ()
       }
 
-  override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(predicates, strategy)
+  override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(
+    predicates,
+    strategy
+  ) @@ TestAspect.timed
 
   private val predicates = suite("Predicates should have same signature")({
     case class Asserts(seq: Seq[(String, TestResult)]) {
@@ -110,8 +113,8 @@ object BuilderTest extends ZIOSpecDefault {
         _       <- State.modify[Asserts](_.addSteps {
           Seq(
             "created by method should be the same as created by partial application" -> assert(m)(equalTo(partial)),
-            "created by partial application should be the same as created literaly" -> assert(partial)(equalTo(literal)),
-            "created by parametric method should not be the same as created litraly" -> assert(param)(
+            "created by partial application should be the same as created literally" -> assert(partial)(equalTo(literal)),
+            "created by parametric method should not be the same as created literally" -> assert(param)(
               not(equalTo(literal))
             )
           )
@@ -157,7 +160,7 @@ object BuilderTest extends ZIOSpecDefault {
   )
 
   private val alphaNodeStrategy = suite("Alpha network should be build with respect to Environment.alphaNodeStrategy")(
-    test("AlphaNodeStrategy.MaximumUtil") {
+    test("AlphaNodeStrategy.MaximumUtil - needs to be optimized") {
       object SEMaxUtil extends SimpleEnvironment {
         override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MaximizeChains
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
@@ -170,9 +173,9 @@ object BuilderTest extends ZIOSpecDefault {
 
         steps.runA(BuildContext.empty).value
       }
-      assertTrue(res.sources.isEmpty) &&
-      assertTrue(res.topNodes.isEmpty)
-    },
+      assertTrue(res.sources.nonEmpty) &&
+      assertTrue(res.topNodes.nonEmpty)
+    } @@ TestAspect.ignore,
     test("AlphaNodeStrategy.MinimumBuffers") {
       object SEMinBuffs extends SimpleEnvironment {
         override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MinimumBuffers
@@ -186,8 +189,8 @@ object BuilderTest extends ZIOSpecDefault {
 
         steps.runA(BuildContext.empty).value
       }
-      assertTrue(res.sources.isEmpty) &&
-      assertTrue(res.topNodes.isEmpty)
+      assertTrue(res.sources.nonEmpty) &&
+      assertTrue(res.topNodes.nonEmpty)
     }
   )
 
