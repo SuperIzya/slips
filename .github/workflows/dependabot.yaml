@@ -5,9 +5,10 @@
 
 version: 2
 name: Dependabot
-updates:
-  - package-ecosystem: "" # See documentation for possible values
-    directory: "/" # Location of package manifests
+jobs:
+  updates:
+    - package-ecosystem: "" # See documentation for possible values
+      directory: "/" # Location of package manifests
 on:
   schedule:
     # * is a special character in YAML so you have to quote this string
