@@ -1,3 +1,5 @@
+[![Build & Tests](https://github.com/SuperIzya/slips/actions/workflows/scala.yaml/badge.svg?branch=master)](https://github.com/SuperIzya/slips/actions/workflows/scala.yaml)
+
 # SLIPS
 ## Scala language integrated production system
 
@@ -64,16 +66,20 @@ Rule consists of set of conditions and an action that should be taken when a set
 DSL for scala provides set of monadic types to define rules.
  
 ```scala
-Rule("pancakes"){
-  for {
-    z <- all[Vegetable] if v.test(_.name == "zucchini")
-    a <- all[Fruit] if a.test(_.name == "apple") && a.value(_.color) =:= Color.Red
-  } yield (z, a)
-}{
+import org.slips.Environment
+import org.slips.syntax.*
+val ingridients = for {
+  z <- all[Vegetable] if v.test(_.name == "zucchini")
+  a <- all[Fruit] if a.test(_.name == "apple") && a.value(_.color) =:= Color.Red
+} yield (z, a)
+
+val pancakes = (env: Environment) ?=> ingridients
+  .makeRule("pancakes")
+  .withAction {
   case (fZucchini, fApple) =>
     for {
-      zucchini <- getValue(fZucchini)
-      apple <- getValue(fApple)
+      zucchini <- fZucchini.value
+      apple <- fApple.value
       _ <- makePancakes(zucchini, apple)
       _ <- remove((fZucchini, fApple))
     } yield ()
@@ -147,6 +153,12 @@ val bigCheese = all[Cheese].withFilter(_.isBigEnough)
 ```
 
 ###### Action
-This is the part of the rule that is being executed with a set of facts that satisfies all the conditions. 
+This is the part of the rule that is being executed with a set of values that satisfies all the conditions.
+In action the following results are expected:
+1. changes of the factbase's state. Either by adding new facts, deleting existing ones, or changing them (which is done by replacing the old version by a new version)
+1. changes to the state of the outside world by having some effect executed (writing to DB, printing on screen, etc.)
+
+Although action is a monadic type and can be combined as thus, the result of the action in the rule is always `Unit`,
+since the result of the action inside of the rule is totally meaningless otherwise.
 
 
