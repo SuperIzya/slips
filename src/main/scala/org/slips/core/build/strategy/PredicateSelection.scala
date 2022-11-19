@@ -4,7 +4,8 @@ import org.slips.Env
 import org.slips.Environment
 import org.slips.core.build.*
 import org.slips.core.conditions.Condition.Source
-import org.slips.core.fact.{Fact, FactOps}
+import org.slips.core.fact.Fact
+import org.slips.core.fact.FactOps
 import org.slips.core.predicates.Predicate
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue

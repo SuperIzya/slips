@@ -5,8 +5,8 @@ import org.slips.core.*
 import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Source
 import org.slips.core.conditions.ParseStep
-import org.slips.core.fact.{Fact, FactOps}
-
+import org.slips.core.fact.Fact
+import org.slips.core.fact.FactOps
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven

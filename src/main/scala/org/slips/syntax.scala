@@ -6,7 +6,6 @@ import org.slips.core.conditions.*
 import org.slips.core.fact.*
 import org.slips.core.predicates.*
 import org.slips.core.rule.Rule
-
 import scala.language.implicitConversions
 import scala.util.NotGiven
 
