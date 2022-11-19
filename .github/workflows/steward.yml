@@ -1,45 +1,8 @@
-- name: Scala Steward Github Action
-  # You may pin to the exact commit or the version.
-  # uses: scala-steward-org/scala-steward-action@e9edb43e0c621a5ea37f2ef29f75ec3147d2952a
-  uses: scala-steward-org/scala-steward-action@v2.23.0
-  with:
-    # Path to a file containing the list of repositories to update in markdown format (- owner/repo)
-    repos-file: # optional
-    # Repository to update. The current repository will be used by default
-    github-repository: # optional
-    # Github Personal Access Token with permission to create branches on repo
-    github-token: # optional, default is ${{ github.token }}
-    # Author email address to use in commits
-    author-email: # optional
-    # Author name to use in commits
-    author-name: # optional
-    # Scala Steward version to use
-    scala-steward-version: # optional, default is 0.15.0
-    # Url to download the coursier linux CLI from
-    coursier-cli-url: # optional, default is https://git.io/coursier-cli-linux
-    # Whether to ignore "opts" files (such as `.jvmopts` or `.sbtopts`) when found on repositories or not
-    ignore-opts-files: # optional, default is true
-    # A comma-separated list of branches to update (if not provided, the repository's default branch will be updated instead). This option only has effect if updating the current repository or using the `github-repository` input.
-    branches: # optional
-    # Whether to sign commits or not
-    sign-commits: # optional, default is false
-    # Key ID of GPG key to use for signing commits.
-    signing-key: # optional, default is 
-    # Timeout for external process invocations
-    timeout: # optional, default is 20min
-    # TTL of cache for fetching dependency versions and metadata, set it to 0s to disable it
-    cache-ttl: # optional, default is 2hours
-    # The URL of the Github API, only use this input if you are using Github Enterprise
-    github-api-url: # optional, default is https://api.github.com
-    # https://github.com/scala-steward-org/scala-steward/blob/5dafbcd522a0465af7fbbaf4304d48a7b25e3516/docs/scalafix-migrations.md
-    scalafix-migrations: # optional
-    # https://github.com/scala-steward-org/scala-steward/blob/5dafbcd522a0465af7fbbaf4304d48a7b25e3516/docs/artifact-migrations.md
-    artifact-migrations: # optional
-    # Github application ID
-    github-app-id: # optional
-    # Github application private key
-    github-app-key: # optional
-    # Location of a `.scala-steward.conf` file with default values
-    repo-config: # optional, default is .github/.scala-steward.conf
-    # Other Scala Steward arguments not yet supported by this action as a separate argument
-    other-args: # optional
+
+version: 2
+name: Scala Steward Github Action
+# You may pin to the exact commit or the version.
+uses: scala-steward-org/scala-steward-action@v2.23.0
+with:
+  # Author name to use in commits
+  author-name: Scala Steward# optional
