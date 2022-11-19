@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Compile
+name: Test
 
 on:
   pull_request:
