@@ -40,7 +40,7 @@ object SyntaxTest {
         for {
           txt <- text.value
           cat <- category.value
-          _   <- text.retract
+          _   <- text.remove
           _   <- addFact(txt.copy(categoryM = Some(cat)))
         } yield ()
       }
