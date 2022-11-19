@@ -25,17 +25,21 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
 
   case class Context(values: T, asserted: Seq[Any], retracted: Seq[Fact[_]]) {
 
-    def addFact[Q: NotTuple](t: Q)(using ThisRule): F[(Context, Unit)] = F.pure(copy(asserted = asserted :+ t) -> ())
+    def addFact[Q](t: Q)(using ThisRule): F[(Context, Unit)] = F.pure(copy(asserted = asserted :+ t) -> ())
 
-    def retract[Q: NotTuple](t: Value[Q])(using ThisRule): F[(Context, Unit)] = F
-      .pure(copy(retracted = retracted :+ t.fact) -> ())
+    def remove[Q](t: Value.Val[Q])(using ThisRule): F[(Context, Unit)] = t match {
+      case EmptyTuple => F.pure(this -> ())
+      case x :* v     => F.pure(copy(retracted = retracted :+ x.fact) -> ()).flatMap { _ => retract(v) }
+      case x          => F.pure(copy(retracted = retracted :+ x.fact) -> ())
+    }
+
   }
 
   trait Value[Q](using inFacts: InTuple[Facts, this.type], inVals: InTuple[T, Q]) {
     val fact: Fact[Q]
 
-    def value: ThisRule ?=> Action[Q]         = ???
-    def retract(using ThisRule): Action[Unit] = StateT(_.retract(this))
+    def value: ThisRule ?=> Action[Q]        = ???
+    def remove(using ThisRule): Action[Unit] = StateT(_.retract(this))
   }
 
   object Value {
