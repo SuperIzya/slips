@@ -7,7 +7,7 @@ name: Compile
 
 on:
   push:
-    branches: [ ${{ github.ref_name }} ]
+    branches: [ '**' ]
   pull_request:
     branches: [ "master" ]
 
