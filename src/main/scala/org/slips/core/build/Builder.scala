@@ -28,7 +28,7 @@ object Builder {
         .toList
         .sortBy(-_._2.size)
         .foldLeft(AlphaNetwork(ctx.sources))(env.alphaNodeStrategy.fold)
-        .toAlphaNetwork
+        .toAlphaNetwork2
 
       ctx.addAlphaNetwork(network) -> network
     }
