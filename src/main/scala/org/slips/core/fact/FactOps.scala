@@ -5,12 +5,10 @@ import org.slips.Environment
 import org.slips.NotTuple
 import org.slips.core.Empty
 import org.slips.core.Macros
-import org.slips.core.action.FactId
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import scala.annotation.tailrec
 import scala.compiletime.error
-import scala.compiletime.ops.int.S
 import scala.deriving.Mirror
 import scala.util.NotGiven
 
@@ -61,8 +59,7 @@ object FactOps {
   object TupleOps {
     given genTupleOpsStart[H](
       using H: FactOps[H],
-      ev: Fact.Val[H] =:= Fact[H],
-      ev2: FactId[H] =:= FactId.Val[H]
+      ev: Fact.Val[H] =:= Fact[H]
     ): TupleOps[H *: EmptyTuple] with {
       override val index: Int = 1
 
@@ -93,7 +90,6 @@ object FactOps {
     given genTupleOpsStep[H, T <: NonEmptyTuple](
       using H: FactOps[H],
       evH: Fact.Val[H] =:= Fact[H],
-      evI: FactId[H] =:= FactId.Val[H],
       T: TupleOps[T],
       ev: Fact.Val[H *: T] <:< NonEmptyTuple,
       evT: Fact.Val[T] =:= Fact.TMap[T],
@@ -137,7 +133,6 @@ object FactOps {
 
   given genFactOpsSingle[T](
     using ev: Fact.Val[T] =:= Fact[T],
-    ev2: FactId.Val[T] =:= FactId[T],
     T: Empty[T]
   ): FactOps[T] with {
 

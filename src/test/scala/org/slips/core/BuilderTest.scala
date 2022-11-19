@@ -2,7 +2,6 @@ package org.slips.core
 
 import cats.Eval
 import cats.data.State
-import cats.syntax.*
 import org.slips.Env
 import org.slips.Environment as SEnv
 import org.slips.SimpleEnvironment
@@ -18,6 +17,7 @@ import org.slips.core.fact.Fact
 import org.slips.core.network.AlphaNetwork
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule
+import org.slips.syntax.*
 import zio.Scope
 import zio.test.*
 import zio.test.Assertion.*
@@ -47,32 +47,29 @@ object BuilderTest extends ZIOSpecDefault {
 
   private val vegie2Fruits = vegie2FruitsF.tupled
 
-  private val condition1 = {
-    import SEnv.Syntax.Conditions.*
-    for {
-      h     <- all[Herb]
-      b     <- all[Herb]
-      berry <- all[Berry] if berry.test(_.origin != Origin.Field)
-      _     <- b.test(_.origin != Origin.GreenHouse) && b.test(_.name.nonEmpty)
-      _     <- h.test(_.name.nonEmpty)
-      f1    <- all[Fruit] if f1.value(_.sugar) =!= 1
-      f2    <- all[Fruit] if notApple(f2) || notApple(f1)
-      v     <- all[Vegetable]
-      _     <- (f1, v).test(testFruitAndVegie)
-      _     <- h.value(_.name) =!= f1.value(_.name)
-      _5 = Fact.literal(5)
-      _ <- (v, f1, f2).test(vegie2Fruits)
-    } yield (f1, f2, v, _5)
-  }
+  private val condition1 = for {
+    h     <- all[Herb]
+    b     <- all[Herb]
+    berry <- all[Berry] if berry.test(_.origin != Origin.Field)
+    _     <- b.test(_.origin != Origin.GreenHouse) && b.test(_.name.nonEmpty)
+    _     <- h.test(_.name.nonEmpty)
+    f1    <- all[Fruit] if f1.value(_.sugar) =!= 1
+    f2    <- all[Fruit] if notApple(f2) || notApple(f1)
+    v     <- all[Vegetable]
+    _     <- (f1, v).test(testFruitAndVegie)
+    _     <- h.value(_.name) =!= f1.value(_.name)
+    _5 = Fact.literal(5)
+    _ <- (v, f1, f2).test(vegie2Fruits)
+  } yield (f1, f2, v, _5)
 
-  private val rule1 = (env: SimpleEnvironment) ?=> {
-    import SEnv.Syntax.Actions.*
-    condition1.makeRule("Test rule 1") { case (f1, f2, v, c5) =>
-      for {
-        x1 <- f1.value
-      } yield ()
-    }
-  }
+  private val rule1: (SimpleEnvironment) ?=> Rule.RuleM = (env: SimpleEnvironment) ?=>
+    condition1
+      .makeRule("Test rule 1")
+      .withAction { case (f1, f2, v, c5) =>
+        for {
+          x1 <- f1.value
+        } yield ()
+      }
 
   override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(predicates, strategy)
 
@@ -99,19 +96,15 @@ object BuilderTest extends ZIOSpecDefault {
 
       for {
         m       <- predicate("pure method") {
-          import SEnv.Syntax.Conditions.*
           all[Fruit].withFilter(method)
         }
         param   <- predicate("parametric method") {
-          import SEnv.Syntax.Conditions.*
           all[Fruit].withFilter(paramMethod("apple"))
         }
         partial <- predicate("funtion from parial application of pure method") {
-          import SEnv.Syntax.Conditions.*
           all[Fruit].withFilter(notApleF)
         }
         literal <- predicate("inplace typing") {
-          import SEnv.Syntax.Conditions.*
           all[Fruit].withFilter(_.test(_.name != "apple"))
         }
         _       <- State.modify[Asserts](_.addSteps {

@@ -3,18 +3,16 @@ package org.slips.core
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen
 import org.scalatest.funsuite.AnyFunSuiteLike
-import org.slips.Environment
-import org.slips.SimpleEnvironment
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.fact.Fact.Tuples
 import org.slips.core.fact.FactOps
+import org.slips.syntax.*
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 import scala.annotation.tailrec
 import scala.util.NotGiven
 
 class ConditionTest extends AnyFunSuiteLike {
-  given Environment = SimpleEnvironment
 
   case class Data1(i: Int, s: String)
 

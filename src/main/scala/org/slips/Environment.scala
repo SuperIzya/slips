@@ -4,8 +4,6 @@ import cats.Monad
 import cats.data.StateT
 import cats.syntax.functor.*
 import org.slips.core.*
-import org.slips.core.action.FactId
-import org.slips.core.action.FactIdOps
 import org.slips.core.build.*
 import org.slips.core.build.strategy.AlphaNodeStrategy
 import org.slips.core.build.strategy.PredicateSelection
@@ -28,11 +26,8 @@ trait Environment {
 
   type Effect[_]
 
-  type Action[q] = action.Action[Effect, q]
-  object Action        {
-    type Context   = action.Context[Effect]
-    type Method[t] = Context => Effect[(Context, t)]
-  }
+  type Rule[q] = rule.Rule[Effect, q]
+
   trait BufferFactory  {
     def create[T]: Buffer[T]
   }
@@ -61,75 +56,5 @@ trait Environment {
   }
 
   given effectMonad: Monad[Effect]
-
-}
-
-object Environment {
-
-  trait TSyntax {
-
-    trait TConditions {
-      inline def all[T: FactOps](using NotGiven[T <:< Tuple]): Condition.Source[T] = Condition.all[T]
-
-      inline implicit def predicateToCondition(p: Predicate): Condition[Unit] =
-        Condition.OpaquePredicate(p)
-
-      inline implicit def tupleToFact[T <: NonEmptyTuple, Q <: NonEmptyTuple](
-        x: T
-      )(using ev0: Q =:= Fact.TInverseMap[T],
-        ev: T =:= Fact.TMap[Q],
-        ev1: FactOps.TupleOps[Q]
-      ): Fact[Q] =
-        Fact.fromTuple(ev(x))
-
-      inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : FactOps](x: T): Fact[T] = Fact.literal(x)
-
-      extension [T](fact: Fact[T]) {
-        inline def value[I: FactOps](inline f: T => I): Fact[I] =
-          Macros.createSigned[Fact.Map[T, I]](
-            s => Fact.Map(s"${ fact.signature } => $s", f, fact),
-            f
-          )
-      }
-
-      def notExists[T](f: Fact.Val[T] => Predicate)(using F: FactOps[T]): Condition[Unit] =
-        F.allCondition.flatMap(v => Condition.OpaquePredicate(f(v)))
-
-    }
-
-    trait TActions {
-      def assert[Q: NotTuple](q: Q)(using env: Environment): env.Action[Unit] =
-        action.Action(_.assert(q))
-
-      extension [Q: NotTuple](f: FactId[Q]) {
-
-        // TODO: Make proper monadic error here and in all action section of the rule.
-        def valueGet[T](using env: Environment, ev: Q =:= Option[T]): env.Action[T] =
-          action.Action(_.getValue(f)) map { (q: Q) => ev(q).get }
-
-        def remove(using env: Environment): env.Action[Unit] = action.Action(_.remove(f))
-
-      }
-
-      extension [T](f: FactId.Val[T])(using T: FactIdOps[T]) {
-        // TODO: Fix it!
-        def mapN(using env: Environment)(map: T => env.Action[Unit]): env.Action[Unit] =
-          T.valueAction(f) flatMap map
-
-      }
-
-      extension [T](c: Condition[T])(using F: FactOps[T], env: Environment)
-        def makeRule(name: String)(f: FactId.Val[T] => env.Action[Unit]): Rule[T] =
-          Rule(c, name)(f)
-
-    }
-  }
-
-  object Syntax extends TSyntax {
-
-    object Conditions extends TConditions
-
-    object Actions extends TActions
-  }
 
 }

@@ -2,7 +2,6 @@ package org.slips
 
 import cats.Id
 import cats.Monad
-import org.slips.core.action.FactId
 import org.slips.core.build.strategy.AlphaNodeStrategy
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.fact.Fact
@@ -30,16 +29,6 @@ trait SimpleEnvironment extends Environment {
   def apply[T, E >: SimpleEnvironment <: Environment](f: E ?=> T): T = f(
     using this
   )
-
-  case class SimpleContext(facts: Map[FactId[_], Any])
-      extends org.slips.core.action.Context[Effect](facts) {
-    override def getValue[Q](fact: FactId[Q]): (SimpleContext, Q) = ???
-
-    override def assert[Q](q: Q): (SimpleContext, Unit) = (this, ())
-
-    override def remove[Q](fact: FactId[Q]): (SimpleContext, Unit) = (this, ())
-
-  }
 
   class SimpleBuffer[T] private[SimpleEnvironment] (
     override val buffer: Effect[ArrayBuffer[T]] = new ArrayBuffer[T]()
