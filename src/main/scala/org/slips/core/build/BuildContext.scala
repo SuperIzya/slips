@@ -50,6 +50,7 @@ object BuildContext {
         alphaPredicates = combine(ctx.alphaPredicates, parseResult.alphaPredicates),
         betaPredicates = combine(ctx.betaPredicates, parseResult.betaPredicates),
         gammaPredicates = combine(ctx.gammaPredicates, parseResult.gammaPredicates),
+        sources = ctx.sources ++ parseResult.sources,
         rules = ctx.rules + parseResult.rule
       )
 

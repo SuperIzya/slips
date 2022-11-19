@@ -55,7 +55,14 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
 }
 
 object Rule {
-  type RuleAction[F[_], T] = (r: Rule[F, T]) ?=> r.Value.Val[T] => r.Action[Unit]
+  type RuleAction[F[_], T] = (r: Rule[F, T]) ?=> (r.Value.Val[T] => r.Action[Unit])
+
+  private[slips] trait RuleWithAction[F[_]: Monad, T: FactOps](
+    val name: String,
+    override val condition: Condition[T]
+  ) extends Rule[F, T] {
+    def action: this.Value.Val[T] => this.Action[Unit]
+  }
 
   class Builder[T: FactOps](name: String, condition: Condition[T]) {
 
@@ -63,7 +70,11 @@ object Rule {
       using env: Environment
     )(
       actions: RuleAction[env.Effect, T]
-    ): env.Rule[T] = ???
+    ): env.Rule[T] = {
+      new RuleWithAction[env.Effect, T](name, condition) {
+        override lazy val action: this.Value.Val[T] => this.Action[Unit] = actions(using this)
+      }
+    }
   }
 
   trait RuleM {
