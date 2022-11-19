@@ -2,6 +2,7 @@ package org.slips.core.rule
 
 import cats.Monad
 import cats.data.StateT
+import cats.syntax.all.*
 import org.slips.Env
 import org.slips.Environment
 import org.slips.NotTuple
@@ -27,19 +28,21 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
 
     def addFact[Q](t: Q)(using ThisRule): F[(Context, Unit)] = F.pure(copy(asserted = asserted :+ t) -> ())
 
-    def remove[Q](t: Value.Val[Q])(using ThisRule): F[(Context, Unit)] = t match {
-      case EmptyTuple => F.pure(this -> ())
-      case x :* v     => F.pure(copy(retracted = retracted :+ x.fact) -> ()).flatMap { _ => retract(v) }
-      case x          => F.pure(copy(retracted = retracted :+ x.fact) -> ())
+    def remove[Q](x: Value[Q])(using ThisRule): F[(Context, Unit)] = F.pure(copy(retracted = retracted :+ x.fact) -> ())
+
+    def removeAll[Q](t: Value.Val[Q])(using ThisRule): F[(Context, Unit)] = t match {
+      case _: EmptyTuple                                            => F.pure(this -> ())
+      case (x: Value[_] @unchecked) *: (v: Value.Val[_] @unchecked) => remove(x) >> removeAll(v)
+      case x: Value[Q] @unchecked                                   => remove(x)
     }
 
   }
 
-  trait Value[Q](using inFacts: InTuple[Facts, this.type], inVals: InTuple[T, Q]) {
+  trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q]) {
     val fact: Fact[Q]
 
     def value: ThisRule ?=> Action[Q]        = ???
-    def remove(using ThisRule): Action[Unit] = StateT(_.retract(this))
+    def remove(using ThisRule): Action[Unit] = StateT(_.remove(this))
   }
 
   object Value {
