@@ -1,4 +1,5 @@
-[![Build & Tests](https://github.com/SuperIzya/slips/actions/workflows/scala.yaml/badge.svg?branch=master)](https://github.com/SuperIzya/slips/actions/workflows/scala.yaml)
+[![Compile](https://github.com/SuperIzya/slips/actions/workflows/build.yaml/badge.svg?branch=master)](https://github.com/SuperIzya/slips/actions/workflows/build.yaml)
+[![Tests](https://github.com/SuperIzya/slips/actions/workflows/test.yaml/badge.svg?branch=master)](https://github.com/SuperIzya/slips/actions/workflows/test.yaml)
 
 # SLIPS
 ## Scala language integrated production system
