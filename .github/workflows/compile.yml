@@ -8,27 +8,28 @@ name: Compile
 on:
   push:
     branches: [ '**' ]
-  pull_request:
-    branches: [ "master" ]
 
 permissions:
   contents: read
 
 jobs:
   build:
+    strategy:
+      matrix: 
+        version: [ 11, 17, 19 ]
 
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up JDK 11
+    - name: Set up JDK ${{ matrix.version }}
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
+        java-version: '${{ matrix.version }}'
         distribution: 'temurin'
         cache: 'sbt'
     - name: Compile the whole project
-      run: sbt Test / compile
+      run: sbt "Test/compile"
       # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
     - name: Upload dependency graph
       uses: scalacenter/sbt-dependency-submission@ab086b50c947c9774b70f39fc7f6e20ca2706c91
