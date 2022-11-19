@@ -22,6 +22,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Variables in Markdown
+      # You may pin to the exact commit or the version.
+      # uses: bdougie/variables-in-markdown@b2c1a0e7c34899d7931fe2f509f78d9f0f942489
+      uses: bdougie/variables-in-markdown@v1.0.0
+      env:
+        BRANCH: ${{ github.ref_name }}
     - name: Set up JDK ${{ matrix.version }}
       uses: actions/setup-java@v3
       with:
