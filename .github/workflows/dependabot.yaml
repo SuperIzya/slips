@@ -8,5 +8,7 @@ name: Dependabot
 updates:
   - package-ecosystem: "" # See documentation for possible values
     directory: "/" # Location of package manifests
-    schedule:
-      interval: "weekly"
+on:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '32 0 * * 0'
