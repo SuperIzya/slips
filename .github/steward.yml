@@ -1,0 +1,12 @@
+
+version: 2
+name: Scala Steward Github Action
+# You may pin to the exact commit or the version.
+uses: scala-steward-org/scala-steward-action@v2.23.0
+with:
+  # Author name to use in commits
+  author-name: Scala Steward# optional
+
+on:
+  schedule:
+    interval: "weekly"
