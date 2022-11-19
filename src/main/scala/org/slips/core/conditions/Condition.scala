@@ -1,69 +1,101 @@
 package org.slips.core.conditions
 
-import org.slips.core.*
 import org.slips.Environment
-import org.slips.core.Fact
-
+import org.slips.NotTuple
+import org.slips.core.*
+import org.slips.core.build.*
+import org.slips.core.build.BuildStep
+import org.slips.core.fact.Fact
+import org.slips.core.fact.FactOps
+import org.slips.core.network.AlphaNode
+import org.slips.core.network.Node
+import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
-import scala.util.NotGiven
 
 sealed trait Condition[T] extends Signed {
-  def flatMap[Q](f: Fact.Val[T] => Condition[Q]): Condition.Res[Q] =
+  override val signature: String = ""
+  private[slips] val parse: ParseStep[T]
+
+  def flatMap[Q](f: Fact.Val[T] => Condition[Q]): Condition[Q] =
     Condition.FlatMap[T, Q](this, f)
 
-  def map[R](f: Fact.Val[T] => Fact[R]): Condition.Res[R] =
-    Condition.mapToFact[T, R](this, f)
-/*
-  @targetName("mapFacts")
-  inline def map[R, Q <: NonEmptyTuple](f: Fact.TMap[Q] => Fact[R])
-                                       (using T <:< NonEmptyTuple,
-                                        T =:= Fact.TMap[Q]): Condition.Res[R] = ???*/
+  def map[R, Q](f: Fact.Val[T] => R)(using ev: Fact.ReverseVal[R] =:= Q, ev2: R =:= Fact.Val[Q]): Condition[Q] =
+    Condition.map[T, Q](this, f.andThen(ev2(_)))
 
-  def withFilter(f: Fact.Val[T] => Predicate): Condition.Res[T] =
+  def withFilter(f: Fact.Val[T] => Predicate): Condition[T] =
     Condition.Filter(this, f)
 
   @targetName("withFilterSingle")
-  def withFilter(f: Fact.Val[T] => Boolean): Condition.Res[T] = this
-
-  override val signature: String = ""
+  def withFilter(f: Fact.Val[T] => Boolean): Condition[T] =
+    Condition.ScalarFilter(this, f)
 }
+
 object Condition {
   type Res[x] = Environment ?=> Condition[x]
 
-  private[slips] final case class FlatMap[T, Q](left: Condition[T], f: Fact.Val[T] => Condition[Q])
-    extends Condition[Q]
+  inline def all[T : FactOps : NotTuple]: All[T] = {
+    All[T](s"All[${ Macros.signType[T] }]")
+  }
 
-  private[slips] final case class ScalarFilter[T](src: Condition[T], f: Fact.Val[T] => Boolean) extends Condition[T]
+  private def map[T, Q](src: Condition[T], f: Fact.Val[T] => Fact.Val[Q]): Map[T, Q] =
+    Map(src, f)
 
-  private[slips] final case class Filter[T](cond: Condition[T], f: Fact.Val[T] => Predicate)
-    extends Condition[T]
+  sealed trait Source[T : FactOps : NotTuple] extends Condition[T] {
+    private def fact: Fact.Source[T]                = Fact.Source(this)
+    override private[slips] val parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ => fact.toVal)
 
-  final case class Map[T, Q](override val signature: String, src: Condition[T], f: Fact[T] => Q) extends Condition[Q]
-  inline def map[T, Q](inline src: Condition[T], f: Fact[T] => Q): Map[T, Q] =
-    Macros.createSigned(s => Map(s"${src.signature} => $s", src, f), f)
+    private[slips] def build: BuildStep[Node] = BuildStep.addNode(AlphaNode.Source(this))
+  }
 
-  sealed trait Source[T] extends Condition[T]
+  final case class All[T : FactOps : NotTuple] private[Condition] (
+    override val signature: String
+  ) extends Source[T]
 
-  final case class All[T] private[slips]() extends Source[T]
-
-  final case class Collector[T <: NonEmptyTuple](src: Fact.TMap[T])(using s: Signature[T]) extends Condition[T]:
-    override val signature: String = s.extract(src).mkString("(", ", ", ")")
-
-  final case class OpaquePredicate(p: Predicate) extends Condition[Unit] {
+  final case class OpaquePredicate private[slips] (p: Predicate)
+      extends Condition[Unit] {
     override val signature: String = p.signature
+
+    override private[slips] val parse: ParseStep[Unit] = Predicate.add(p.toKNF)
+
   }
 
-  final case class MapToFact[T, Q](src: Condition[T], f: Fact.Val[T] => Fact[Q])
-    extends Condition[Q] {
+  final case class Map[T, Q] private[Condition] (
+    src: Condition[T],
+    f: Fact.Val[T] => Fact.Val[Q]
+  ) extends Condition[Q] {
     override val signature: String = ""
-  }
-  def mapToFact[T, Q](src: Condition[T], f: Fact.Val[T] => Fact[Q]): MapToFact[T, Q] =
-    MapToFact(src, f)
 
-  final case class MapToFacts[T, Q <: NonEmptyTuple](override val signature: String,
-                                                     src: Condition[T],
-                                                     f: Fact[T] => Fact.TMap[Q])
-    extends Condition[Q]
-  inline def mapToFacts[T, Q <: NonEmptyTuple](inline src: Condition[T], f: Fact[T] => Fact.TMap[Q], sign: Any): MapToFacts[T, Q] =
-    Macros.createSigned(s => MapToFacts(s"${src.signature} => $s", src, f), sign)
+    override private[slips] val parse: ParseStep[Q] = src.parse.map(f)
+  }
+
+  private[slips] final case class FlatMap[T, Q](
+    left: Condition[T],
+    f: Fact.Val[T] => Condition[Q]
+  ) extends Condition[Q] {
+    override private[slips] val parse: ParseStep[Q] =
+      left.parse.flatMap(f(_).parse)
+  }
+
+  private[slips] final case class ScalarFilter[T](
+    src: Condition[T],
+    f: Fact.Val[T] => Boolean
+  ) extends Condition[T] {
+    override private[slips] val parse: ParseStep[T] = src
+      .parse
+      .map {
+        case x if f(x) => x
+      }
+  }
+
+  private[slips] final case class Filter[T](
+    cond: Condition[T],
+    f: Fact.Val[T] => Predicate
+  ) extends Condition[T] {
+    override private[slips] val parse: ParseStep[T] = for {
+      t <- cond.parse
+      predicate = f(t)
+      _ <- Predicate.add(predicate.toKNF)
+    } yield t
+  }
+
 }

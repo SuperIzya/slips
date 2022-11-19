@@ -1,59 +1,74 @@
 package org.slips
 
-import org.slips.SyntaxTest.SE
-import org.slips.core.conditions.{Condition, Predicate}
-import org.slips.core.conditions.Condition.Res
-import org.slips.core.Fact
+import org.slips.Environment as SEnv
+import org.slips.core.Empty
+import org.slips.core.conditions.Condition
+import org.slips.core.fact.Fact
+import org.slips.core.rule.Rule
+import org.slips.syntax.*
 
 object SyntaxTest {
-  case class Data1(count: Int, name: String)
-  case class Data2(fullName: String, points: Double)
+  enum Theme:
+    case War, Peace
 
-  val mapFunction: (Data1, Data2) => Double = _.count + _.points
-  val predicateFunction: (Data2, Data1) => Boolean = _.points > _.count
-
-  val SE = SimpleEnvironment
-  import SE.*
-  SE {
-    val conditions1 = {
-      import SE.Syntax.Conditions.*
-      for {
-        f1 <- all[Data1]
-        f2 <- all[Data2] if f2.value(_.points) === 2
-        _ <- (f2, f1).test {
-          case (d1, d2) => d1.points > d2.count
-        }
-        i = Fact.literal(2)
-        _ <- Fact.literal(3) === f1.value(_.count)
-        _ <- (f2.test(_.fullName.isEmpty) && f1.value(_.name) === "abc") ||
-          f2.test(_.points > 0)
-        f3 <- all[Data1] if f1 =!= f3
-        g = (f1, f2).value(mapFunction.tupled)
-        f = Fact.literal(3f)
-        _ <- f3.value(_.count) =!= g
-      } yield (f1, f3, g, i, Fact.literal(2f))
+  object Theme {
+    given empty: Empty[Theme] with {
+      override def empty: Theme = Theme.War
     }
-
-    val conditions2 = {
-      import SE.Syntax.Conditions.*
-      for {
-        (f1, f2, _, _, _) <- conditions1
-        f3 <- all[Data2] if f2.value(_.count) =!= 3
-      } yield (f3, f1)
-    }
-
-    val rule = {
-      import SE.Syntax.Conditions.*
-      import Syntax.Actions.*
-      Rule("test")(conditions2) {
-        case (f2, f1) =>
-          for {
-            d2 <- getValue(f2)
-            _ <- assert(Data2("foo", d2.points))
-          } yield ()
-      }
-    }
-    rule
   }
 
+  val confidenceDrop: Double = 0.99
+  case class Category(theme: Theme, confidence: Double) {
+
+    def :*:(other: Category): Category = copy(confidence = Math.min(confidence + other.confidence, 1) * confidenceDrop)
+  }
+
+  case class Word(word: String, category: Category)
+  case class Text(word1: String, word2: String, categoryM: Option[Category])
+
+  private val shouldMarkText = for {
+    w <- all[Word]
+    t <- all[Text]
+    _ <- t.test(_.categoryM.isEmpty)
+    _ <- (t.value(_.word1) === w.value(_.word)) || (t.value(_.word2) === w.value(_.word))
+  } yield (w.value(_.category), t)
+
+  private val markText = (env: Environment) ?=>
+    shouldMarkText
+      .makeRule("mark text")
+      .withAction { case (category, text) =>
+        for {
+          txt <- text.value
+          cat <- category.value
+          _   <- text.retract
+          _   <- addFact(txt.copy(categoryM = Some(cat)))
+        } yield ()
+      }
+
+  private val shouldMarkWord = for {
+    t1 <- all[Text] if t1.test(_.categoryM.isDefined)
+    t2 <- all[Text] if t2.test(_.categoryM.isDefined)
+    _  <- t1.value(_.word1) === t2.value(_.word1)
+    _  <- t1.value(_.categoryM.map(_.theme)) === t2.value(_.categoryM.map(_.theme))
+    _  <- notExists[Word] { w => w.value(_.word) === t1.value(_.word1) }
+  } yield (t1.value(_.word1), t1.value(_.categoryM), t2.value(_.categoryM))
+
+  private val markWord = (env: Environment) ?=>
+    shouldMarkWord
+      .makeRule("mark word")
+      .withAction { case (w, c1, c2) =>
+        for {
+          word <- w.value
+          cat1 <- c1.value
+          cat2 <- c2.value
+          _    <- addFact(Word(word, cat1.get :*: cat2.get))
+        } yield ()
+      }
+  // TODO: Fix mapN
+  /*
+        shouldMarkWord.makeRule("mark word") {
+          _.mapN { case (word, Some(cat1), Some(cat2)) => assert(Word(word, cat1 :*: cat2)) }
+        }*/
+
+  lazy val rules = (env: SEnv) ?=> Set(markWord, markText)
 }
