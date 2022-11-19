@@ -1,7 +1,7 @@
-![Scala Steward](https://github.com/SuperIzya/slips/actions/workflows/steward.yaml/badge.svg)
+![Scala Steward](https://github.com/SuperIzya/slips/actions/workflows/steward.yml/badge.svg)
 ![Dependabot](https://github.com/SuperIzya/slips/actions/workflows/dependabot.yaml/badge.svg)
-![Compile](https://github.com/SuperIzya/slips/actions/workflows/build.yaml/badge.svg)
-![Tests](https://github.com/SuperIzya/slips/actions/workflows/test.yaml/badge.svg)
+![Compile](https://github.com/SuperIzya/slips/actions/workflows/compile.yml/badge.svg)
+![Tests](https://github.com/SuperIzya/slips/actions/workflows/test.yml/badge.svg)
 
 # SLIPS
 ## Scala language integrated production system
