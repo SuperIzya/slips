@@ -7,7 +7,7 @@ name: Testing code
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ ${{ github.ref_name }} ]
   pull_request:
     branches: [ "master" ]
 
