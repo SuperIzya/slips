@@ -1,5 +1,3 @@
-[![Compile](https://github.com/SuperIzya/slips/actions/workflows/compile.yml?branch={{ BRANCH }}/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/compile.yml?branch={{ BRANCH }})
-[![Test](https://github.com/SuperIzya/slips/actions/workflows/test.yml/badge.svg?event=push&branch={{ BRANCH }})](https://github.com/SuperIzya/slips/actions/workflows/test.yml?branch={{ BRANCH }})
 
 [![Scala Steward](https://github.com/SuperIzya/slips/actions/workflows/steward.yml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/steward.yml)
 [![Dependabot](https://github.com/SuperIzya/slips/actions/workflows/dependabot.yaml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/dependabot.yaml)
