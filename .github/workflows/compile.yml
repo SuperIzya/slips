@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run npm
-      run: npm i @actions/core @actions/github
+      run: npm i @actions/core
     - name: Building README.md
       uses: ./.github/action-badges
       with:
