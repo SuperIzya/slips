@@ -2,7 +2,7 @@ const core = require('@actions/core');
 const gh = require('@actions/github');
 const fs = require('fs/promises');
 
-const gihub = gh.context;
+const github = gh.context;
 
 core.debug('Starting updating README.md');
 core.debug(`github object is ${github}`);
