@@ -4,6 +4,7 @@ const fs = require('fs/promises');
 
 core.debug('Starting updating README.md');
 const badgesJSON = core.getInput('badges', {required: true});
+core.debug(`Passed badges configuration is ${badgesJSON}`);
 const template = (() => {
     const res = core.getInput('template');
     if(!res) return 'README.md.tpl';
