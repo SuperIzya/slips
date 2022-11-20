@@ -1,10 +1,9 @@
 const core = require('@actions/core');
-const gh = require('@actions/github');
 const fs = require('fs/promises');
 
-const github = gh.context;
 
 core.debug('Starting updating README.md');
+const github = JSON.parse(core.getInput('context', {required: true}));
 core.debug(`github object is ${github}`);
 const badgesJSON = core.getInput('badges', {required: true});
 core.debug(`Passed badges configuration is ${badgesJSON} of type ${typeof badgesJSON}`);
