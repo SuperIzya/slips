@@ -1,5 +1,5 @@
 
-name: Update dependecy-graph
+name: Dependecy graph
 
 on:
   push:
