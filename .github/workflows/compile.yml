@@ -33,7 +33,8 @@ jobs:
         file_pattern: 'README.md'
         status_options: '--untracked-files=no'
         push_options: '--force'
-        skip_dirty_check: true 
+        skip_dirty_check: true
+        commit_user_name: SuperIzya
         
         
   build:
