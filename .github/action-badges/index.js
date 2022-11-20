@@ -13,8 +13,14 @@ const template = (() => {
     else return res
 })();
 
+const domain = (() => {
+    const d = core.getInput('domain');
+    if(!d) return 'https://github.com';
+    else d
+})();
+
 const buildBadge = ({ref_name, repository}) => ({name, yaml}) =>
-    `[![${name}](/${repository}/actions/workflows/${yaml}.yml?branch=${ref_name}/badge.svg)](/${repository}/actions/workflows/${yaml}.yml?branch=${ref_name})`
+    `[![${name}](${domain}/${repository}/actions/workflows/${yaml}.yml/badge.svg?branch=${ref_name})](${domain}/${repository}/actions/workflows/${yaml}.yml?branch=${ref_name})`
 
 async function run() {
     try {
