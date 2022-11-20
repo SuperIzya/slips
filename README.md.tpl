@@ -11,7 +11,7 @@ Rule-based engine, being as niche as it is, when there is a need for it - it is 
 
 Although there are rule based engines for other languages, non was found (by me) for Scala.
 Sure, there are some for Java but those I know of are proprietary and pricey.
-Current project is (work-in-progress) open-source rule-based engine for Scala 3.1.3 (not tested with other versions).
+Current project is (work-in-progress) open-source rule-based engine for Scala 3.
 
 All the rule engines are based on algorithm [RETE](https://en.wikipedia.org/wiki/Rete_algorithm)
 but none of them implements the possibility to change the rule set during run-time. 
