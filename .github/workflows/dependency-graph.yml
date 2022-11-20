@@ -1,5 +1,5 @@
 
-name: Compile
+name: Update dependecy-graph
 
 on:
   push:
