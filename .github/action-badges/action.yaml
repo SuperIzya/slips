@@ -7,9 +7,6 @@ inputs:
   context:
     required: true
     desription: JSONified github context
-  domain:
-    description: Domain of the github repo
-    default: 'https://github.com'
   template:
     required: false
     default: 'README.md.tpl'
