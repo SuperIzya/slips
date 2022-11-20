@@ -1,6 +1,6 @@
 
 [![Scala Steward](https://github.com/SuperIzya/slips/actions/workflows/steward.yml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/steward.yml)
-[![Dependabot](https://github.com/SuperIzya/slips/actions/workflows/dependabot.yaml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/dependabot.yaml)
+[![Dependency Graph](https://github.com/SuperIzya/slips/actions/workflows/dependency-graph.yml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/dependency-graph.yml)
 
 
 # SLIPS
