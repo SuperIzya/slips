@@ -8,4 +8,4 @@ target/*
 .metals/
 .bloop/
 metals.sbt
-/node-modules
+node-modules/*
