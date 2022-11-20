@@ -1,5 +1,5 @@
 const core = require('@actions/core');
-const github = require('@actions/github');
+const {context: github} = require('@actions/github');
 const fs = require('fs/promises');
 
 core.debug('Starting updating README.md');
