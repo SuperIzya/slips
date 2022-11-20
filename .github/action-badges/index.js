@@ -28,3 +28,4 @@ ${data}
         core.setFailed(error.message);
     }
 }
+run();
