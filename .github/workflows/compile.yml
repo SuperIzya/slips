@@ -15,17 +15,10 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix: 
-        version: [ 11, 17, 19 ]
-
-    runs-on: ubuntu-latest
-
+  readme:
     steps:
-    - uses: actions/checkout@v3
     - name: Building README.md
-      uses: SuperIzya/slips@badges
+      uses: ./actions/action-badges
       with:
         badges: "[{
           name: 'Compile',
@@ -39,6 +32,16 @@ jobs:
       with:
         commit_message: Updated README.md
         file_pattern: '*.md'
+  build:
+    needs: readme
+    strategy:
+      matrix: 
+        version: [ 11, 17, 19 ]
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3    
     - name: Set up JDK ${{ matrix.version }}
       uses: actions/setup-java@v3
       with:
