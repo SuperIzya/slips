@@ -3,7 +3,10 @@ description: Adds badges with branch link to README.md.tpl
 inputs:
   badges:
     required: true
-    description: "JSON array of [{ name: '<badge name>', yaml: '<name of the yaml>' }]"
+    description: "JSON array of [{ \"name\": '<badge name>', yaml: '<name of the yaml>' }]"
+  context:
+    required: true
+    desription: JSONified github context
   template:
     required: false
     default: 'README.md.tpl'
