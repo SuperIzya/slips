@@ -3,6 +3,7 @@ const github = require('@actions/github');
 const fs = require('fs/promises');
 
 core.debug('Starting updating README.md');
+core.debug(`github object is ${github}`);
 const badgesJSON = core.getInput('badges', {required: true});
 core.debug(`Passed badges configuration is ${badgesJSON} of type ${typeof badgesJSON}`);
 const template = (() => {
