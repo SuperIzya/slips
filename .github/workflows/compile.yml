@@ -37,6 +37,8 @@ jobs:
         commit_message: Updated README.md
         file_pattern: '*.md'
         status_options: '--untracked-files=no'
+        
+        
   build:
     needs: readme
     strategy:
@@ -46,6 +48,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:        
+    - uses: actions/checkout@v3
     - name: Set up JDK ${{ matrix.version }}
       uses: actions/setup-java@v3
       with:
