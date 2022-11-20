@@ -62,6 +62,4 @@ jobs:
         cache: 'sbt'
     - name: Compile the whole project
       run: sbt "Test/compile"
-      # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
-    - name: Upload dependency graph
-      uses: scalacenter/sbt-dependency-submission@v2
+
