@@ -25,6 +25,7 @@ jobs:
       uses: ./.github/action-badges
       with:
         badges: "[{ \"name\": \"Compile\", \"yaml\": \"compile\" }, { \"name\": \"Test\", \"yaml\": \"test\" }]"
+        context: ${{ toJson(github) }}
     - name: Commit README.md
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
