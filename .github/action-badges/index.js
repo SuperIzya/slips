@@ -15,7 +15,7 @@ const template = (() => {
 
 
 const buildBadge = ({ref_name, server_url, repository}) => ({name, yaml}) =>
-    `[![${name}](${server_url}/${repository}/actions/workflows/${yaml}.yml/badge.svg?branch=${ref_name})](${server_url}/${repository}/actions/workflows/${yaml}.yml?branch=${ref_name})`
+    `[![${name}](${server_url}/${repository}/actions/workflows/${yaml}.yml/badge.svg?branch=${ref_name})](${server_url}/${repository}/actions/workflows/${yaml}.yml)`
 
 async function run() {
     try {
