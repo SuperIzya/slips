@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
+        fetch-depth: 0    
     - name: Run npm
       run: npm i @actions/core
     - name: Building README.md
@@ -27,13 +30,18 @@ jobs:
         badges: "[{ \"name\": \"Compile\", \"yaml\": \"compile\" }, { \"name\": \"Test\", \"yaml\": \"test\" }]"
         context: ${{ toJson(github) }}
     - name: Commit README.md
-      uses: stefanzweifel/git-auto-commit-action@v4
-      with:
-        commit_message: Updated README.md
-        file_pattern: 'README.md'
-        status_options: '--untracked-files=no'
-        push_options: '--force'
-        skip_dirty_check: true 
+      id: commit
+      continue-on-error: true
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"      
+        git commit ./README.md -m "Updating README.md"
+    - name: Push README.md
+      if: ${{ steps.commit.outcome == 'success' }}
+      uses: ad-m/github-push-action@master
+      with:        
+        github_token: ${{ secrets.README_COMMIT_TOKEN }}
+        branch: ${{ github.ref }}
         
         
   build:
