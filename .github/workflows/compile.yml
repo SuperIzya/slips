@@ -29,12 +29,13 @@ jobs:
     - name: Commit README.md
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
+        github_token: ${{ secrets.STEWARD_APP_PRIVATE_KEY }}
         commit_message: Updated README.md
         file_pattern: 'README.md'
         status_options: '--untracked-files=no'
         push_options: '--force'
-        skip_dirty_check: true
-        commit_user_name: SuperIzya
+        skip_dirty_check: true        
+        skip_checkout: true
         
         
   build:
