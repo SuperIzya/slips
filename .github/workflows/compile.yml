@@ -28,10 +28,10 @@ jobs:
       uses: SuperIzya/slips@badges
       with:
         badges:
-          - name: 'Compile'
-            yaml: 'compile'
-          - name: 'Test'
-            yaml: 'test'
+        - name: 'Compile'
+          yaml: 'compile'
+        - name: 'Test'
+          yaml: 'test'
     - name: Commit README.md
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
