@@ -1,5 +1,5 @@
 
- [![Compile](https://github.com/SuperIzya/slips/actions/workflows/compile.yml/badge.svg?branch=network)](https://github.com/SuperIzya/slips/actions/workflows/compile.yml?branch=network) [![Test](https://github.com/SuperIzya/slips/actions/workflows/test.yml/badge.svg?branch=network)](https://github.com/SuperIzya/slips/actions/workflows/test.yml?branch=network)
+ [![Compile](https://github.com/SuperIzya/slips/actions/workflows/compile.yml/badge.svg?branch=network)](https://github.com/SuperIzya/slips/actions/workflows/compile.yml) [![Test](https://github.com/SuperIzya/slips/actions/workflows/test.yml/badge.svg?branch=network)](https://github.com/SuperIzya/slips/actions/workflows/test.yml)
 
 [![Scala Steward](https://github.com/SuperIzya/slips/actions/workflows/steward.yml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/steward.yml)
 [![Dependabot](https://github.com/SuperIzya/slips/actions/workflows/dependabot.yaml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/dependabot.yaml)
