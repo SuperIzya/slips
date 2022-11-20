@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   readme:
+    runs-on: ubuntu-latest
     steps:
     - name: Building README.md
       uses: ./actions/action-badges
