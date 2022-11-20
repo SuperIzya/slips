@@ -1,0 +1,13 @@
+name: Branch-relative badges
+description: Adds badges with branch link to README.md.tpl
+inputs:
+  badges:
+    required: true
+    description: "JSON array of [{ name: '<badge name>', yaml: '<name of the yaml>' }]"
+  template:
+    required: false
+    default: 'README.md.tpl'
+    description: "Template for README.md"
+runs:
+  using: 'node16'
+  main: 'index.js'
