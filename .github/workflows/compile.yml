@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3   
     - name: Building README.md
-      uses: ./actions/action-badges
+      uses: ./.github/action-badges
       with:
         badges: "[{
           name: 'Compile',
