@@ -35,8 +35,10 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: Updated README.md
-        file_pattern: '*.md'
+        file_pattern: 'README.md'
         status_options: '--untracked-files=no'
+        push_options: '--force'
+        skip_dirty_check: true 
         
         
   build:
