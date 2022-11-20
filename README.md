@@ -142,7 +142,7 @@ val cheesePlate = for {
 ```
 ###### Predicate
 Predicate is one of condition's possible parts, but this part is most commonly used. It represents an actual condition as simple as it may be.
-One of the main advantages of [RETE](https://en.wikipedia.org/wiki/Rete_algorithm) in reuse of these predicates. So it is much advisable to reuse predicates as well
+One of the main advantages of [RETE](https://en.wikipedia.org/wiki/Rete_algorithm) is reuse of these predicates. So it is much advisable to reuse predicates as well
 ```scala
 extension (f: Fact[Cheese]) {
   def isBigEnough: Predicate = f.test(_.weight >= 0.65)
@@ -163,8 +163,8 @@ In action the following results are expected:
 1. changes of the factbase's state. Either by adding new facts, deleting existing ones, or changing them (which is done by replacing the old version by a new version)
 1. changes to the state of the outside world by having some effect executed (writing to DB, printing on screen, etc.)
 
-Although action is a monadic type and can be combined as thus, the result of the action in the rule is always `Unit`,
-since the result of the action inside of the rule is totally meaningless otherwise.
+Although action is a monadic type and can be combined. The result of the action in the rule is always `Unit`,
+since this value is totally meaningless outside of the rule.
 
 
 
