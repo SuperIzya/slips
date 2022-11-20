@@ -18,7 +18,9 @@ jobs:
   readme:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3   
+    - uses: actions/checkout@v3
+    - name: Run npm
+      run: npm i @actions/core @actions/github
     - name: Building README.md
       uses: ./.github/action-badges
       with:
