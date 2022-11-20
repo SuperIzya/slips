@@ -3,9 +3,9 @@ const github = require('@actions/github');
 const fs = require('fs/promises');
 
 core.debug('Starting updating README.md');
-const badgesJSON = core.input('badges', {required: true});
+const badgesJSON = core.getInput('badges', {required: true});
 const template = (() => {
-    const res = core.input('template');
+    const res = core.getInput('template');
     if(!res) return 'README.md.tpl';
     else return res
 })();
