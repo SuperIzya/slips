@@ -21,13 +21,14 @@ sealed trait Predicate extends Signed {
 
   def or(other: Predicate): Predicate = Predicate.Or(this, other)
 
-  def not: Predicate = Predicate.Not(this)
-
   @targetName("and_op")
   def &&(other: Predicate): Predicate = and(other)
 
   @targetName("or_op")
   def ||(other: Predicate): Predicate = or(other)
+
+  @targetName("not_op")
+  def unary_! : Predicate = Predicate.Not(this)
 
   def toKNF: Predicate = {
     import Predicate.*

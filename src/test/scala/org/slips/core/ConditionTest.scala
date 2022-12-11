@@ -35,9 +35,9 @@ class ConditionTest extends AnyFunSuiteLike {
       work(count, Condition.all[T])
     }
 
-    val f1 = flatMap[Data1](65536)
-    val f2 = flatMap[Data2](65536)
-    val f3 = flatMap[Int](65536)
+    val f1 = flatMap[Data1](165536)
+    val f2 = flatMap[Data2](165536)
+    val f3 = flatMap[Int](165536)
 
     succeed
   }
