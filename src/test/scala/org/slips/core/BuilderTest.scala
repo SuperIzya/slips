@@ -176,22 +176,26 @@ object BuilderTest extends ZIOSpecDefault {
       assertTrue(res.sources.nonEmpty) &&
       assertTrue(res.topNodes.nonEmpty)
     } @@ TestAspect.ignore,
-    test("AlphaNodeStrategy.MinimumBuffers") {
+    suite("AlphaNodeStrategy.MinimumBuffers") ({
       object SEMinBuffs extends SimpleEnvironment {
         override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MinimumBuffers
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
-      val res: AlphaNetwork = SEMinBuffs {
-        val steps: BuildStep[AlphaNetwork] = for {
-          _       <- Builder.parse(rule1)
-          network <- Builder.buildAlphaNetwork
-        } yield network
+      val simpleTest = test("Small case") {
+        val res: AlphaNetwork = SEMinBuffs {
+          val steps: BuildStep[AlphaNetwork] = for {
+            _ <- Builder.parse(rule1)
+            network <- Builder.buildAlphaNetwork
+          } yield network
 
-        steps.runA(BuildContext.empty).value
+          steps.runA(BuildContext.empty).value
+        }
+        assertTrue(res.sources.nonEmpty) &&
+          assertTrue(res.topNodes.nonEmpty)
       }
-      assertTrue(res.sources.nonEmpty) &&
-      assertTrue(res.topNodes.nonEmpty)
-    }
+
+      Seq(simpleTest)
+    }: _*)
   )
 
   private val strategy = suite("Strategies should work")(

@@ -14,7 +14,7 @@ object syntax {
 
   inline implicit def predicateToCondition(p: Predicate): Condition[Unit] =
     Condition.OpaquePredicate(p)
-
+  
   inline implicit def tupleToFact[T <: NonEmptyTuple, Q <: NonEmptyTuple](
     x: T
   )(using ev0: Q =:= Fact.TInverseMap[T],
@@ -35,6 +35,8 @@ object syntax {
 
   def notExists[T](f: Fact.Val[T] => Predicate)(using F: FactOps[T]): Condition[Unit] =
     F.allCondition.flatMap(v => Condition.OpaquePredicate(f(v)))
+
+  
 
   extension [T: FactOps](c: Condition[T])
     def makeRule(name: String): Rule.Builder[T] =
