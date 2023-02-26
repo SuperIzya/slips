@@ -11,15 +11,23 @@ private[slips] sealed trait AlphaNode extends Node {
 
 private[slips] object AlphaNode {
 
-  case class Source[T](src: Condition.Source[T]) extends AlphaNode {
+  case class Source[T](
+    src: Condition.Source[T]
+  ) extends AlphaNode {
     override def signature: String = src.signature
   }
 
-  case class Predicate(p: TestPredicate, prev: AlphaNode) extends AlphaNode {
+  case class Predicate(
+    p: TestPredicate,
+    prev: AlphaNode
+  ) extends AlphaNode {
     override def signature: String = s"${ prev.signature } -> ${ p.signature }"
   }
 
-  case class Combine(left: AlphaNode, right: AlphaNode) extends AlphaNode {
+  case class Combine(
+    left: AlphaNode,
+    right: AlphaNode
+  ) extends AlphaNode {
     override def signature: String = s"(${ left.signature }) && (${ right.signature })"
   }
 }

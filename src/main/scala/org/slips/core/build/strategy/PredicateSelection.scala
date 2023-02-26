@@ -20,7 +20,10 @@ trait PredicateSelection {
 
 object PredicateSelection {
 
-  def select[T: FactOps](initial: Fact.Val[T], predicates: PredicateSelectionMap): Env[SelectedPredicatesAndSources] =
+  def select[T: FactOps](
+    initial: Fact.Val[T],
+    predicates: PredicateSelectionMap
+  ): Env[SelectedPredicatesAndSources] =
     env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, predicates)
 
   /** Keep all predicates */
@@ -90,9 +93,12 @@ object PredicateSelection {
     */
   case object Clean extends PredicateSelection {
 
-    extension (q: Queue[Predicate]) {
-      private inline def deq(selected: SelectedPredicatesAndSources): SelectedPredicatesAndSources = q
-        .dequeueOption match {
+    extension (
+      q: Queue[Predicate]
+    ) {
+      private inline def deq(
+        selected: SelectedPredicatesAndSources
+      ): SelectedPredicatesAndSources = q.dequeueOption match {
         case Some((pd, qu)) => collectSources(selected, pd, qu)
         case None           => selected
       }

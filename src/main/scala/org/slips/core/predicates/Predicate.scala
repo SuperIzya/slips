@@ -17,17 +17,25 @@ sealed trait Predicate extends Signed {
   def sources: Set[Condition.Source[_]]     = facts.flatMap(_.sources)
   override val signature: String            = this.getClass.getSimpleName
 
-  def and(other: Predicate): Predicate = Predicate.And(this, other)
+  def and(
+    other: Predicate
+  ): Predicate = Predicate.And(this, other)
 
-  def or(other: Predicate): Predicate = Predicate.Or(this, other)
+  def or(
+    other: Predicate
+  ): Predicate = Predicate.Or(this, other)
 
   def not: Predicate = Predicate.Not(this)
 
   @targetName("and_op")
-  def &&(other: Predicate): Predicate = and(other)
+  def &&(
+    other: Predicate
+  ): Predicate = and(other)
 
   @targetName("or_op")
-  def ||(other: Predicate): Predicate = or(other)
+  def ||(
+    other: Predicate
+  ): Predicate = or(other)
 
   def toKNF: Predicate = {
     import Predicate.*
@@ -55,7 +63,9 @@ sealed trait Predicate extends Signed {
 
 object Predicate {
 
-  def add(p: Predicate): ParseStep[Unit] = p match {
+  def add(
+    p: Predicate
+  ): ParseStep[Unit] = p match {
     case And(left, right) =>
       for {
         _ <- add(left)
@@ -64,27 +74,42 @@ object Predicate {
     case _                => ParseStep.modify(_.addPredicate(p))
   }
 
-  final case class Test[T](override val signature: String, test: T => Boolean, rep: Fact[T]) extends Predicate:
+  final case class Test[T](
+    override val signature: String,
+    test: T => Boolean,
+    rep: Fact[T]
+  ) extends Predicate:
     override lazy val facts: Set[Fact[_]] = rep.predecessors + rep
 
-  final case class And(left: Predicate, right: Predicate) extends Predicate {
+  final case class And(
+    left: Predicate,
+    right: Predicate
+  ) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
     override val signature: String        = s"${ left.signature } && ${ right.signature }"
   }
 
-  final case class Or(left: Predicate, right: Predicate) extends Predicate {
+  final case class Or(
+    left: Predicate,
+    right: Predicate
+  ) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
     override val signature: String        = s"${ left.signature } || ${ right.signature }"
   }
 
-  final case class Not private (p: Predicate) extends Predicate {
+  final case class Not private (
+    p: Predicate
+  ) extends Predicate {
     override lazy val facts: Set[Fact[_]] = p.facts
     override val signature: String        = s"!${ p.signature }"
   }
 
   object Test {
 
-    inline def fromFact[T](rep: Fact[T], inline test: T => Boolean): Test[T] =
+    inline def fromFact[T](
+      rep: Fact[T],
+      inline test: T => Boolean
+    ): Test[T] =
       create(rep, test, test)
 
     private inline def create[T](
@@ -99,11 +124,25 @@ object Predicate {
     inline def apply[T1, T2](
       rep1: Fact[T1],
       rep2: Fact[T2],
-      inline test: (T1, T2) => Boolean
-    )(using FactOps.TupleOps[(T1, T2)],
+      inline test: (
+        T1,
+        T2
+      ) => Boolean
+    )(using
+      FactOps.TupleOps[
+        (
+          T1,
+          T2
+        )
+      ],
       Fact[T1] =:= Fact.Val[T1],
       Fact[T2] =:= Fact.Val[T2]
-    ): Test[(T1, T2)] = {
+    ): Test[
+      (
+        T1,
+        T2
+      )
+    ] = {
       create(Fact.fromTuple(rep1 -> rep2), test.tupled, test)
     }
 
@@ -114,7 +153,10 @@ object Predicate {
   }
 
   object Not {
-    def apply(p: Predicate)(using DummyImplicit): Predicate =
+    def apply(
+      p: Predicate
+    )(using DummyImplicit
+    ): Predicate =
       p match
         case Not(pp) => pp
         case _       => new Not(p)

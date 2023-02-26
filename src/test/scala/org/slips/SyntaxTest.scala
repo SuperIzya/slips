@@ -18,13 +18,25 @@ object SyntaxTest {
   }
 
   val confidenceDrop: Double = 0.99
-  case class Category(theme: Theme, confidence: Double) {
+  case class Category(
+    theme: Theme,
+    confidence: Double
+  ) {
 
-    def :*:(other: Category): Category = copy(confidence = Math.min(confidence + other.confidence, 1) * confidenceDrop)
+    def :*:(
+      other: Category
+    ): Category = copy(confidence = Math.min(confidence + other.confidence, 1) * confidenceDrop)
   }
 
-  case class Word(word: String, category: Category)
-  case class Text(word1: String, word2: String, categoryM: Option[Category])
+  case class Word(
+    word: String,
+    category: Category
+  )
+  case class Text(
+    word1: String,
+    word2: String,
+    categoryM: Option[Category]
+  )
 
   private val shouldMarkText = for {
     w <- all[Word]
