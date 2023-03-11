@@ -1,7 +1,7 @@
 package org.slips.core.network
 
 import org.slips.Env
-import org.slips.core.build.PredicateMap
+import org.slips.core.build.PredicateSources
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate

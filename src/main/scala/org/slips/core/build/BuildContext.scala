@@ -12,9 +12,10 @@ import scala.annotation.tailrec
 case class BuildContext private[build] (
   nodes: Map[String, Node] = Map.empty,
   sources: Set[Condition.Source[_]] = Set.empty,
-  alphaPredicates: PredicateMap = Map.empty,
-  betaPredicates: PredicateMap = Map.empty,
-  gammaPredicates: PredicateMap = Map.empty,
+  predicateRules: PredicateRules = Map.empty,
+  alphaPredicates: PredicateSources = Map.empty,
+  betaPredicates: PredicateSources = Map.empty,
+  gammaPredicates: PredicateSources = Map.empty,
   network: AlphaNetwork = AlphaNetwork(),
   rules: Set[RuleM] = Set.empty
 )
@@ -23,9 +24,9 @@ object BuildContext {
 
   val empty: BuildContext = BuildContext()
 
-  private def combine(a: PredicateMap, b: PredicateMap): PredicateMap = {
+  private def combine[T](a: PredicateMap[T], b: PredicateMap[T]): PredicateMap[T] = {
     @tailrec
-    def doCombine(x: PredicateMap, y: PredicateMap, res: PredicateMap): PredicateMap = {
+    def doCombine(x: PredicateMap[T], y: PredicateMap[T], res: PredicateMap[T]): PredicateMap[T] = {
       if (x.isEmpty) res ++ y
       else if (y.isEmpty) res ++ x
       else {
@@ -51,7 +52,8 @@ object BuildContext {
         betaPredicates = combine(ctx.betaPredicates, parseResult.betaPredicates),
         gammaPredicates = combine(ctx.gammaPredicates, parseResult.gammaPredicates),
         sources = ctx.sources ++ parseResult.sources,
-        rules = ctx.rules + parseResult.rule
+        rules = ctx.rules + parseResult.rule,
+        predicateRules = combine(ctx.predicateRules, parseResult.predicateRules)
       )
 
     def addAlphaNetwork(n: AlphaNetwork): BuildContext = ctx.copy(network = n)

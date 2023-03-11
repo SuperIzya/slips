@@ -14,13 +14,13 @@ import scala.collection.immutable.Queue
 trait PredicateSelection {
   def selectPredicatesAndSources[T: FactOps](
     initial: Fact.Val[T],
-    predicates: PredicateSelectionMap
+    predicates: SourcePredicates
   ): SelectedPredicatesAndSources
 }
 
 object PredicateSelection {
 
-  def select[T: FactOps](initial: Fact.Val[T], predicates: PredicateSelectionMap): Env[SelectedPredicatesAndSources] =
+  def select[T: FactOps](initial: Fact.Val[T], predicates: SourcePredicates): Env[SelectedPredicatesAndSources] =
     env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, predicates)
 
   /** Keep all predicates */
@@ -53,7 +53,7 @@ object PredicateSelection {
 
     override def selectPredicatesAndSources[T: FactOps](
       initial: Fact.Val[T],
-      predicates: PredicateSelectionMap
+      predicates: SourcePredicates
     ): SelectedPredicatesAndSources = {
 
       collectPredicates(
@@ -148,7 +148,7 @@ object PredicateSelection {
     }
     override def selectPredicatesAndSources[T](
       initial: Fact.Val[T],
-      predicates: PredicateSelectionMap
+      predicates: SourcePredicates
     )(using T: FactOps[T]
     ): SelectedPredicatesAndSources = {
 

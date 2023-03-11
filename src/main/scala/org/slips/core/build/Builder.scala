@@ -21,17 +21,7 @@ object Builder {
 
   val materializeAlphaNetwork: BuildStep[Unit] = BuildStep { ctx => ctx -> () }
 
-  val buildAlphaNetwork: Env[BuildStep[AlphaNetwork]] = env ?=>
-    BuildStep { ctx =>
-      val network = ctx
-        .alphaPredicates
-        .toList
-        .sortBy(-_._2.size)
-        .foldLeft(AlphaNetwork(ctx.sources))(env.alphaNodeStrategy.fold)
-        .toAlphaNetwork
-
-      ctx.addAlphaNetwork(network) -> network
-    }
+  val buildAlphaNetwork: Env[BuildStep[AlphaNetwork]] = env ?=> env.alphaNodeStrategy.buildStep
 
   def parse(using env: Environment)(rules: RuleM*): BuildStep[List[ParseResult]] = {
     rules.toList.traverse { r => BuildStep.addParsingResult(ParseResult.fromRule(r)) }

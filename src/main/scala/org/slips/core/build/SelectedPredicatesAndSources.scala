@@ -6,7 +6,7 @@ import org.slips.core.fact.FactOps
 import org.slips.core.predicates.Predicate
 
 case class SelectedPredicatesAndSources(
-  predicates: PredicateSelectionMap,
+  predicates: SourcePredicates,
   sources: Set[Condition.Source[_]],
   facts: Set[Fact.Source[_]],
   discarded: Set[Predicate]
@@ -14,7 +14,7 @@ case class SelectedPredicatesAndSources(
 
   import SelectedPredicatesAndSources._
 
-  def addPredicate(p: Predicate): PredicateSelectionMap = {
+  def addPredicate(p: Predicate): SourcePredicates = {
     addToMap(predicates, p)
   }
 
@@ -35,7 +35,7 @@ object SelectedPredicatesAndSources {
       discarded = Set.empty
     )
 
-  private inline def addToMap(map: PredicateSelectionMap, p: Predicate): PredicateSelectionMap = {
+  private inline def addToMap(map: SourcePredicates, p: Predicate): SourcePredicates = {
     map ++ p.facts.flatMap(f => f.sourceFacts).map { f => f -> (map.getOrElse(f, Set.empty) + p) }
   }
 

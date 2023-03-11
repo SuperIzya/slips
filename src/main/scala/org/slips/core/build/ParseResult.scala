@@ -9,11 +9,18 @@ import org.slips.core.rule.Rule.RuleM
 private[slips] case class ParseResult(
   rule: RuleM,
   sources: Set[Condition.Source[_]],
-  alphaPredicates: PredicateMap,
-  betaPredicates: PredicateMap,
-  gammaPredicates: PredicateMap,
+  alphaPredicates: PredicateSources,
+  betaPredicates: PredicateSources,
+  gammaPredicates: PredicateSources,
   predicatesAndSources: SelectedPredicatesAndSources
-)
+) {
+  def predicateRules: PredicateRules = predicatesAndSources
+    .predicates
+    .values
+    .foldLeft(Set.empty[Predicate])(_ ++ _)
+    .map(_ -> Set(rule))
+    .toMap
+}
 
 private[slips] object ParseResult {
 
@@ -24,12 +31,13 @@ private[slips] object ParseResult {
     pc.toParseResult(rule, sp)
   }
 
-  case class ParseCollector(alpha: PredicateMap, beta: PredicateMap, gamma: PredicateMap)
+  case class ParseCollector(alpha: PredicateSources, beta: PredicateSources, gamma: PredicateSources)
   private val empty: ParseCollector = ParseCollector(Map.empty, Map.empty, Map.empty)
 
   object ParseCollector {
 
-    extension (m: PredicateMap) def getM(p: Predicate): Set[Fact.Source[_]] = m.getOrElse(p, Set.empty) ++ p.sourceFacts
+    extension (m: PredicateSources)
+      def getM(p: Predicate): Set[Fact.Source[_]] = m.getOrElse(p, Set.empty) ++ p.sourceFacts
 
     extension (collector: ParseCollector) {
       def addPredicate(p: Predicate): ParseCollector                                 = {
