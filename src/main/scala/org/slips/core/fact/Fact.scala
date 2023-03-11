@@ -21,20 +21,45 @@ import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
 
-sealed trait Fact[T](val sample: T)(using T: FactOps[T]) extends Signed {
+sealed trait Fact[T](
+  val sample: T
+)(using T: FactOps[T]
+) extends Signed {
 
   lazy val toVal: Fact.Val[T] = T.toVal(this)
 
   override def signature: String = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]($sample)"
 
-  inline def test(inline f: T => Boolean): Predicate = Predicate.Test.fromFact(this, f)
+  inline def test(
+    inline f: T => Boolean
+  ): Predicate = Predicate.Test.fromFact(this, f)
 
   @targetName("repNotEq")
-  inline def =!=(other: Fact[T])(using TupleOps[(T, T)], Fact[T] =:= Fact.Val[T]): Predicate =
+  inline def =!=(
+    other: Fact[T]
+  )(using
+    TupleOps[
+      (
+        T,
+        T
+      )
+    ],
+    Fact[T] =:= Fact.Val[T]
+  ): Predicate =
     Predicate.Test(this, other, _ != _)
 
   @targetName("repEq")
-  inline def ===(other: Fact[T])(using TupleOps[(T, T)], Fact[T] =:= Fact.Val[T]): Predicate =
+  inline def ===(
+    other: Fact[T]
+  )(using
+    TupleOps[
+      (
+        T,
+        T
+      )
+    ],
+    Fact[T] =:= Fact.Val[T]
+  ): Predicate =
     Predicate.Test(this, other, _ == _)
 
   def predecessors: Set[Fact[_]]
@@ -71,14 +96,19 @@ object Fact {
     Q.empty
   )
 
-  def fromTuple[T <: NonEmptyTuple](t: TMap[T])(using T: FactOps.TupleOps[T]): Fact[T] =
+  def fromTuple[T <: NonEmptyTuple](
+    t: TMap[T]
+  )(using T: FactOps.TupleOps[T]
+  ): Fact[T] =
     Tuples(
       T.extract(t).mkString("(", ", ", ")"),
       t,
       T.empty
     )
 
-  def literal[T : CanBeLiteral : FactOps](v: T): Fact[T] = Literal(v)
+  def literal[T : CanBeLiteral : FactOps](
+    v: T
+  ): Fact[T] = Literal(v)
 
   sealed trait CanBeLiteral[T]
 
@@ -112,8 +142,9 @@ object Fact {
     override def sources: Set[Condition.Source[_]] = rep.sources
   }
 
-  final case class Literal[I: FactOps] private[slips] (value: I)
-      extends Fact[I](value) {
+  final case class Literal[I: FactOps] private[slips] (
+    value: I
+  ) extends Fact[I](value) {
     override lazy val signature: String = value.toString
 
     override def predecessors: Set[Fact[_]]        = Set.empty
@@ -141,8 +172,11 @@ object Fact {
     override val predecessors: Set[Fact[_]]       = Set.empty
     override lazy val sourceFacts: Set[Source[_]] = Set(this)
   }
-  object Source              {
-    def apply[T](source: Condition.Source[T])(using T: FactOps[T]): Source[T] =
+  object Source {
+    def apply[T](
+      source: Condition.Source[T]
+    )(using T: FactOps[T]
+    ): Source[T] =
       new Source(source.signature, T.empty, Set(source))
   }
 

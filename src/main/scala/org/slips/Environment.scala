@@ -32,7 +32,10 @@ trait Environment {
     def create[T]: Buffer[T]
   }
   object BufferFactory {
-    def apply(buffer: [x] => () => Buffer[x]): BufferFactory = new BufferFactory {
+    def apply(
+      buffer: [x] => (
+      ) => Buffer[x]
+    ): BufferFactory = new BufferFactory {
       override def create[T]: Buffer[T] = buffer[T]()
     }
   }
@@ -40,8 +43,13 @@ trait Environment {
   trait Buffer[T] {
     type BufferType <: Iterable[T]
     protected def buffer: Effect[BufferType]
-    def add(key: String, v: T): Effect[Unit]
-    def get(key: String): Effect[Option[T]]
+    def add(
+      key: String,
+      v: T
+    ): Effect[Unit]
+    def get(
+      key: String
+    ): Effect[Option[T]]
     def iterator(using Monad[Effect]): Effect[Iterator[T]] = buffer.map(_.iterator)
   }
 

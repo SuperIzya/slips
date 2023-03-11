@@ -14,16 +14,22 @@ case class SelectedPredicatesAndSources(
 
   import SelectedPredicatesAndSources._
 
-  def addPredicate(p: Predicate): PredicateSelectionMap = {
+  def addPredicate(
+    p: Predicate
+  ): PredicateSelectionMap = {
     addToMap(predicates, p)
   }
 
-  def withPredicate(p: Predicate): SelectedPredicatesAndSources = copy(
+  def withPredicate(
+    p: Predicate
+  ): SelectedPredicatesAndSources = copy(
     predicates = addPredicate(p),
     facts = facts ++ p.sourceFacts
   )
 
-  def withDiscard(p: Predicate): SelectedPredicatesAndSources = copy(discarded = discarded + p)
+  def withDiscard(
+    p: Predicate
+  ): SelectedPredicatesAndSources = copy(discarded = discarded + p)
 }
 
 object SelectedPredicatesAndSources {
@@ -35,7 +41,10 @@ object SelectedPredicatesAndSources {
       discarded = Set.empty
     )
 
-  private inline def addToMap(map: PredicateSelectionMap, p: Predicate): PredicateSelectionMap = {
+  private inline def addToMap(
+    map: PredicateSelectionMap,
+    p: Predicate
+  ): PredicateSelectionMap = {
     map ++ p.facts.flatMap(f => f.sourceFacts).map { f => f -> (map.getOrElse(f, Set.empty) + p) }
   }
 

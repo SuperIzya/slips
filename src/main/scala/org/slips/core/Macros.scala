@@ -5,16 +5,27 @@ import scala.quoted.*
 import scala.util.matching.Regex
 
 object Macros {
-  inline def createSigned[R](res: String => R, inline toSign: Any): R = ${ createSignedImp('res, 'toSign) }
+  inline def createSigned[R](
+    res: String => R,
+    inline toSign: Any
+  ): R = ${ createSignedImp('res, 'toSign) }
 
-  def createSignedImp[R: Type](res: Expr[String => R], toSign: Expr[Any])(using quotes: Quotes): Expr[R] = {
+  def createSignedImp[R: Type](
+    res: Expr[String => R],
+    toSign: Expr[Any]
+  )(using quotes: Quotes
+  ): Expr[R] = {
     import quotes.*
     import reflect.*
 
-    def cleanupSignature(in: String): String = {
+    def cleanupSignature(
+      in: String
+    ): String = {
       val re = """(_\$\d+)""".r
 
-      extension (s: String)
+      extension (
+        s: String
+      )
         def replaceWithChar(
           what: String,
           substitute: String
@@ -28,19 +39,23 @@ object Macros {
         .toList
         .distinct
         .zipWithIndex
-        .foldLeft(in) { (res, x) =>
-          x match {
-            case (v, i) =>
-              res
-                .replace(s"$v: ", "")
-                .replace(s"$v:", "")
-                .replaceWithChar(v, s"_$$$i")('.')
-                .replaceWithChar(v, s"_$$$i")(')')
-                .replaceWithChar(v, s"_$$$i")('-')
-                .replaceWithChar(v, s"_$$$i")('(')
-                .replaceWithChar(v, s"_$$$i")(',')
-                .replaceWithChar(v, s"_$$$i")(' ')
-          }
+        .foldLeft(in) {
+          (
+            res,
+            x
+          ) =>
+            x match {
+              case (v, i) =>
+                res
+                  .replace(s"$v: ", "")
+                  .replace(s"$v:", "")
+                  .replaceWithChar(v, s"_$$$i")('.')
+                  .replaceWithChar(v, s"_$$$i")(')')
+                  .replaceWithChar(v, s"_$$$i")('-')
+                  .replaceWithChar(v, s"_$$$i")('(')
+                  .replaceWithChar(v, s"_$$$i")(',')
+                  .replaceWithChar(v, s"_$$$i")(' ')
+            }
         }
     }
 

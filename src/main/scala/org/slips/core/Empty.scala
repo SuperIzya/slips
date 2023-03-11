@@ -42,11 +42,15 @@ object Empty extends AutoDerivation[Empty] {
       override def empty: T = inst.fromTuple(T.empty)
     }
 
-  override def join[T](ctx: CaseClass[Empty, T]): Empty[T] = new Empty[T] {
+  override def join[T](
+    ctx: CaseClass[Empty, T]
+  ): Empty[T] = new Empty[T] {
     override def empty: T = ctx.rawConstruct(ctx.params.map { p => p.typeclass.empty })
   }
 
-  override def split[T](ctx: SealedTrait[Empty, T]): Empty[T] = new Empty[T] {
+  override def split[T](
+    ctx: SealedTrait[Empty, T]
+  ): Empty[T] = new Empty[T] {
     override def empty: T = ctx.subtypes.head.typeclass.empty
   }
 }
