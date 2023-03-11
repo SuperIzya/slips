@@ -24,11 +24,18 @@ object AlphaNetwork {
 
   val empty: Intermediate = Intermediate()
 
-  def apply(src: Set[Condition.Source[_]]): Intermediate =
+  def apply(
+    src: Set[Condition.Source[_]]
+  ): Intermediate =
     Intermediate(sources = src.map(s => s -> AlphaNode.Source(s)).toMap)
 
-  extension (n: Intermediate)
-    def add(p: Predicate, facts: Set[Fact.Source[_]]): Env[Intermediate] = env ?=> {
+  extension (
+    n: Intermediate
+  )
+    def add(
+      p: Predicate,
+      facts: Set[Fact.Source[_]]
+    ): Env[Intermediate] = env ?=> {
       val existing = n
         .topNodes
         .collectFirst {

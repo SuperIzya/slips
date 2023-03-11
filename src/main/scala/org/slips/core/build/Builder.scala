@@ -23,11 +23,18 @@ object Builder {
 
   val buildAlphaNetwork: Env[BuildStep[AlphaNetwork]] = env ?=> env.alphaNodeStrategy.buildStep
 
-  def parse(using env: Environment)(rules: RuleM*): BuildStep[List[ParseResult]] = {
+  def parse(
+    using env: Environment
+  )(
+    rules: RuleM*
+  ): BuildStep[List[ParseResult]] = {
     rules.toList.traverse { r => BuildStep.addParsingResult(ParseResult.fromRule(r)) }
   }
 
-  def selectPredicatesAndSources[T](condition: Condition[T])(using T: FactOps[T]): Env[SelectedPredicatesAndSources] = {
+  def selectPredicatesAndSources[T](
+    condition: Condition[T]
+  )(using T: FactOps[T]
+  ): Env[SelectedPredicatesAndSources] = {
     val (Parser.Context(predicates, _), result) = Parser(condition)
 
     PredicateSelection.select(

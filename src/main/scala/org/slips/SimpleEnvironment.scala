@@ -14,19 +14,31 @@ trait SimpleEnvironment extends Environment {
   override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MaximizeChains
 
   override given effectMonad: Monad[Id] = new Monad[Id] {
-    override def pure[T](v: T): Id[T] = v
+    override def pure[T](
+      v: T
+    ): Id[T] = v
 
-    override def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
+    override def flatMap[A, B](
+      fa: Id[A]
+    )(
+      f: A => Id[B]
+    ): Id[B] = f(fa)
 
     @tailrec
-    override def tailRecM[A, B](a: A)(f: A => Id[Either[A, B]]): Id[B] =
+    override def tailRecM[A, B](
+      a: A
+    )(
+      f: A => Id[Either[A, B]]
+    ): Id[B] =
       f(a) match
         case Left(a)  => tailRecM(a)(f)
         case Right(b) => b
 
   }
 
-  def apply[T, E >: SimpleEnvironment <: Environment](f: E ?=> T): T = f(
+  def apply[T, E >: SimpleEnvironment <: Environment](
+    f: E ?=> T
+  ): T = f(
     using this
   )
 
@@ -35,11 +47,20 @@ trait SimpleEnvironment extends Environment {
   ) extends Buffer[T] {
     override type BufferType = ArrayBuffer[T]
 
-    override def add(key: String, v: T): Effect[Unit] = ???
-    override def get(key: String): Effect[Option[T]]  = ???
+    override def add(
+      key: String,
+      v: T
+    ): Effect[Unit] = ???
+    override def get(
+      key: String
+    ): Effect[Option[T]] = ???
   }
 
-  override val bufferFactory: BufferFactory = BufferFactory([x] => () => new SimpleBuffer[x]())
+  override val bufferFactory: BufferFactory = BufferFactory(
+    [x] =>
+      (
+      ) => new SimpleBuffer[x]()
+  )
 
 }
 object SimpleEnvironment extends SimpleEnvironment

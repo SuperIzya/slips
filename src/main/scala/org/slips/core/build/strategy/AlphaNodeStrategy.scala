@@ -26,7 +26,13 @@ trait AlphaNodeStrategy {
     ctx.alphaPredicates.toList.sortBy(-_._2.size).foldLeft(AlphaNetwork(ctx.sources))(fold).toAlphaNetwork
   }
 
-  def fold(network: AlphaNetwork.Intermediate, pair: (Predicate, Set[Fact.Source[_]])): AlphaNetwork.Intermediate =
+  def fold(
+    network: AlphaNetwork.Intermediate,
+    pair: (
+      Predicate,
+      Set[Fact.Source[_]]
+    )
+  ): AlphaNetwork.Intermediate =
     addAlphaNode(network, pair._1, pair._2)
 
   def addAlphaNode(
@@ -136,7 +142,10 @@ object AlphaNodeStrategy {
       facts: Set[Fact.Source[_]]
     ): AlphaNetwork.Intermediate = {
       @tailrec
-      def add(tFacts: Set[Fact.Source[_]], n: AlphaNetwork.Intermediate): AlphaNetwork.Intermediate = {
+      def add(
+        tFacts: Set[Fact.Source[_]],
+        n: AlphaNetwork.Intermediate
+      ): AlphaNetwork.Intermediate = {
         if (tFacts.isEmpty) n
         else {
           network.topNodes.map { case (f, n) => tFacts.intersect(f) -> n }.maxByOption(_._1.size) match {

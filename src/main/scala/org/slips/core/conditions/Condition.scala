@@ -16,17 +16,28 @@ sealed trait Condition[T] extends Signed {
   override val signature: String = ""
   private[slips] val parse: ParseStep[T]
 
-  def flatMap[Q](f: Fact.Val[T] => Condition[Q]): Condition[Q] =
+  def flatMap[Q](
+    f: Fact.Val[T] => Condition[Q]
+  ): Condition[Q] =
     Condition.FlatMap[T, Q](this, f)
 
-  def map[R, Q](f: Fact.Val[T] => R)(using ev: Fact.ReverseVal[R] =:= Q, ev2: R =:= Fact.Val[Q]): Condition[Q] =
+  def map[R, Q](
+    f: Fact.Val[T] => R
+  )(using
+    ev: Fact.ReverseVal[R] =:= Q,
+    ev2: R =:= Fact.Val[Q]
+  ): Condition[Q] =
     Condition.map[T, Q](this, f.andThen(ev2(_)))
 
-  def withFilter(f: Fact.Val[T] => Predicate): Condition[T] =
+  def withFilter(
+    f: Fact.Val[T] => Predicate
+  ): Condition[T] =
     Condition.Filter(this, f)
 
   @targetName("withFilterSingle")
-  def withFilter(f: Fact.Val[T] => Boolean): Condition[T] =
+  def withFilter(
+    f: Fact.Val[T] => Boolean
+  ): Condition[T] =
     Condition.ScalarFilter(this, f)
 }
 
@@ -37,7 +48,10 @@ object Condition {
     All[T](s"All[${ Macros.signType[T] }]")
   }
 
-  private def map[T, Q](src: Condition[T], f: Fact.Val[T] => Fact.Val[Q]): Map[T, Q] =
+  private def map[T, Q](
+    src: Condition[T],
+    f: Fact.Val[T] => Fact.Val[Q]
+  ): Map[T, Q] =
     Map(src, f)
 
   sealed trait Source[T : FactOps : NotTuple] extends Condition[T] {
@@ -51,8 +65,9 @@ object Condition {
     override val signature: String
   ) extends Source[T]
 
-  final case class OpaquePredicate private[slips] (p: Predicate)
-      extends Condition[Unit] {
+  final case class OpaquePredicate private[slips] (
+    p: Predicate
+  ) extends Condition[Unit] {
     override val signature: String = p.signature
 
     override private[slips] val parse: ParseStep[Unit] = Predicate.add(p.toKNF)
