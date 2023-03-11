@@ -33,17 +33,37 @@ object BuilderTest extends ZIOSpecDefault {
     }
   }
 
-  case class Fruit(name: String, sugar: Double, acidity: Double)
-  case class Vegetable(name: String, origin: Origin)
-  case class Herb(name: String, origin: Origin)
-  case class Berry(name: String, origin: Origin)
+  case class Fruit(
+    name: String,
+    sugar: Double,
+    acidity: Double
+  )
+  case class Vegetable(
+    name: String,
+    origin: Origin
+  )
+  case class Herb(
+    name: String,
+    origin: Origin
+  )
+  case class Berry(
+    name: String,
+    origin: Origin
+  )
 
-  def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
+  def testFruitAndVegieF(
+    f: Fruit,
+    v: Vegetable
+  ): Boolean = false
 
   val notApple: Fact[Fruit] => Predicate = _.test(_.name != "apple")
   private val testFruitAndVegie          = (testFruitAndVegieF _).tupled
 
-  def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
+  def vegie2FruitsF(
+    v: Vegetable,
+    f1: Fruit,
+    f2: Fruit
+  ): Boolean = true
 
   private val vegie2Fruits = vegie2FruitsF.tupled
 
@@ -62,7 +82,9 @@ object BuilderTest extends ZIOSpecDefault {
     _ <- (v, f1, f2).test(vegie2Fruits)
   } yield (f1, f2, v, _5)
 
-  private val rule1: (SimpleEnvironment) ?=> Rule.RuleM = (env: SimpleEnvironment) ?=>
+  private val rule1: (
+    SimpleEnvironment
+  ) ?=> Rule.RuleM = (env: SimpleEnvironment) ?=>
     condition1
       .makeRule("Test rule 1")
       .withAction { case (f1, f2, v, c5) =>
@@ -77,18 +99,47 @@ object BuilderTest extends ZIOSpecDefault {
   ) @@ TestAspect.timed
 
   private val predicates = suite("Predicates should have same signature")({
-    case class Asserts(seq: Seq[(String, TestResult)]) {
-      def addStep(s: (String, TestResult)): Asserts       = copy(seq = seq :+ s)
-      def addSteps(s: Seq[(String, TestResult)]): Asserts = copy(seq = seq ++ s)
+    case class Asserts(
+      seq: Seq[
+        (
+          String,
+          TestResult
+        )
+      ]
+    ) {
+      def addStep(
+        s: (
+          String,
+          TestResult
+        )
+      ): Asserts = copy(seq = seq :+ s)
+      def addSteps(
+        s: Seq[
+          (
+            String,
+            TestResult
+          )
+        ]
+      ): Asserts = copy(seq = seq ++ s)
     }
 
-    def method(f: Fact[Fruit]): Predicate                    = f.test(_.name != "apple")
-    def paramMethod(name: String)(f: Fact[Fruit]): Predicate = f.test(_.name != name)
-    val notApleF: Fact[Fruit] => Predicate                   = method(_)
+    def method(
+      f: Fact[Fruit]
+    ): Predicate = f.test(_.name != "apple")
+    def paramMethod(
+      name: String
+    )(
+      f: Fact[Fruit]
+    ): Predicate = f.test(_.name != name)
+    val notApleF: Fact[Fruit] => Predicate = method(_)
 
     val testSeq = SimpleEnvironment { env ?=>
       type Step[T] = State[Asserts, T]
-      def predicate(name: String)(cond: Condition[Fruit]): Step[Option[String]] = State { asserts =>
+      def predicate(
+        name: String
+      )(
+        cond: Condition[Fruit]
+      ): Step[Option[String]] = State { asserts =>
         val set: Set[Predicate] = Builder.selectPredicatesAndSources(cond).predicates.values.toSet.flatten
 
         asserts.addStep {

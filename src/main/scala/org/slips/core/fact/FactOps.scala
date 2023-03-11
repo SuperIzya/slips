@@ -18,12 +18,22 @@ sealed trait FactOps[T] {
   def size: Int
 
   def empty: T
-  def toVal(f: Fact[T]): Fact.Val[T]
+  def toVal(
+    f: Fact[T]
+  ): Fact.Val[T]
 
-  def extract(r: Fact.Val[T]): FactOps.TupleSignature
-  def predecessors(f: Fact.Val[T]): Set[Fact[_]]
-  def sources(f: Fact.Val[T]): Set[Condition.Source[_]]
-  def sourceFacts(f: Fact.Val[T]): Set[Fact.Source[_]]
+  def extract(
+    r: Fact.Val[T]
+  ): FactOps.TupleSignature
+  def predecessors(
+    f: Fact.Val[T]
+  ): Set[Fact[_]]
+  def sources(
+    f: Fact.Val[T]
+  ): Set[Condition.Source[_]]
+  def sourceFacts(
+    f: Fact.Val[T]
+  ): Set[Fact.Source[_]]
 
   def allCondition: Condition[T]
 
@@ -35,7 +45,11 @@ object FactOps {
 
   given typeFromTuple[T <: NonEmptyTuple](using T: TupleOps[T]): FactOps[T] = T
 
-  private def getElement[T <: NonEmptyTuple, Q](index: Int)(v: T): Q = v.productElement(index).asInstanceOf[Q]
+  private def getElement[T <: NonEmptyTuple, Q](
+    index: Int
+  )(
+    v: T
+  ): Q = v.productElement(index).asInstanceOf[Q]
 
   sealed trait TupleOps[T <: NonEmptyTuple]
       extends FactOps[T] {
@@ -44,9 +58,13 @@ object FactOps {
 
     override val size: Int = index
 
-    def chainT[Q <: NonEmptyTuple](f: TupleFactF): Fact.TMap[T]
+    def chainT[Q <: NonEmptyTuple](
+      f: TupleFactF
+    ): Fact.TMap[T]
 
-    override def toVal(f: Fact[T]): Fact.Val[T] = chainT {
+    override def toVal(
+      f: Fact[T]
+    ): Fact.Val[T] = chainT {
       [x] =>
         (index: Int) =>
           (to: FactOps[x]) ?=>
@@ -65,19 +83,29 @@ object FactOps {
 
       override def empty: H *: EmptyTuple = H.empty *: EmptyTuple
 
-      override def sourceFacts(f: Fact.Val[H *: EmptyTuple]): Set[Fact.Source[_]] = f.head.sourceFacts
+      override def sourceFacts(
+        f: Fact.Val[H *: EmptyTuple]
+      ): Set[Fact.Source[_]] = f.head.sourceFacts
 
-      override def chainT[Q <: NonEmptyTuple](f: TupleFactF): Fact.TMap[H *: EmptyTuple] = {
+      override def chainT[Q <: NonEmptyTuple](
+        f: TupleFactF
+      ): Fact.TMap[H *: EmptyTuple] = {
         f[H](0) *: EmptyTuple
       }
 
-      override def extract(r: Fact.Val[H *: EmptyTuple]): TupleSignature = List(r.head.signature)
+      override def extract(
+        r: Fact.Val[H *: EmptyTuple]
+      ): TupleSignature = List(r.head.signature)
 
-      def predecessors(f: Fact.Val[H *: EmptyTuple]): Set[Fact[_]]        = {
+      def predecessors(
+        f: Fact.Val[H *: EmptyTuple]
+      ): Set[Fact[_]] = {
         val head *: EmptyTuple = f
         head.predecessors
       }
-      def sources(f: Fact.Val[H *: EmptyTuple]): Set[Condition.Source[_]] = {
+      def sources(
+        f: Fact.Val[H *: EmptyTuple]
+      ): Set[Condition.Source[_]] = {
         val head *: EmptyTuple = f
         head.sources
       }
@@ -99,26 +127,36 @@ object FactOps {
 
       override def empty: H *: T = H.empty *: T.empty
 
-      override def sourceFacts(f: Fact.Val[H *: T]): Set[Fact.Source[_]] = {
+      override def sourceFacts(
+        f: Fact.Val[H *: T]
+      ): Set[Fact.Source[_]] = {
         val head *: tail = f
         H.sourceFacts(head.toVal) ++ T.sourceFacts(tail)
       }
 
-      override def chainT[Q <: NonEmptyTuple](f: TupleFactF): Fact.TMap[H *: T] = {
+      override def chainT[Q <: NonEmptyTuple](
+        f: TupleFactF
+      ): Fact.TMap[H *: T] = {
         val prev: Fact.TMap[T] = T.chainT[Q](f)
         f[H](index) *: prev
       }
 
-      override def extract(r: Fact.Val[H *: T]): TupleSignature = {
+      override def extract(
+        r: Fact.Val[H *: T]
+      ): TupleSignature = {
         val head *: tail = r
         head.signature +: T.extract(tail)
       }
 
-      override def predecessors(f: Fact.Val[H *: T]): Set[Fact[_]]        = {
+      override def predecessors(
+        f: Fact.Val[H *: T]
+      ): Set[Fact[_]] = {
         val head *: tail = f
         head.predecessors ++ T.predecessors(tail)
       }
-      override def sources(f: Fact.Val[H *: T]): Set[Condition.Source[_]] = {
+      override def sources(
+        f: Fact.Val[H *: T]
+      ): Set[Condition.Source[_]] = {
         val head *: tail = f
         head.sources ++ T.sources(tail)
       }
@@ -140,12 +178,22 @@ object FactOps {
 
     override def empty: T = T.empty
 
-    override def sourceFacts(f: Fact.Val[T]): Set[Fact.Source[_]] = ev(f).sourceFacts
+    override def sourceFacts(
+      f: Fact.Val[T]
+    ): Set[Fact.Source[_]] = ev(f).sourceFacts
 
-    override def toVal(f: Fact[T]): Fact.Val[T]           = ev.flip(f)
-    override def extract(r: Fact.Val[T]): TupleSignature  = List(ev(r).signature)
-    def predecessors(f: Fact.Val[T]): Set[Fact[_]]        = ev(f).predecessors
-    def sources(f: Fact.Val[T]): Set[Condition.Source[_]] = ev(f).sources
+    override def toVal(
+      f: Fact[T]
+    ): Fact.Val[T] = ev.flip(f)
+    override def extract(
+      r: Fact.Val[T]
+    ): TupleSignature = List(ev(r).signature)
+    def predecessors(
+      f: Fact.Val[T]
+    ): Set[Fact[_]] = ev(f).predecessors
+    def sources(
+      f: Fact.Val[T]
+    ): Set[Condition.Source[_]] = ev(f).sources
 
     override def allCondition: Condition[T] = Condition.all[T]
 
