@@ -9,9 +9,8 @@ import org.slips.core.rule.Rule.RuleM
 private[slips] case class ParseResult(
   rule: RuleM,
   sources: Set[Condition.Source[_]],
-  alphaPredicates: PredicateSources,
-  betaPredicates: PredicateSources,
-  gammaPredicates: PredicateSources,
+  alphaPredicates: AlphaPredicates,
+  betaPredicates: BetaPredicates,
   predicatesAndSources: SelectedPredicatesAndSources
 ) {
   def predicateRules: PredicateRules = predicatesAndSources
@@ -33,39 +32,30 @@ private[slips] object ParseResult {
     pc.toParseResult(rule, sp)
   }
 
-  case class ParseCollector(
-    alpha: PredicateSources,
-    beta: PredicateSources,
-    gamma: PredicateSources
-  )
-  private val empty: ParseCollector = ParseCollector(Map.empty, Map.empty, Map.empty)
+  private case class ParseCollector(alpha: AlphaPredicates, beta: BetaPredicates)
+  private val empty: ParseCollector = ParseCollector(Map.empty, Map.empty)
 
-  object ParseCollector {
+  private object ParseCollector {
 
-    extension (
-      m: PredicateSources)
-      def getM(p: Predicate): Set[Fact.Source[_]] = m.getOrElse(p, Set.empty) ++ p.sourceFacts
+    extension (m: AlphaPredicates) {
+      def getM(p: Predicate.AlphaTest[_]): Set[Fact.Source] = m.getOrElse(p, Set.empty) ++ p.sourceFacts
+    }
 
-    extension (
-      collector: ParseCollector
-    ) {
-      def addPredicate(
-        p: Predicate
-      ): ParseCollector = {
-        if (p.sourceFacts.size == 1)
-          collector.copy(alpha = collector.alpha + (p -> collector.alpha.getM(p)))
-        else if (p.sourceFacts.size == 2)
+    extension (m: BetaPredicates) {
+      def getM(p: Predicate): Set[Fact.Source] = m.getOrElse(p, Set.empty) ++ p.sourceFacts
+    }
+    extension (collector: ParseCollector) {
+      def addPredicate(p: Predicate): ParseCollector = p match {
+        case pa: Predicate.AlphaTest[_] =>
+          collector.copy(alpha = collector.alpha + (pa -> collector.alpha.getM(pa)))
+        case _                          =>
           collector.copy(beta = collector.beta + (p -> collector.beta.getM(p)))
-        else collector.copy(gamma = collector.gamma + (p -> collector.gamma.getM(p)))
       }
-      def toParseResult(
-        ruleM: RuleM,
-        ps: SelectedPredicatesAndSources
-      ): ParseResult = ParseResult(
+
+      def toParseResult(ruleM: RuleM, ps: SelectedPredicatesAndSources): ParseResult = ParseResult(
         rule = ruleM,
         alphaPredicates = collector.alpha,
         betaPredicates = collector.beta,
-        gammaPredicates = collector.gamma,
         sources = ps.sources,
         predicatesAndSources = ps
       )

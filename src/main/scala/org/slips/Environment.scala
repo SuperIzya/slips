@@ -5,7 +5,6 @@ import cats.data.StateT
 import cats.syntax.functor.*
 import org.slips.core.*
 import org.slips.core.build.*
-import org.slips.core.build.strategy.AlphaNodeStrategy
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
@@ -55,7 +54,6 @@ trait Environment {
 
   val bufferFactory: BufferFactory
   val predicateSelectionStrategy: PredicateSelection
-  val alphaNodeStrategy: AlphaNodeStrategy
 
   trait ContextBuilder
 

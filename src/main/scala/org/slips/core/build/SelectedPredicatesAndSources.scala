@@ -8,7 +8,7 @@ import org.slips.core.predicates.Predicate
 case class SelectedPredicatesAndSources(
   predicates: SourcePredicates,
   sources: Set[Condition.Source[_]],
-  facts: Set[Fact.Source[_]],
+  facts: Set[Fact.Source],
   discarded: Set[Predicate]
 ) {
 
@@ -16,9 +16,7 @@ case class SelectedPredicatesAndSources(
 
   def addPredicate(
     p: Predicate
-  ): SourcePredicates = {
-    addToMap(predicates, p)
-  }
+  ): SourcePredicates = addToMap(predicates, p)
 
   def withPredicate(
     p: Predicate

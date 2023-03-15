@@ -13,8 +13,7 @@ object Macros {
   def createSignedImp[R: Type](
     res: Expr[String => R],
     toSign: Expr[Any]
-  )(using quotes: Quotes
-  ): Expr[R] = {
+  )(using quotes: Quotes): Expr[R] = {
     import quotes.*
     import reflect.*
 
@@ -62,8 +61,8 @@ object Macros {
     val signature: Expr[String] = {
       val signs: String = toSign
         .asTerm
-        .show(
-          using Printer.TreeCode
+        .show(using
+          Printer.TreeCode
         )
       val sign          = cleanupSignature(s"${ Type.show[R] }{$signs}")
       Expr(sign)

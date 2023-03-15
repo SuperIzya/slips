@@ -5,44 +5,32 @@ import org.slips.NotTuple
 import org.slips.core.*
 import org.slips.core.build.*
 import org.slips.core.build.BuildStep
-import org.slips.core.fact.Fact
-import org.slips.core.fact.FactOps
+import org.slips.core.fact.*
 import org.slips.core.network.AlphaNode
 import org.slips.core.network.Node
 import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
 
 sealed trait Condition[T] extends Signed {
+  protected implicit val T: FactOps[T]
   override val signature: String = ""
-  private[slips] val parse: ParseStep[T]
+  private[slips] def parse: ParseStep[T]
 
-  def flatMap[Q](
-    f: Fact.Val[T] => Condition[Q]
-  ): Condition[Q] =
+  def flatMap[Q](f: Fact.Val[T] => Condition[Q]): Condition[Q] =
     Condition.FlatMap[T, Q](this, f)
 
-  def map[R, Q](
-    f: Fact.Val[T] => R
-  )(using
-    ev: Fact.ReverseVal[R] =:= Q,
-    ev2: R =:= Fact.Val[Q]
-  ): Condition[Q] =
-    Condition.map[T, Q](this, f.andThen(ev2(_)))
+  def map[R, Q](f: Fact.Val[T] => R)(using ev: R =:= Fact.Val[Q]): Condition[Q] =
+    Condition.map[T, Q](this, f.andThen(ev(_)))
 
-  def withFilter(
-    f: Fact.Val[T] => Predicate
-  ): Condition[T] =
+  def withFilter(f: Fact.Val[T] => Predicate): Condition[T] =
     Condition.Filter(this, f)
 
   @targetName("withFilterSingle")
-  def withFilter(
-    f: Fact.Val[T] => Boolean
-  ): Condition[T] =
+  def withFilter(f: Fact[T] => Boolean)(using NotTuple[T], FactOps[T], Fact.Val[T] =:= Fact[T]): Condition[T] =
     Condition.ScalarFilter(this, f)
 }
 
 object Condition {
-  type Res[x] = Environment ?=> Condition[x]
 
   inline def all[T : FactOps : NotTuple]: All[T] = {
     All[T](s"All[${ Macros.signType[T] }]")
@@ -54,20 +42,24 @@ object Condition {
   ): Map[T, Q] =
     Map(src, f)
 
-  sealed trait Source[T : FactOps : NotTuple] extends Condition[T] {
-    private def fact: Fact.Source[T]                = Fact.Source(this)
-    override private[slips] val parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ => fact.toVal)
+  sealed trait Source[T] extends Condition[T] {
+    private def fact: Fact.Alpha.Source[T] = Fact.Alpha.Source(this)
 
-    private[slips] def build: BuildStep[Node] = BuildStep.addNode(AlphaNode.Source(this))
+    def extractNode(sourceMap: scala.collection.immutable.Map[String, AlphaNode.Source[_]]): AlphaNode.Source[T] = {
+      sourceMap(signature).asInstanceOf[AlphaNode.Source[T]]
+    }
+
+    override private[slips] def parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ => fact.toVal)
+
+    private[slips] def build: BuildStep[AlphaNode.Source[T]] =
+      BuildStep.addSourceNode(this, AlphaNode.Source(this))
   }
 
-  final case class All[T : FactOps : NotTuple] private[Condition] (
+  final case class All[T] private[Condition] (
     override val signature: String
-  ) extends Source[T]
+  )(using override val T: FactOps[T]) extends Source[T]
 
-  final case class OpaquePredicate private[slips] (
-    p: Predicate
-  ) extends Condition[Unit] {
+  final case class OpaquePredicate private[slips] (p: Predicate) extends Condition[Unit] {
     override val signature: String = p.signature
 
     override private[slips] val parse: ParseStep[Unit] = Predicate.add(p.toKNF)
@@ -91,14 +83,14 @@ object Condition {
       left.parse.flatMap(f(_).parse)
   }
 
-  private[slips] final case class ScalarFilter[T](
+  private[slips] final case class ScalarFilter[T: NotTuple](
     src: Condition[T],
-    f: Fact.Val[T] => Boolean
-  ) extends Condition[T] {
+    f: Fact[T] => Boolean
+  )(using T: FactOps[T], ev: Fact.Val[T] =:= Fact[T]) extends Condition[T] {
     override private[slips] val parse: ParseStep[T] = src
       .parse
       .map {
-        case x if f(x) => x
+        case x if f(ev(x)) => x
       }
   }
 

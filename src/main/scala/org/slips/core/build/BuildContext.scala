@@ -1,9 +1,12 @@
 package org.slips.core.build
 
 import cats.data.State
+import cats.implicits.*
+import cats.implicits.given
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.network.AlphaNetwork
+import org.slips.core.network.AlphaNode
 import org.slips.core.network.Node
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
@@ -12,11 +15,11 @@ import scala.annotation.tailrec
 case class BuildContext private[build] (
   nodes: Map[String, Node] = Map.empty,
   sources: Set[Condition.Source[_]] = Set.empty,
+  sourceNodes: Map[String, AlphaNode.Source[_]] = Map.empty,
   predicateRules: PredicateRules = Map.empty,
-  alphaPredicates: PredicateSources = Map.empty,
-  betaPredicates: PredicateSources = Map.empty,
-  gammaPredicates: PredicateSources = Map.empty,
-  network: AlphaNetwork = AlphaNetwork(),
+  alphaPredicates: AlphaPredicates = Map.empty,
+  betaPredicates: BetaPredicates = Map.empty,
+  network: AlphaNetwork = AlphaNetwork.Empty,
   rules: Set[RuleM] = Set.empty
 )
 
@@ -24,58 +27,35 @@ object BuildContext {
 
   val empty: BuildContext = BuildContext()
 
-  private def combine[T](
-    a: PredicateMap[T],
-    b: PredicateMap
-  [T]): PredicateMap[T] = {
-    @tailrec
-    def doCombine(
-      x: PredicateMap[T],
-      y: PredicateMap[T],
-      res: PredicateMap
-    [T]): PredicateMap[T] = {
-      if (x.isEmpty) res ++ y
-      else if (y.isEmpty) res ++ x
-      else {
-        val (headP, headF) = x.head
-        doCombine(x - headP, y - headP, res + (headP -> (headF ++ y.getOrElse(headP, Set.empty))))
-      }
-    }
-    doCombine(a, b, Map.empty)
-  }
-
-  extension (
-    ctx: BuildContext
-  ) {
-    def addNode(
-      node: Node
-    ): (
-      BuildContext,
-      Node
-    ) =
+  extension (ctx: BuildContext) {
+    def addNode(node: Node): (BuildContext, Node) =
       ctx.copy(nodes = ctx.nodes + (node.signature -> node)) -> node
 
-    def addSource[T](
-      source: Condition.Source[T]
-    ): BuildContext = {
+    def addSource[T](source: Condition.Source[T]): BuildContext = {
       if (ctx.sources.contains(source)) ctx
       else ctx.copy(sources = ctx.sources + source)
     }
 
-    def addParsingResult(
-      parseResult: ParseResult
-    ): BuildContext =
+    def addSourceNode[T](
+      src: Condition.Source[T],
+      node: => AlphaNode.Source[T]): (BuildContext, AlphaNode.Source[T]) = {
+      val nextNode = ctx.sourceNodes.getOrElse(src.signature, node)
       ctx.copy(
-        alphaPredicates = combine(ctx.alphaPredicates, parseResult.alphaPredicates),
-        betaPredicates = combine(ctx.betaPredicates, parseResult.betaPredicates),
-        gammaPredicates = combine(ctx.gammaPredicates, parseResult.gammaPredicates),
+        sources = ctx.sources + src,
+        sourceNodes = ctx.sourceNodes + (src.signature -> nextNode)
+      ) -> nextNode.asInstanceOf[AlphaNode.Source[T]]
+    }
+
+    def addParsingResult(parseResult: ParseResult): BuildContext =
+      ctx.copy(
+        alphaPredicates = ctx.alphaPredicates |+| parseResult.alphaPredicates,
+        betaPredicates = ctx.betaPredicates |+| parseResult.betaPredicates,
         sources = ctx.sources ++ parseResult.sources,
         rules = ctx.rules + parseResult.rule,
-        predicateRules = combine(ctx.predicateRules, parseResult.predicateRules)
+        predicateRules = ctx.predicateRules |+| parseResult.predicateRules
       )
 
-    def addAlphaNetwork(
-      n: AlphaNetwork
-    ): BuildContext = ctx.copy(network = n)
+    def addAlphaNetwork(n: AlphaNetwork): BuildStep[Unit] = BuildStep
+      .update(ctx => ctx.copy(network = ctx.network.add(n)))
   }
 }

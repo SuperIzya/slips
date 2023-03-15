@@ -15,26 +15,25 @@ import org.slips.core.network.AlphaNetwork
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
 import scala.annotation.tailrec
+import scala.collection.SeqView.Sorted
+import scala.collection.immutable.SortedSet
 
 object Builder {
   import BuildStep.*
 
   val materializeAlphaNetwork: BuildStep[Unit] = BuildStep { ctx => ctx -> () }
 
-  val buildAlphaNetwork: Env[BuildStep[AlphaNetwork]] = env ?=> env.alphaNodeStrategy.buildStep
+  val buildAlphaNetwork: BuildStep[AlphaNetwork] = for {
+    ctx     <- BuildStep.get
+    network <- AlphaNetwork(ctx.alphaPredicates)
+    _       <- ctx.addAlphaNetwork(network)
+  } yield network
 
-  def parse(
-    using env: Environment
-  )(
-    rules: RuleM*
-  ): BuildStep[List[ParseResult]] = {
+  def parse(using env: Environment)(rules: RuleM*): BuildStep[List[ParseResult]] = {
     rules.toList.traverse { r => BuildStep.addParsingResult(ParseResult.fromRule(r)) }
   }
 
-  def selectPredicatesAndSources[T](
-    condition: Condition[T]
-  )(using T: FactOps[T]
-  ): Env[SelectedPredicatesAndSources] = {
+  def selectPredicatesAndSources[T](condition: Condition[T])(using T: FactOps[T]): Env[SelectedPredicatesAndSources] = {
     val (Parser.Context(predicates, _), result) = Parser(condition)
 
     PredicateSelection.select(

@@ -213,7 +213,6 @@ object BuilderTest extends ZIOSpecDefault {
   private val alphaNodeStrategy = suite("Alpha network should be build with respect to Environment.alphaNodeStrategy")(
     test("AlphaNodeStrategy.MaximumUtil - needs to be optimized") {
       object SEMaxUtil extends SimpleEnvironment {
-        override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MaximizeChains
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
       val res: AlphaNetwork = SEMaxUtil {
@@ -227,22 +226,21 @@ object BuilderTest extends ZIOSpecDefault {
       assertTrue(res.sources.nonEmpty) &&
       assertTrue(res.topNodes.nonEmpty)
     } @@ TestAspect.ignore,
-    suite("AlphaNodeStrategy.MinimumBuffers") ({
+    suite("AlphaNodeStrategy.MinimumBuffers")({
       object SEMinBuffs extends SimpleEnvironment {
-        override val alphaNodeStrategy: AlphaNodeStrategy           = AlphaNodeStrategy.MinimumBuffers
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
       val simpleTest = test("Small case") {
         val res: AlphaNetwork = SEMinBuffs {
           val steps: BuildStep[AlphaNetwork] = for {
-            _ <- Builder.parse(rule1)
+            _       <- Builder.parse(rule1)
             network <- Builder.buildAlphaNetwork
           } yield network
 
           steps.runA(BuildContext.empty).value
         }
         assertTrue(res.sources.nonEmpty) &&
-          assertTrue(res.topNodes.nonEmpty)
+        assertTrue(res.topNodes.nonEmpty)
       }
 
       Seq(simpleTest)
