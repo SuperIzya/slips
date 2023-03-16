@@ -14,7 +14,7 @@ private[slips] case class ParseResult(
   predicatesAndSources: SelectedPredicatesAndSources
 ) {
   def predicateRules: PredicateRules = predicatesAndSources
-    .predicates
+    .alphaFacts
     .values
     .foldLeft(Set.empty[Predicate])(_ ++ _)
     .map(_ -> Set(rule))
@@ -28,7 +28,7 @@ private[slips] object ParseResult {
   ): Env[ParseResult] = {
     val sp = rule.sourcesAndPredicates
 
-    val pc = sp.predicates.values.flatten.foldLeft(ParseResult.empty)(_ addPredicate _)
+    val pc = sp.alphaFacts.values.flatten.foldLeft(ParseResult.empty)(_ addPredicate _)
     pc.toParseResult(rule, sp)
   }
 
@@ -42,7 +42,7 @@ private[slips] object ParseResult {
     }
 
     extension (m: BetaPredicates) {
-      def getM(p: Predicate): Set[Fact.Source] = m.getOrElse(p, Set.empty) ++ p.sourceFacts
+      def getM(p: Predicate): Set[Fact[_]] = m.getOrElse(p, Set.empty) ++ p.sourceFacts
     }
     extension (collector: ParseCollector) {
       def addPredicate(p: Predicate): ParseCollector = p match {

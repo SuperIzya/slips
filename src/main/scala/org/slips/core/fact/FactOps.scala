@@ -57,7 +57,7 @@ object FactOps {
       override def sourceFacts(f: Fact.Val[H *: EmptyTuple]): Set[Fact.Source] = {
         val (head: Fact[H]) *: EmptyTuple = f
 
-        head.sourceFacts
+        head.alphaSources
       }
 
       override def chainT(f: TupleFactF): Fact.TMap[H *: EmptyTuple] = {
@@ -126,7 +126,7 @@ object FactOps {
 
     override def empty: T = T.empty
 
-    override def sourceFacts(f: Fact.Val[T]): Set[Fact.Source] = ev(f).sourceFacts
+    override def sourceFacts(f: Fact.Val[T]): Set[Fact.Source] = ev(f).alphaSources
 
     override def toVal(f: Fact[T]): Fact.Val[T] = ev.flip(f)
 

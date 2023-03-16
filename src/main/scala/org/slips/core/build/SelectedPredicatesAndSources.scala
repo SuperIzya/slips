@@ -6,55 +6,43 @@ import org.slips.core.fact.FactOps
 import org.slips.core.predicates.Predicate
 
 case class SelectedPredicatesAndSources(
-  predicates: SourcePredicates,
-  sources: Set[Condition.Source[_]],
-  facts: Set[Fact.Source],
-  discarded: Set[Predicate]
+  alphaFacts: AlphaFacts = Map.empty,
+  betaFacts: BetaFacts = Map.empty,
+  sources: Set[Condition.Source[_]] = Set.empty,
+  alphaSources: Set[Fact.Source] = Set.empty,
+  facts: Set[Fact[_]] = Set.empty,
+  discarded: Set[Predicate] = Set.empty
 ) {
 
   import SelectedPredicatesAndSources._
 
-  def addPredicate(
-    p: Predicate
-  ): SourcePredicates = addToMap(predicates, p)
+  def withPredicate(p: Predicate): SelectedPredicatesAndSources = p match {
+    case pa: Predicate.Alpha =>
+      copy(
+        alphaFacts = addToMap(pa, alphaFacts),
+        facts = facts ++ p.sourceFacts
+      )
+    case pb: Predicate.Beta  =>
+      copy(
+        betaFacts = addToMap(pb, betaFacts),
+        facts = facts ++ p.sourceFacts
+      )
+  }
 
-  def withPredicate(
-    p: Predicate
-  ): SelectedPredicatesAndSources = copy(
-    predicates = addPredicate(p),
-    facts = facts ++ p.sourceFacts
-  )
-
-  def withDiscard(
-    p: Predicate
-  ): SelectedPredicatesAndSources = copy(discarded = discarded + p)
+  def withDiscard(p: Predicate): SelectedPredicatesAndSources = copy(discarded = discarded + p)
 }
 
 object SelectedPredicatesAndSources {
-  lazy val empty: SelectedPredicatesAndSources =
-    SelectedPredicatesAndSources(
-      predicates = Map.empty,
-      sources = Set.empty,
-      facts = Set.empty,
-      discarded = Set.empty
-    )
+  lazy val empty: SelectedPredicatesAndSources = SelectedPredicatesAndSources()
 
-  private inline def addToMap(
-    map: SourcePredicates,
-    p: Predicate
-  ): SourcePredicates = {
+  private inline def addToMap[T <: Predicate, K](p: T, map: Map[K, T]): Map[K, T] = {
     map ++ p.facts.flatMap(f => f.sourceFacts).map { f => f -> (map.getOrElse(f, Set.empty) + p) }
   }
 
-  def apply[T](
-    start: Fact.Val[T]
-  )(using T: FactOps[T]
-  ): SelectedPredicatesAndSources = {
+  def apply[T](start: Fact.Val[T])(using T: FactOps[T]): SelectedPredicatesAndSources = {
     new SelectedPredicatesAndSources(
-      predicates = Map.empty,
       sources = T.sources(start),
-      facts = T.sourceFacts(start),
-      discarded = Set.empty
+      facts = T.sourceFacts(start)
     )
   }
 }

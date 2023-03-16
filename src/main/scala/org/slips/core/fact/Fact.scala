@@ -45,7 +45,8 @@ sealed trait Fact[T] extends Signed {
   // Predicate.BetaTest(this, other, _ == _)
 
   def predecessors: Predecessors
-  lazy val sourceFacts: Set[Fact.Source] = predecessors.collect { case x: Fact.Source => x }
+  lazy val alphaSources: Set[Fact.Source] = predecessors.collect { case x: Fact.Source => x }
+  lazy val betaSources: Set[Fact[_]]      = predecessors.filter { case x: Fact.Source => false }
 
   def sources: Set[Condition.Source[_]]
 
@@ -53,7 +54,7 @@ sealed trait Fact[T] extends Signed {
 
 object Fact {
 
-  type Predecessors = Set[Fact[_]]
+  type Predecessors = List[Fact[_]]
   type Source       = Fact.Alpha.Source[_]
   object Predecessors {
     val empty = Set.empty[Fact[_]]
@@ -73,20 +74,14 @@ object Fact {
 
   val unit: Fact[Unit] = literal(())
 
-  sealed trait Alpha[T] extends Fact[T] {
-    override inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = Predicate
-      .AlphaTest
-      .fromScalar(this, f)
-  }
-  sealed trait Beta[T]  extends Fact[T] {
-    override inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = ??? // = Predicate.BetaTest.fromScalar(this, f)
-  }
-
   def literal[T : CanBeLiteral : FactOps](v: T): Fact[T] = Literal(v)
 
   sealed trait CanBeLiteral[T]
 
-  object Beta  {
+  sealed trait Beta[T] extends Fact[T] {
+    override inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = ??? // = Predicate.BetaTest.fromScalar(this, f)
+  }
+  object Beta {
     final case class Tuples[T <: NonEmptyTuple] private[slips] (
       override val signature: String,
       facts: Val[T]
@@ -105,6 +100,20 @@ object Fact {
 
     }
   }
+
+  sealed trait Alpha[T] extends Fact[T] {
+
+    val source: Condition.Source[_]
+    val sourceFact: Fact.Source
+    override val betaSources: Set[Fact[_]]      = Set.empty
+    override lazy val alphaSources: Set[Source] = Set(sourceFact)
+
+    override def sources: Set[Condition.Source[_]] = alphaSources
+
+    override inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = Predicate
+      .AlphaTest
+      .fromScalar(this, f)
+  }
   object Alpha {
 
     final case class Map[T, Q](
@@ -112,9 +121,10 @@ object Fact {
       pred: Fact.Alpha[T],
       map: T => Q
     ) extends Alpha[Q] {
-      override def predecessors: Predecessors = pred.predecessors + pred
+      override val sourceFact: Fact.Source     = pred.sourceFact
+      override val source: Condition.Source[_] = sourceFact.source
+      override def predecessors: Predecessors  = pred +: pred.predecessors
 
-      override def sources: Set[Condition.Source[_]] = pred.sources
     }
 
     final class Source[T: NotTuple] private (
@@ -122,11 +132,8 @@ object Fact {
       val source: Condition.Source[T]
     )(using T: FactOps[T]) extends Alpha[T] {
 
-      override val sources: Set[Condition.Source[_]] = Set(source)
-      override val predecessors: Predecessors        = Set.empty
-      override lazy val sourceFacts: Set[Source[_]]  = Set(this)
-
-      import cats.syntax.traverse.*
+      override val predecessors: Predecessors = List.empty
+      override val sourceFact: Fact.Source    = this
 
       def buildAlphaNode: BuildStep[AlphaNode.Source[T]] = source.build
 

@@ -195,7 +195,7 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       assert(res.sources)(hasSize(equalTo(4))) &&
-      assert(res.predicates.values.flatten.toSet)(hasSize(equalTo(9)))
+      assert(res.alphaFacts.values.flatten.toSet)(hasSize(equalTo(9)))
     },
     test("PredicateSelection.Clean") {
       object SEClean extends SimpleEnvironment {
@@ -206,7 +206,7 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       assert(res.sources)(hasSize(equalTo(3))) &&
-      assert(res.predicates.values.flatten.toSet)(hasSize(equalTo(6)))
+      assert(res.alphaFacts.values.flatten.toSet)(hasSize(equalTo(6)))
     }
   )
 

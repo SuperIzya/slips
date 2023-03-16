@@ -19,7 +19,7 @@ sealed trait Predicate extends Signed {
   type SourceFact <: Fact[_]
   type Facts <: Set[_ <: Fact[_]]
 
-  lazy val sourceFacts: Set[SourceFact] = facts.flatMap(_.sourceFacts)
+  lazy val sourceFacts: Set[SourceFact] = facts.flatMap(_.alphaSources)
   override val signature: String        = this.getClass.getSimpleName
 
   def buildAlphaNode: Option[AlphaNode => AlphaNode] = None

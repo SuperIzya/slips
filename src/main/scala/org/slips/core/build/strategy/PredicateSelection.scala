@@ -14,7 +14,7 @@ import scala.collection.immutable.Queue
 trait PredicateSelection {
   def selectPredicatesAndSources[T: FactOps](
     initial: Fact.Val[T],
-    predicates: SourcePredicates
+    predicates: AlphaFacts
   ): SelectedPredicatesAndSources
 }
 
@@ -22,7 +22,7 @@ object PredicateSelection {
 
   def select[T: FactOps](
     initial: Fact.Val[T],
-    predicates: SourcePredicates
+    predicates: AlphaFacts
   ): Env[SelectedPredicatesAndSources] =
     env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, predicates)
 
@@ -47,7 +47,7 @@ object PredicateSelection {
               next,
               collected.copy(
                 sources = collected.sources ++ head.sources,
-                predicates = collected.addPredicate(head)
+                alphaFacts = collected.addPredicate(head)
               )
             )
         }
@@ -56,7 +56,7 @@ object PredicateSelection {
 
     override def selectPredicatesAndSources[T: FactOps](
       initial: Fact.Val[T],
-      predicates: SourcePredicates
+      predicates: AlphaFacts
     ): SelectedPredicatesAndSources = {
 
       collectPredicates(
@@ -111,12 +111,12 @@ object PredicateSelection {
       queue: Queue[Predicate] = Queue.empty
     ): SelectedPredicatesAndSources = {
       p match {
-        case Predicate.AlphaTest(_, _, rep) if col.facts.intersect(rep.sourceFacts).nonEmpty   =>
+        case Predicate.AlphaTest(_, _, rep) if col.facts.intersect(rep.alphaSources).nonEmpty   =>
           queue.deq(
             col.copy(
               sources = col.sources ++ rep.sources,
-              predicates = col.addPredicate(p),
-              facts = col.facts ++ rep.sourceFacts
+              alphaFacts = col.addPredicate(p),
+              facts = col.facts ++ rep.alphaSources
             )
           )
         case Predicate.AlphaTest(_, _, _)                                                      =>
@@ -154,7 +154,7 @@ object PredicateSelection {
     }
     override def selectPredicatesAndSources[T](
       initial: Fact.Val[T],
-      predicates: SourcePredicates
+      predicates: AlphaFacts
     )(using T: FactOps[T]
     ): SelectedPredicatesAndSources = {
 
