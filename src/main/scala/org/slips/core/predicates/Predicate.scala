@@ -16,17 +16,8 @@ import scala.annotation.targetName
 import scala.util.NotGiven
 
 sealed trait Predicate extends Signed {
-  type SourceFact <: Fact[_]
-  type Facts <: Set[_ <: Fact[_]]
-
-  lazy val sourceFacts: Set[SourceFact] = facts.flatMap(_.alphaSources)
-  override val signature: String        = this.getClass.getSimpleName
-
-  def buildAlphaNode: Option[AlphaNode => AlphaNode] = None
-
-  def facts: Facts
-
-  def sources: Set[Condition.Source[_]] = facts.flatMap(_.sources)
+  override val signature: String = this.getClass.getSimpleName
+  def facts: Set[Fact[_]]
 
   def and(other: Predicate): Predicate = Predicate.And(this, other)
 
@@ -41,76 +32,79 @@ sealed trait Predicate extends Signed {
   @targetName("not_op")
   def unary_! : Predicate = Predicate.Not(this)
 
-  def toKNF: Predicate = {
+  def toDNF: Predicate = {
     import Predicate.*
     this match {
       case AlphaTest(_, _, _) => this
-      case And(left, right)   => left.toKNF && right.toKNF
+      case And(left, right)   =>
+        (left.toDNF, right.toDNF) match {
+          case (Or(l1, r1), Or(l2, r2)) => ((l1 && l2) || (l1 && r2) || (r1 && l2) || (r1 && r2)).toDNF
+          case (Or(l, r), right)        => ((l && right) || (r && right)).toDNF
+          case (left, Or(l, r))         => ((left && l) || (left && r)).toDNF
+          case (l, r)                   => l && r
+        }
       case Not(p)             =>
-        p.toKNF match {
-          case And(left, right)   => (Not(left) || Not(right)).toKNF
-          case Or(left, right)    => (Not(left) && Not(right)).toKNF
+        p.toDNF match {
+          case And(left, right)   => (Not(left) || Not(right)).toDNF
+          case Or(left, right)    => (Not(left) && Not(right)).toDNF
           case AlphaTest(_, _, _) => this
-          case Not(p1)            => p1.toKNF
+          case Not(p1)            => p1.toDNF
         }
-      case Or(left, right)    =>
-        (left.toKNF, right.toKNF) match {
-          case (And(l, r), p) => (l.toKNF || p.toKNF).toKNF && (r.toKNF || p.toKNF).toKNF
-          case (Or(l, r), p)  => (l.toKNF || r.toKNF || p.toKNF).toKNF
-          case (p, And(l, r)) => (p.toKNF || l.toKNF).toKNF && (p.toKNF || r.toKNF).toKNF
-          case (p, Or(l, r))  => (p.toKNF || l.toKNF || r.toKNF).toKNF
-          case (l, r)         => l || r
-        }
+      case Or(left, right)    => left.toDNF || right.toDNF
     }
   }
 }
 
 object Predicate {
 
-  sealed trait Alpha extends Predicate {
-    override type SourceFact = Fact.Source
-    override type Facts      = Set[Fact[_]]
+  object IsAlpha {
+    def unapply(p: Predicate): Option[(Predicate, Fact.Source)] = Option.when {
+      val sources = p.facts.flatMap(_.alphaSources)
+      sources.size == 1 && p.facts.forall(_.isAlpha)
+    } {
+      p -> p.facts.head.alphaSources.head
+    }
   }
 
-  sealed trait Beta extends Predicate {
-    override type SourceFact = Fact[_]
-    override type Facts      = Set[Fact[_]]
+  object IsBeta {
+    def unapply(p: Predicate): Option[Predicate] = Option
+      .when(p.facts.exists(!_.isAlpha) || p.facts.flatMap(_.alphaSources).size > 1)(p)
   }
+
   def add(p: Predicate): ParseStep[Unit] = p match {
     case And(left, right) =>
       for {
         _ <- add(left)
         _ <- add(right)
       } yield Fact.unit
-    case _                => ParseStep.modify(_.addPredicate(p))
+
+    case _ => ParseStep.modify(_.addPredicate(p))
   }
 
-  final case class AlphaTest[T](
-    override val signature: String,
-    test: T => Boolean,
-    rep: Fact.Alpha[T]
-  ) extends Alpha {
-    override lazy val facts: Set[Fact[_]] = rep.predecessors
-
-    override def buildAlphaNode: Option[AlphaNode => AlphaNode] = Option.when(facts.size == 1) { prev =>
-      AlphaNode.Predicate(this, prev)
-    }
-
-  }
-
-  final case class BetaTest[T](
+  final case class Test[T: FactOps] private (
     override val signature: String,
     test: T => Boolean,
     rep: Fact.Val[T]
-  )(using T: FactOps[T]) extends Beta {
-    override lazy val facts: Set[Fact[_]] = rep.toFacts
+  ) extends Predicate {
+    override lazy val facts: Set[Fact[_]] = rep.facts
+  }
 
+  object Test {
+
+    inline def apply[T: FactOps](rep: Fact[T], inline test: T => Boolean)(
+      inline toSign: Any = test
+    ): Test[T] = {
+      Macros.createSigned[Test[T]](
+        s => Test(s"${ rep.signature } $s", test, rep),
+        toSign
+      )
+    }
   }
 
   final case class And(
     left: Predicate,
     right: Predicate
-  ) extends Beta {
+  ) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
     override val signature: String        = s"${ left.signature } && ${ right.signature }"
   }
@@ -118,60 +112,14 @@ object Predicate {
   final case class Or(
     left: Predicate,
     right: Predicate
-  ) extends Beta {
+  ) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
     override val signature: String        = s"${ left.signature } || ${ right.signature }"
   }
 
-  sealed trait Not { this: Predicate =>
-    val p: Predicate
-    override lazy val facts: p.Facts = p.facts
-    override val signature: String   = s"!${ p.signature }"
-  }
-  object Not       {
-
-    def unapply(p: Predicate): Option[Predicate] = {
-      p match {
-        case NotAlpha(a) => Some(a)
-        case NotBeta(b)  => Some(b)
-        case _           => None
-      }
-    }
-
-    private case class NotAlpha(p: Predicate.Alpha) extends Alpha with Not
-
-    private case class NotBeta(p: Predicate.Beta) extends Beta with Not
-
-    def apply(p: Predicate): Predicate = {
-      p match {
-        case alpha: Alpha =>
-          alpha match {
-            case NotAlpha(pp) => pp
-            case _            => NotAlpha(alpha)
-          }
-        case beta: Beta   =>
-          beta match {
-            case NotBeta(p) => p
-            case _          => NotBeta(beta)
-          }
-      }
-    }
-
-  }
-  object AlphaTest {
-
-    inline def fromScalar[T: FactOps](rep: Fact.Alpha[T], inline test: T => Boolean): AlphaTest[T] = {
-      createScalar(rep, test, test)
-    }
-
-    private inline def createScalar[T](
-      rep: Fact.Alpha[T],
-      test: T => Boolean,
-      inline sign: Any
-    ): AlphaTest[T] = Macros.createSigned[AlphaTest[T]](
-      s => AlphaTest(s"${ rep.signature } $s", test, rep),
-      sign
-    )
+  case class Not(p: Predicate) extends Predicate {
+    override lazy val facts: Set[Fact[_]] = p.facts
+    override val signature: String        = s"!${ p.signature }"
   }
 
   inline def apply[T1, T2](

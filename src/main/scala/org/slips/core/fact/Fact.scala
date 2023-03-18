@@ -28,36 +28,44 @@ sealed trait Fact[T] extends Signed {
 
   override def signature: String = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]"
 
-  inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate
+  private[slips] val isAlpha: Boolean
 
+  private inline def buildPredicate(other: Fact[T], inline test: (T, T) => Boolean)(using
+    TT: TupleOps[T *: T *: EmptyTuple]
+  ): Predicate = {
+    (isAlpha, other.isAlpha) match {
+      case (true, true) if other.alphaSources == alphaSources =>
+        Predicate.AlphaTest(
+          Fact.Alpha.Same(source = alphaSources.head, collected = TT.toVal(this -> other)),
+          test.tupled
+        )(test)
+      case _                                                  => Predicate.Test(this, other, _ != _)
+    }
+  }
   @targetName("repNotEq")
-  inline def =!=(other: Fact[T])(using
-    TupleOps[T *: T *: EmptyTuple],
-    Fact[T] =:= Fact.Val[T]
-  ): Predicate = ???
-  // Predicate.BetaTest(this, other, _ != _)
+  inline def =!=(other: Fact[T])(using TT: TupleOps[T *: T *: EmptyTuple], F: Fact[T] =:= Fact.Val[T]): Predicate =
+    buildPredicate(other, _ != _)
 
   @targetName("repEq")
-  inline def ===(other: Fact[T])(using
-    TupleOps[T *: T *: EmptyTuple],
-    Fact[T] =:= Fact.Val[T]
-  ): Predicate = ???
-  // Predicate.BetaTest(this, other, _ == _)
+  inline def ===(other: Fact[T])(using TupleOps[T *: T *: EmptyTuple], Fact[T] =:= Fact.Val[T]): Predicate =
+    buildPredicate(other, _ == _)
 
   def predecessors: Predecessors
-  lazy val alphaSources: Set[Fact.Source] = predecessors.collect { case x: Fact.Source => x }
-  lazy val betaSources: Set[Fact[_]]      = predecessors.filter { case x: Fact.Source => false }
+  lazy val (alphaSources: Set[Fact.Source], betaSources: Set[Fact[_]]) = predecessors
+    .foldLeft((Set.empty[Fact.Source], Set.empty[Fact[_]])) { (col, p) =>
+      if (p.isAlpha) (col._1 ++ p.alphaSources, col._2)
+      else col._1 -> (p.betaSources ++ col._2)
+    }
 
-  def sources: Set[Condition.Source[_]]
+  def sources: Set[Condition.Source[_]] = alphaSources.map(_.source)
 
 }
 
 object Fact {
 
-  type Predecessors = List[Fact[_]]
-  type Source       = Fact.Alpha.Source[_]
+  type Source = Fact.Alpha.Source[_]
   object Predecessors {
-    val empty = Set.empty[Fact[_]]
+    val empty = List.empty[Fact[_]]
   }
 
   type TMap        = [x <: Tuple] =>> Tuple.Map[x, Fact]
@@ -79,61 +87,57 @@ object Fact {
   sealed trait CanBeLiteral[T]
 
   sealed trait Beta[T] extends Fact[T] {
-    override inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = ??? // = Predicate.BetaTest.fromScalar(this, f)
+
+    override private[slips] val isAlpha = false
+
   }
-  object Beta {
-    final case class Tuples[T <: NonEmptyTuple] private[slips] (
-      override val signature: String,
-      facts: Val[T]
-    )(using T: TupleOps[T]) extends Fact[T] with Beta[T] {
-      override val predecessors: Predecessors        = facts.predecessors
-      override val sources: Set[Condition.Source[_]] = facts.sources
-
-    }
-
-    final case class MapTupleToScalar[T <: NonEmptyTuple, Q](
-      override val signature: String,
-      pred: Fact.Val[T],
-      map: T => Q
-    )(using T: TupleOps[T]) extends Fact[Q] with Beta[Q] {
-      override def predecessors: Predecessors = pred.predecessors
-
-    }
-  }
+  object Beta {}
 
   sealed trait Alpha[T] extends Fact[T] {
+
+    private[slips] override val isAlpha = true
 
     val source: Condition.Source[_]
     val sourceFact: Fact.Source
     override val betaSources: Set[Fact[_]]      = Set.empty
     override lazy val alphaSources: Set[Source] = Set(sourceFact)
 
-    override def sources: Set[Condition.Source[_]] = alphaSources
+    override def predecessors: List[Fact.Alpha[_]]
 
-    override inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = Predicate
-      .AlphaTest
-      .fromScalar(this, f)
+    override def sources: Set[Condition.Source[_]] = alphaSources.flatMap(_.sources)
+
   }
   object Alpha {
 
-    final case class Map[T, Q](
+    final case class Same[Q <: NonEmptyTuple : TupleOps](
+      source: Fact.Source,
+      collected: Fact.Val[Q]
+    ) extends Alpha[Q] {
+      override def signature: String                 = source.signature
+      override lazy val predecessors: List[Alpha[_]] = collected.facts.toList ++ collected.predecessors
+    }
+
+    final case class Multiply[T, Q <: NonEmptyTuple](
       override val signature: String,
-      pred: Fact.Alpha[T],
+      fact: Fact.Alpha[T],
       map: T => Q
     ) extends Alpha[Q] {
+      override def predecessors: Predecessors = fact +: fact.predecessors
+    }
+
+    final case class Map[T, Q](pred: Fact.Alpha[T], map: T => Q) extends Alpha[Q] {
+      override def signature: String           = pred.signature
       override val sourceFact: Fact.Source     = pred.sourceFact
       override val source: Condition.Source[_] = sourceFact.source
       override def predecessors: Predecessors  = pred +: pred.predecessors
-
     }
 
-    final class Source[T: NotTuple] private (
-      override val signature: String,
-      val source: Condition.Source[T]
-    )(using T: FactOps[T]) extends Alpha[T] {
+    final class Source[T : NotTuple : FactOps] private (val source: Condition.Source[T]) extends Alpha[T] {
 
-      override val predecessors: Predecessors = List.empty
-      override val sourceFact: Fact.Source    = this
+      override val signature: String = s"${ source.signature }@${ this.hashCode() }"
+
+      override val predecessors: List[Fact.Alpha[_]] = List.empty
+      override val sourceFact: Fact.Source           = this
 
       def buildAlphaNode: BuildStep[AlphaNode.Source[T]] = source.build
 
@@ -154,7 +158,7 @@ object Fact {
   final case class Dummy[T] private[slips] (src: Condition[T]) extends Fact[T] {
     override val signature: String = s"${ src.signature } -> Fact[${ Macros.signType[T] }]"
 
-    override def predecessors: Predecessors = Set.empty
+    override def predecessors: Predecessors = Predecessors.empty
 
     override def sources: Set[Condition.Source[_]] = Set.empty
   }

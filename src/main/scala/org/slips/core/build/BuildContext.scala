@@ -14,6 +14,7 @@ import scala.annotation.tailrec
 
 case class BuildContext private[build] (
   nodes: Map[String, Node] = Map.empty,
+  nodeFacts: Map[Node, Fact[_]] = Map.empty,
   sources: Set[Condition.Source[_]] = Set.empty,
   sourceNodes: Map[String, AlphaNode.Source[_]] = Map.empty,
   predicateRules: PredicateRules = Map.empty,
@@ -38,18 +39,24 @@ object BuildContext {
 
     def addSourceNode[T](
       src: Condition.Source[T],
-      node: => AlphaNode.Source[T]): (BuildContext, AlphaNode.Source[T]) = {
+      node: => AlphaNode.Source[T]
+    ): (BuildContext, AlphaNode.Source[T]) = {
       val nextNode = ctx.sourceNodes.getOrElse(src.signature, node)
       ctx.copy(
         sources = ctx.sources + src,
-        sourceNodes = ctx.sourceNodes + (src.signature -> nextNode)
+        sourceNodes = ctx.sourceNodes + (nextNode.signature -> nextNode)
       ) -> nextNode.asInstanceOf[AlphaNode.Source[T]]
     }
 
     def addParsingResult(parseResult: ParseResult): BuildContext =
       ctx.copy(
-        alphaPredicates = ctx.alphaPredicates |+| parseResult.alphaPredicates,
-        betaPredicates = ctx.betaPredicates |+| parseResult.betaPredicates,
+        alphaPredicates = ctx.alphaPredicates |+| parseResult
+          .predicates
+          .collect { case Predicate.IsAlpha(predicate, facts) =>
+            predicate -> facts.map(_.asInstanceOf[Fact.Alpha[_]])
+          },
+        betaPredicates =
+          ctx.betaPredicates |+| parseResult.predicates.collect { case Predicate.IsBeta(p) => p -> p.facts },
         sources = ctx.sources ++ parseResult.sources,
         rules = ctx.rules + parseResult.rule,
         predicateRules = ctx.predicateRules |+| parseResult.predicateRules

@@ -35,7 +35,7 @@ object AlphaNetwork {
     *
     * @return
     */
-  private def toNetwork(chains: Iterator[(Predicate.Alpha, Sources)]): BuildStep[AlphaNetwork] = {
+  private def toNetwork(chains: Iterator[(Predicate, Sources)]): BuildStep[AlphaNetwork] = {
     chains
       .flatMap { case (p, sources) => p.buildAlphaNode.map(_ -> sources) }
       .toList

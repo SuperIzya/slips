@@ -8,12 +8,11 @@ import org.slips.core.rule.Rule.RuleM
 
 package object build {
 
-  type AlphaFacts      = Map[Fact.Source, Set[Predicate.Alpha]]
-  type BetaFacts       = Map[Fact[_], Set[Predicate.Beta]]
-  type PredicateMap[T] = Map[Predicate, Set[T]]
-  type AlphaPredicates = Map[Predicate.AlphaTest[_], Set[Fact.Source]]
+  type AlphaFacts      = Map[Fact.Source, Set[Predicate]]
+  type AllFacts        = Map[Fact[_], Set[Predicate]]
+  type AlphaPredicates = Map[Predicate, Set[Fact.Source]]
   type BetaPredicates  = Map[Predicate, Set[Fact[_]]]
-  type PredicateRules  = PredicateMap[RuleM]
+  type PredicateRules  = Map[Predicate, Set[RuleM]]
 
   type BuildStep[x] = State[BuildContext, x]
 

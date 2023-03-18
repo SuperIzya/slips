@@ -6,6 +6,7 @@ import org.slips.core.build.*
 import org.slips.core.conditions.Condition.Source
 import org.slips.core.fact.Fact
 import org.slips.core.fact.FactOps
+import org.slips.core.network.AlphaNode
 import org.slips.core.predicates.Predicate
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
@@ -14,7 +15,7 @@ import scala.collection.immutable.Queue
 trait PredicateSelection {
   def selectPredicatesAndSources[T: FactOps](
     initial: Fact.Val[T],
-    predicates: AlphaFacts
+    allFacts: AllFacts
   ): SelectedPredicatesAndSources
 }
 
@@ -22,9 +23,9 @@ object PredicateSelection {
 
   def select[T: FactOps](
     initial: Fact.Val[T],
-    predicates: AlphaFacts
+    allFacts: AllFacts
   ): Env[SelectedPredicatesAndSources] =
-    env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, predicates)
+    env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, allFacts)
 
   /** Keep all predicates */
   case object Keep extends PredicateSelection {
@@ -38,36 +39,27 @@ object PredicateSelection {
           case Predicate.And(left, right) =>
             collectPredicates(left :: right :: next, collected)
           case Predicate.Or(left, right)  =>
-            collectPredicates(
-              left :: right :: next,
-              collected.withPredicate(head)
-            )
+            collectPredicates(left :: right :: next, collected.withPredicate(head))
           case _                          =>
-            collectPredicates(
-              next,
-              collected.copy(
-                sources = collected.sources ++ head.sources,
-                alphaFacts = collected.addPredicate(head)
-              )
-            )
+            collectPredicates(next, collected.withPredicate(head))
         }
       case Nil          => collected
     }
 
     override def selectPredicatesAndSources[T: FactOps](
       initial: Fact.Val[T],
-      predicates: AlphaFacts
+      allFacts: AllFacts
     ): SelectedPredicatesAndSources = {
 
       collectPredicates(
-        predicates.values.toList.flatten,
+        allFacts.values.toList.flatten,
         SelectedPredicatesAndSources(initial)
       )
     }
   }
 
   /**
-    * Don't use predicates on facts not involved in output
+    * Discard predicates and facts not involved in output
     * {{{
     * val condition = for {
     *   f <- all[Fruit]                    // 1
@@ -76,7 +68,7 @@ object PredicateSelection {
     *   _ <- f.value(_.name) =!= "apple"   // 4
     * } yield v
     * }}}
-    * lines 4 & 1 will not be passed by parsing stage.
+    * lines 4 & 1 will be discarded by `parse` stage.
     *
     * In case
     * {{{
@@ -93,12 +85,15 @@ object PredicateSelection {
     */
   case object Clean extends PredicateSelection {
 
-    extension (
-      q: Queue[Predicate]
-    ) {
-      private inline def deq(
-        selected: SelectedPredicatesAndSources
-      ): SelectedPredicatesAndSources = q.dequeueOption match {
+    @tailrec
+    private def processDiscarded(selected: SelectedPredicatesAndSources): SelectedPredicatesAndSources = {
+      if (selected.discarded.isEmpty) selected
+      else selected.discarded.foldLeft(selected.copy(discarded = Set.empty))(collectSources(_, _))
+    }
+
+    extension (q: Queue[Predicate]) {
+      private inline def deq(selected: SelectedPredicatesAndSources): SelectedPredicatesAndSources = q
+        .dequeueOption match {
         case Some((pd, qu)) => collectSources(selected, pd, qu)
         case None           => selected
       }
@@ -111,27 +106,19 @@ object PredicateSelection {
       queue: Queue[Predicate] = Queue.empty
     ): SelectedPredicatesAndSources = {
       p match {
-        case Predicate.AlphaTest(_, _, rep) if col.facts.intersect(rep.alphaSources).nonEmpty   =>
-          queue.deq(
-            col.copy(
-              sources = col.sources ++ rep.sources,
-              alphaFacts = col.addPredicate(p),
-              facts = col.facts ++ rep.alphaSources
-            )
-          )
-        case Predicate.AlphaTest(_, _, _)                                                      =>
-          queue.deq(col.withDiscard(p))
-        case Predicate.Not(pred) if col.facts.intersect(pred.sourceFacts).nonEmpty        =>
+        case Predicate.AlphaTest(_, _, rep) if col.facts.intersect(rep.alphaSources).nonEmpty =>
+          queue.deq(col.withPredicate(p))
+        case b @ Predicate.BetaTest(_, _, _) if col.facts.intersect(b.facts)                  =>
+          queue.deq(col.withPredicate(p))
+        case Predicate.Not(pred) if col.facts.intersect(pred.sourceFacts).nonEmpty            =>
           collectSources(col.withPredicate(p), pred, queue)
-        case Predicate.Not(_)                                                             =>
-          queue.deq(col.withDiscard(p))
-        case Predicate.Or(left, right)                                                    =>
+        case Predicate.Or(left, right)                                                        =>
           collectSources(col.withPredicate(p), left, queue.enqueue(right))
-        case Predicate.And(left, right) if col.facts.intersect(left.sourceFacts).nonEmpty =>
+        case Predicate.And(left, right) if col.facts.intersect(left.sourceFacts).nonEmpty     =>
           collectSources(col, left, queue.enqueue(right))
-        case Predicate.And(l, right) if col.facts.intersect(right.sourceFacts).nonEmpty   =>
+        case Predicate.And(l, right) if col.facts.intersect(right.sourceFacts).nonEmpty       =>
           collectSources(col.withDiscard(l), right, queue)
-        case _                                                                            =>
+        case _                                                                                =>
           queue.deq(col.withDiscard(p))
       }
     }
@@ -154,14 +141,13 @@ object PredicateSelection {
     }
     override def selectPredicatesAndSources[T](
       initial: Fact.Val[T],
-      predicates: AlphaFacts
-    )(using T: FactOps[T]
-    ): SelectedPredicatesAndSources = {
+      allFacts: AllFacts
+    )(using T: FactOps[T]): SelectedPredicatesAndSources = {
 
       val sources = T.sources(initial)
 
       val res = selectPredicates(
-        predicates.values.flatten.toList,
+        allFacts.values.flatten.toList,
         SelectedPredicatesAndSources
           .empty
           .copy(

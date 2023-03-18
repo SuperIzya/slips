@@ -55,14 +55,13 @@ object Condition {
       BuildStep.addSourceNode(this, AlphaNode.Source(this))
   }
 
-  final case class All[T] private[Condition] (
-    override val signature: String
-  )(using override val T: FactOps[T]) extends Source[T]
+  final case class All[T] private[Condition] (override val signature: String)(using override val T: FactOps[T])
+      extends Source[T]
 
   final case class OpaquePredicate private[slips] (p: Predicate) extends Condition[Unit] {
     override val signature: String = p.signature
 
-    override private[slips] val parse: ParseStep[Unit] = Predicate.add(p.toKNF)
+    override private[slips] val parse: ParseStep[Unit] = Predicate.add(p.toDNF)
 
   }
 
@@ -101,7 +100,7 @@ object Condition {
     override private[slips] val parse: ParseStep[T] = for {
       t <- cond.parse
       predicate = f(t)
-      _ <- Predicate.add(predicate.toKNF)
+      _ <- Predicate.add(predicate.toDNF)
     } yield t
   }
 

@@ -26,6 +26,7 @@ sealed trait FactOps[T] {
   def predecessors(f: Fact.Val[T]): Predecessors
   def sources(f: Fact.Val[T]): Set[Condition.Source[_]]
   def sourceFacts(f: Fact.Val[T]): Set[Fact.Source]
+  def facts(f: Fact.Val[T]): Set[Fact[_]]
 
 }
 
@@ -46,6 +47,7 @@ object FactOps {
     def chainT(f: TupleFactF): Fact.TMap[T]
 
     def toVal(f: TMap[T]): Fact.Val[T]
+
   }
 
   object TupleOps {
@@ -117,6 +119,10 @@ object FactOps {
         head.sources ++ tail.sources
       }
 
+      override def facts(f: Fact.Val[H *: T]): Set[Fact[_]] = {
+        val (head: Fact[H]) *: (tail: TMap[T]) = ev(f)
+        tail.facts + head
+      }
     }
   }
 
@@ -136,6 +142,7 @@ object FactOps {
 
     def sources(f: Fact.Val[T]): Set[Condition.Source[_]] = ev(f).sources
 
+    override def facts(f: Fact.Val[T]): Set[Fact[_]] = Set(ev(f))
   }
 
 }

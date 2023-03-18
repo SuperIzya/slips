@@ -7,7 +7,6 @@ import org.slips.core.network.materialized.Publisher
 import org.slips.core.predicates.Predicate as TestPredicate
 
 private[slips] sealed trait AlphaNode extends Node {
-  override def materialize: BuildStep[materialized.Node] = ???
 
   def sourceNode: AlphaNode.Source[_]
   def facts: AlphaNode.Sources = Set.empty
@@ -17,9 +16,7 @@ private[slips] object AlphaNode {
   type Sources = Set[Fact.Source]
 
   /** Source node, producing values of type T */
-  case class Source[T](private val src: Condition.Source[T]) extends AlphaNode {
-    override def signature: String = src.signature
-
+  case class Source[T](override val signature: String) extends AlphaNode {
     override def sourceNode: Source[_] = this
   }
 

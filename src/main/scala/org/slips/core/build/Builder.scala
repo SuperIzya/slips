@@ -34,11 +34,11 @@ object Builder {
   }
 
   def selectPredicatesAndSources[T](condition: Condition[T])(using T: FactOps[T]): Env[SelectedPredicatesAndSources] = {
-    val (Parser.Context(predicates, _), result) = Parser(condition)
+    val (predicates, result) = Parser(condition)
 
     PredicateSelection.select(
       result,
-      predicates.flatMap(f => f.sourceFacts.map(_ -> f)).groupBy(_._1).view.mapValues(_.map(_._2)).toMap
+      predicates.flatMap(p => p.facts.map(_ -> p)).groupBy(_._1).view.mapValues(_.map(_._2).toSet).toMap
     )
   }
 }

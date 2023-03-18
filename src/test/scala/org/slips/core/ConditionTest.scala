@@ -5,7 +5,6 @@ import org.scalacheck.Gen
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
-import org.slips.core.fact.Fact.Tuples
 import org.slips.core.fact.FactOps
 import org.slips.syntax.*
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
