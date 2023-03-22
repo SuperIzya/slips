@@ -14,7 +14,7 @@ import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
 import org.slips.core.fact.Fact.Predecessors
-import org.slips.core.network.AlphaNode
+import org.slips.core.network.alpha.AlphaNode
 import org.slips.core.network.materialized.Publisher
 import org.slips.core.predicates.Predicate
 import scala.Tuple.Append
@@ -25,21 +25,16 @@ import scala.annotation.targetName
 import scala.util.NotGiven
 
 sealed trait Fact[T] extends Signed {
-
-  override def signature: String = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]"
-
-  private[slips] val isAlpha: Boolean
-
   private inline def buildPredicate(other: Fact[T], inline test: (T, T) => Boolean)(using
     TT: TupleOps[T *: T *: EmptyTuple]
   ): Predicate = {
     (isAlpha, other.isAlpha) match {
       case (true, true) if other.alphaSources == alphaSources =>
-        Predicate.AlphaTest(
+        Predicate.Test(
           Fact.Alpha.Same(source = alphaSources.head, collected = TT.toVal(this -> other)),
           test.tupled
         )(test)
-      case _                                                  => Predicate.Test(this, other, _ != _)
+      case _                                                  => ???
     }
   }
   @targetName("repNotEq")
@@ -58,6 +53,10 @@ sealed trait Fact[T] extends Signed {
     }
 
   def sources: Set[Condition.Source[_]] = alphaSources.map(_.source)
+
+  override def signature: String = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]"
+
+  private[slips] val isAlpha: Boolean
 
 }
 
@@ -113,8 +112,9 @@ object Fact {
       source: Fact.Source,
       collected: Fact.Val[Q]
     ) extends Alpha[Q] {
-      override def signature: String                 = source.signature
-      override lazy val predecessors: List[Alpha[_]] = collected.facts.toList ++ collected.predecessors
+      override def signature: String                 = s"(${ source.signature }, ${ source.signature })"
+      override lazy val predecessors: List[Alpha[_]] =
+        collected.facts.map(_.asInstanceOf[Alpha[_]]).toList ++ collected.predecessors
     }
 
     final case class Multiply[T, Q <: NonEmptyTuple](
@@ -125,11 +125,18 @@ object Fact {
       override def predecessors: Predecessors = fact +: fact.predecessors
     }
 
-    final case class Map[T, Q](pred: Fact.Alpha[T], map: T => Q) extends Alpha[Q] {
-      override def signature: String           = pred.signature
+    final case class Map[T, Q](pred: Fact.Alpha[T], map: T => Q, sign: String) extends Alpha[Q] {
+      override def signature: String           = sign
       override val sourceFact: Fact.Source     = pred.sourceFact
       override val source: Condition.Source[_] = sourceFact.source
       override def predecessors: Predecessors  = pred +: pred.predecessors
+    }
+    object Map {
+      inline def apply[T, Q](fact: Fact.Alpha[T], inline map: T => Q): Map[T, Q] =
+        Macros.createSigned(
+          new Map(fact, map, _),
+          map
+        )
     }
 
     final class Source[T : NotTuple : FactOps] private (val source: Condition.Source[T]) extends Alpha[T] {
@@ -139,13 +146,11 @@ object Fact {
       override val predecessors: List[Fact.Alpha[_]] = List.empty
       override val sourceFact: Fact.Source           = this
 
-      def buildAlphaNode: BuildStep[AlphaNode.Source[T]] = source.build
-
     }
 
     object Source {
       def apply[T : NotTuple : FactOps](source: Condition.Source[T]): Source[T] =
-        new Source(source.signature, source)
+        new Source(source)
     }
   }
   final case class Literal[I: CanBeLiteral] private[slips] (value: I) extends Fact[I] {

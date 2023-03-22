@@ -4,9 +4,8 @@ import org.slips.Env
 import org.slips.Environment
 import org.slips.core.build.*
 import org.slips.core.conditions.Condition.Source
-import org.slips.core.fact.Fact
-import org.slips.core.fact.FactOps
-import org.slips.core.network.AlphaNode
+import org.slips.core.fact.*
+import org.slips.core.network.alpha.AlphaNode
 import org.slips.core.predicates.Predicate
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
@@ -99,6 +98,10 @@ object PredicateSelection {
       }
     }
 
+    extension (facts: Set[Fact[_]]) {
+      private inline def allPredecessors: Set[Fact[_]] = facts.flatMap(f => f +: f.predecessors)
+    }
+
     @tailrec
     private def collectSources(
       col: SelectedPredicatesAndSources,
@@ -106,19 +109,19 @@ object PredicateSelection {
       queue: Queue[Predicate] = Queue.empty
     ): SelectedPredicatesAndSources = {
       p match {
-        case Predicate.AlphaTest(_, _, rep) if col.facts.intersect(rep.alphaSources).nonEmpty =>
+        case _: Predicate if col.facts.intersect(p.facts.allPredecessors).isEmpty                   =>
+          queue.deq(col.withDiscard(p))
+        case Predicate.Test(_, _, _)                                                                =>
           queue.deq(col.withPredicate(p))
-        case b @ Predicate.BetaTest(_, _, _) if col.facts.intersect(b.facts)                  =>
-          queue.deq(col.withPredicate(p))
-        case Predicate.Not(pred) if col.facts.intersect(pred.sourceFacts).nonEmpty            =>
+        case Predicate.Not(pred)                                                                    =>
           collectSources(col.withPredicate(p), pred, queue)
-        case Predicate.Or(left, right)                                                        =>
+        case Predicate.Or(left, right)                                                              =>
           collectSources(col.withPredicate(p), left, queue.enqueue(right))
-        case Predicate.And(left, right) if col.facts.intersect(left.sourceFacts).nonEmpty     =>
+        case Predicate.And(left, right) if col.facts.intersect(left.facts.allPredecessors).nonEmpty =>
           collectSources(col, left, queue.enqueue(right))
-        case Predicate.And(l, right) if col.facts.intersect(right.sourceFacts).nonEmpty       =>
+        case Predicate.And(l, right)                                                                =>
           collectSources(col.withDiscard(l), right, queue)
-        case _                                                                                =>
+        case _                                                                                      =>
           queue.deq(col.withDiscard(p))
       }
     }
@@ -139,20 +142,17 @@ object PredicateSelection {
       if (result.discarded == collected.discarded) result
       else processPredicates(result.discarded.toList, result.copy(discarded = Set.empty))
     }
-    override def selectPredicatesAndSources[T](
+    override def selectPredicatesAndSources[T: FactOps](
       initial: Fact.Val[T],
       allFacts: AllFacts
-    )(using T: FactOps[T]): SelectedPredicatesAndSources = {
-
-      val sources = T.sources(initial)
-
+    ): SelectedPredicatesAndSources = {
       val res = selectPredicates(
         allFacts.values.flatten.toList,
         SelectedPredicatesAndSources
           .empty
           .copy(
-            facts = T.sourceFacts(initial),
-            sources = sources
+            facts = initial.predecessors.toSet,
+            sources = initial.sources
           )
       )
 

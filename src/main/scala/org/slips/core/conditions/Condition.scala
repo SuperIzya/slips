@@ -6,8 +6,8 @@ import org.slips.core.*
 import org.slips.core.build.*
 import org.slips.core.build.BuildStep
 import org.slips.core.fact.*
-import org.slips.core.network.AlphaNode
 import org.slips.core.network.Node
+import org.slips.core.network.alpha.AlphaNode
 import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
 
@@ -50,9 +50,6 @@ object Condition {
     }
 
     override private[slips] def parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ => fact.toVal)
-
-    private[slips] def build: BuildStep[AlphaNode.Source[T]] =
-      BuildStep.addSourceNode(this, AlphaNode.Source(this))
   }
 
   final case class All[T] private[Condition] (override val signature: String)(using override val T: FactOps[T])

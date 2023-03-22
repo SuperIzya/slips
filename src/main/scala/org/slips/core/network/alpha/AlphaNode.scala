@@ -1,9 +1,10 @@
-package org.slips.core.network
+package org.slips.core.network.alpha
 
 import org.slips.core.build.BuildStep
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.network.materialized.Publisher
+import org.slips.core.network.{AlphaNode, Node}
 import org.slips.core.predicates.Predicate as TestPredicate
 
 private[slips] sealed trait AlphaNode extends Node {
@@ -13,7 +14,6 @@ private[slips] sealed trait AlphaNode extends Node {
 }
 
 private[slips] object AlphaNode {
-  type Sources = Set[Fact.Source]
 
   /** Source node, producing values of type T */
   case class Source[T](override val signature: String) extends AlphaNode {

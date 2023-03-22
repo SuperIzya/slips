@@ -10,12 +10,13 @@ import org.slips.core.conditions.ParseStep
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.TMap
 import org.slips.core.fact.FactOps.TupleOps
-import org.slips.core.network.AlphaNode
+import org.slips.core.network.alpha.AlphaNode
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
 
 sealed trait Predicate extends Signed {
+  // TODO: Have here TASTy of the method that tests the facts.
   override val signature: String = this.getClass.getSimpleName
   def facts: Set[Fact[_]]
 
@@ -35,22 +36,22 @@ sealed trait Predicate extends Signed {
   def toDNF: Predicate = {
     import Predicate.*
     this match {
-      case AlphaTest(_, _, _) => this
-      case And(left, right)   =>
+      case Test(_, _, _)    => this
+      case And(left, right) =>
         (left.toDNF, right.toDNF) match {
           case (Or(l1, r1), Or(l2, r2)) => ((l1 && l2) || (l1 && r2) || (r1 && l2) || (r1 && r2)).toDNF
           case (Or(l, r), right)        => ((l && right) || (r && right)).toDNF
           case (left, Or(l, r))         => ((left && l) || (left && r)).toDNF
           case (l, r)                   => l && r
         }
-      case Not(p)             =>
+      case Not(p)           =>
         p.toDNF match {
-          case And(left, right)   => (Not(left) || Not(right)).toDNF
-          case Or(left, right)    => (Not(left) && Not(right)).toDNF
-          case AlphaTest(_, _, _) => this
-          case Not(p1)            => p1.toDNF
+          case And(left, right) => (Not(left) || Not(right)).toDNF
+          case Or(left, right)  => (Not(left) && Not(right)).toDNF
+          case Test(_, _, _)    => this
+          case Not(p1)          => p1.toDNF
         }
-      case Or(left, right)    => left.toDNF || right.toDNF
+      case Or(left, right)  => left.toDNF || right.toDNF
     }
   }
 }
@@ -95,7 +96,7 @@ object Predicate {
       inline toSign: Any = test
     ): Test[T] = {
       Macros.createSigned[Test[T]](
-        s => Test(s"${ rep.signature } $s", test, rep),
+        new Test(_, test, rep.toVal),
         toSign
       )
     }
@@ -127,36 +128,12 @@ object Predicate {
     rep2: Fact[T2],
     inline test: (T1, T2) => Boolean
   )(using
-    TupleOps[T1 *: T2 *: EmptyTuple],
-    NotTuple[T1],
-    NotTuple[T2]
-  ): AlphaTest[T1 *: T2 *: EmptyTuple] = ???
-
-  private inline def createTuple[T <: NonEmptyTuple](
-    rep: Fact[T],
-    test: T => Boolean,
-    inline sign: Any
-  )(using T: TupleOps[T]): BetaTest[T] = {
-    Macros.createSigned[BetaTest[T]](
-      s => BetaTest(s"${ rep.signature } $s", test, rep.toVal),
-      sign
-    )
-  }
-
-  private inline def createAsTuple[T: NotTuple](
-    rep: Fact[T],
-    test: T => Boolean,
-    inline sign: Any
-  )(using T: FactOps[T]): BetaTest[T] = {
-    Macros.createSigned[BetaTest[T]](
-      s => BetaTest(s"${ rep.signature } $s", test, T.toVal(rep)),
-      sign
-    )
-  }
+    TupleOps[T1 *: T2 *: EmptyTuple]
+  ): Test[T1 *: T2 *: EmptyTuple] = ???
 
   inline def fromTuple[T <: NonEmptyTuple : FactOps.TupleOps](
     rep: Fact.TMap[T],
     inline test: T => Boolean
-  ): BetaTest[T] = ???
+  ): Test[T] = ???
 
 }

@@ -3,8 +3,8 @@ package org.slips.core.build
 import cats.data.State
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
-import org.slips.core.network.AlphaNode
 import org.slips.core.network.Node
+import org.slips.core.network.alpha.AlphaNode
 import org.slips.core.predicates.Predicate
 
 object BuildStep {
@@ -16,20 +16,6 @@ object BuildStep {
 
   def getSourceNode[T](src: Condition.Source[T]): BuildStep[AlphaNode.Source[T]] =
     BuildStep(_.addSourceNode(src, AlphaNode.Source(src.signature)))
-
-  def addAlphaNode[T](fact: Fact.Alpha[T], node: AlphaNode): BuildStep[AlphaNode] = {
-    for {
-      ctx <- BuildStep.get
-      next  = ctx.nodes.getOrElse(node.signature, node)
-      facts = ctx.nodeFacts.getOrElse(next, Set.empty)
-      _ <- BuildStep.set {
-        ctx.copy(
-          nodes = ctx.nodes + (node.signature -> next),
-          nodeFacts = ctx.nodeFacts + (next   -> facts + fact)
-        )
-      }
-    } yield next
-  }
 
   val get: BuildStep[BuildContext] = State.get[BuildContext]
 

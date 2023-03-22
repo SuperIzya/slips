@@ -1,7 +1,6 @@
 package org.slips.core.network.alpha
 
 import org.slips.core.fact.Fact
-import org.slips.core.network.AlphaNode
 
 trait FactProgress  {
   val fact: Fact.Source

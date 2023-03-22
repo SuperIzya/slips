@@ -30,7 +30,7 @@ object SelectedPredicatesAndSources {
   def apply[T: FactOps](start: Fact.Val[T]): SelectedPredicatesAndSources = {
     new SelectedPredicatesAndSources(
       sources = start.sources,
-      facts = start.facts + start.predecessors
+      facts = start.facts ++ start.predecessors
     )
   }
 }

@@ -23,13 +23,13 @@ object syntax {
   inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : FactOps](x: T): Fact[T] = Fact.literal(x)
 
   extension [T](fact: Fact.Alpha[T]) {
-    def value[I](f: T => I): Fact.Alpha[I]                               = Fact.Alpha.Map(fact, f)
-    inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = Predicate.Test(fact, f)
+    def value[I](f: T => I): Fact.Alpha[I]                               = Fact.Alpha.Map(fact, f)()
+    inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = Predicate.Test(fact, f)()
   }
 
   extension [T](fact: Fact[T]) {
-    inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = Predicate.Test(fact, f)
-    inline def value(inline f: T => I): Fact[I]                          = {
+    inline def test(inline f: T => Boolean)(using FactOps[T]): Predicate = Predicate.Test(fact, f)()
+    inline def value[I](inline f: T => I): Fact[I]                       = {
       if (fact.isAlpha) fact.asInstanceOf[Fact.Alpha[T]].value(f)
       else ???
     }

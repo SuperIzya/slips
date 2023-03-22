@@ -3,7 +3,6 @@ package org.slips.core.network.alpha
 import cats.data.State
 import cats.syntax.all.*
 import org.slips.core.fact.Fact
-import org.slips.core.network.AlphaNode
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.collection.immutable.SortedSet

@@ -9,10 +9,12 @@ import org.slips.core.rule.Rule.RuleM
 private[slips] case class ParseResult(
   rule: RuleM,
   sources: Set[Condition.Source[_]],
-  predicates: BetaPredicates,
+  alphaPredicates: AlphaPredicates,
+  betaPredicates: BetaPredicates,
   predicatesAndSources: SelectedPredicatesAndSources
 ) {
-  def predicateRules: PredicateRules = ???
+  def predicateRules: PredicateRules =
+    (alphaPredicates.map(_.asInstanceOf[Predicate] -> rule) ++ betaPredicates.keys.map(_ -> rule)).toMap
 }
 
 private[slips] object ParseResult {
@@ -22,8 +24,34 @@ private[slips] object ParseResult {
   ): Env[ParseResult] = {
     val sp = rule.sourcesAndPredicates
 
-    val pc = sp.predicates.values.flatten.foldLeft(ParseResult.empty)(_ addPredicate _)
+    val pc = sp.predicates.keys.foldLeft(ParseCollector.empty)(_ addPredicate _)
     pc.toParseResult(rule, sp)
   }
 
+  private case class ParseCollector(
+    alphaPredicates: AlphaPredicates = Set.empty,
+    betaPredicates: BetaPredicates = Map.empty
+  )
+
+  private object ParseCollector {
+    val empty: ParseCollector = ParseCollector()
+
+    extension (collector: ParseCollector) {
+      def addPredicate(p: Predicate): ParseCollector = {
+        collector.copy(
+          alphaPredicates = collector.alphaPredicates.addAlpha(p),
+          betaPredicates = collector.betaPredicates.addBeta(p)
+        )
+      }
+
+      def toParseResult(ruleM: RuleM, ps: SelectedPredicatesAndSources): ParseResult = ParseResult(
+        rule = ruleM,
+        alphaPredicates = collector.alphaPredicates,
+        betaPredicates = collector.betaPredicates,
+        sources = ps.sources,
+        predicatesAndSources = ps
+      )
+    }
+
+  }
 }
