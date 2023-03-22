@@ -75,11 +75,19 @@ val cond3 = {
  
   for {
     box <- all[Box]
-    doubleWeight = box.value(_.contentWeights.map(_ * 2).sum)
+    doubleWeight = box.value(doubleSum)
     _ <- doubleWeight.test(_ > threshold).signed(s"_ > $threshold")
   } yield doubleWeight
 }
 ```
+In the first example, all `.value(...)` and `.test(...)` will be signed by hash codes of the passed functions.
+Each time the instance and the hash code will be new and each of these predicates will be treated as unique,
+and facts won't be able to unite the predicates - these will be different facts, passing different transformations.
 
-This way the system will be able to identify same facts transformations and same predicates.
-Which allows to build more efficient RETE networks. 
+In the second example:
+* all instances named `doubleWeight` will be identified as same fact. 
+This is because all the `box` transformations, happened with constant `doubleSum`.
+* In `.test(...)`, since the function can not be common for all, each appearance is signed.
+
+With these tricks the system will be able to identify same facts transformations and same predicates.
+Which allows to build more efficient RETE networks, making your rules run faster. 
