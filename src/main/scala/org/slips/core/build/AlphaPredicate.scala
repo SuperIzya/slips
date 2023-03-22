@@ -19,5 +19,5 @@ object AlphaPredicate {
     .map { case (p, src) => AlphaPredicate(src.signature, p.facts.map(_.asInstanceOf[Fact.Alpha]), p) }
 
   given Semigroup[AlphaPredicate] = Semigroup
-    .instance((a, b) => AlphaPredicate(a.source, a.facts + b.facts, a.predicate))
+    .instance((a, b) => AlphaPredicate(a.source, a.facts ++ b.facts, a.predicate))
 }

@@ -18,6 +18,7 @@ import scala.util.NotGiven
 sealed trait Predicate extends Signed {
   // TODO: Have here TASTy of the method that tests the facts.
   override val signature: String = this.getClass.getSimpleName
+  type Self = this.type
   def facts: Set[Fact[_]]
 
   def and(other: Predicate): Predicate = Predicate.And(this, other)
@@ -82,24 +83,21 @@ object Predicate {
     case _ => ParseStep.modify(_.addPredicate(p))
   }
 
-  final case class Test[T: FactOps] private (
+  final case class Test[T: FactOps](
     override val signature: String,
     test: T => Boolean,
     rep: Fact.Val[T]
   ) extends Predicate {
+    override type Self = Test.this.type
     override lazy val facts: Set[Fact[_]] = rep.facts
+
+    override def signed(signature: String): this.type = copy(signature = signature)
   }
 
   object Test {
 
-    inline def apply[T: FactOps](rep: Fact[T], inline test: T => Boolean)(
-      inline toSign: Any = test
-    ): Test[T] = {
-      Macros.createSigned[Test[T]](
-        new Test(_, test, rep.toVal),
-        toSign
-      )
-    }
+    def apply[T: FactOps](rep: Fact[T], test: T => Boolean): Test[T] =
+      new Test(test.hashCode().toString, test, rep.toVal)
   }
 
   final case class And(

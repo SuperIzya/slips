@@ -38,12 +38,18 @@ object SyntaxTest {
     categoryM: Option[Category]
   )
 
+  val categoryEmpty: Text => Boolean = _.categoryM.isEmpty
+  val firstWord: Text => String      = _.word1
+  val secondWord: Text => String     = _.word2
+  val wordValue: Word => String      = _.word
+  val wordCategory: Word => Category = _.category
+
   private val shouldMarkText = for {
     w <- all[Word]
     t <- all[Text]
-    _ <- t.test(_.categoryM.isEmpty)
-    _ <- (t.value(_.word1) === w.value(_.word)) || (t.value(_.word2) === w.value(_.word))
-  } yield (w.value(_.category), t)
+    _ <- t.test(categoryEmpty)
+    _ <- (t.value(firstWord) === w.value(wordValue)) || (t.value(secondWord) === w.value(wordValue))
+  } yield (w.value(wordCategory), t)
 
   private val markText = (env: Environment) ?=>
     shouldMarkText
@@ -57,13 +63,22 @@ object SyntaxTest {
         } yield ()
       }
 
-  private val shouldMarkWord = for {
-    t1 <- all[Text] if t1.test(_.categoryM.isDefined)
-    t2 <- all[Text] if t2.test(_.categoryM.isDefined)
-    _  <- t1.value(_.word1) === t2.value(_.word1)
-    _  <- t1.value(_.categoryM.map(_.theme)) === t2.value(_.categoryM.map(_.theme))
-    _  <- notExists[Word] { w => w.value(_.word) === t1.value(_.word1) }
-  } yield (t1.value(_.word1), t1.value(_.categoryM), t2.value(_.categoryM))
+  val categoryIsDefined: Text => Boolean  = _.categoryM.isDefined
+  val textThemeM: Text => Option[Theme]       = _.categoryM.map(_.theme)
+  val textCategoryM: Text => Option[Category] = _.categoryM
+  private val shouldMarkWord              = for {
+    t1 <- all[Text] if t1.test(categoryIsDefined)
+    t2 <- all[Text] if t2.test(categoryIsDefined)
+    _  <- {
+      val words = Seq(firstWord, secondWord)
+      for {
+        w1 <- words
+        w2 <- words
+      } yield t1.value(w1) === t2.value(w2)
+    }.reduceLeft(_ or _)
+    _  <- t1.value(textThemeM) === t2.value(textThemeM)
+    _  <- notExists[Word] { w => w.value(wordValue) === t1.value(firstWord) }
+  } yield (t1.value(firstWord), t1.value(textCategoryM), t2.value(textCategoryM))
 
   private val markWord = (env: Environment) ?=>
     shouldMarkWord
