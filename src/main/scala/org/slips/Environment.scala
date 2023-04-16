@@ -42,18 +42,14 @@ trait Environment {
   trait Buffer[T] {
     type BufferType <: Iterable[T]
     protected def buffer: Effect[BufferType]
-    def add(
-      key: String,
-      v: T
-    ): Effect[Unit]
-    def get(
-      key: String
-    ): Effect[Option[T]]
+    def add(key: String, v: T): Effect[Unit]
+    def get(key: String): Effect[Option[T]]
     def iterator(using Monad[Effect]): Effect[Iterator[T]] = buffer.map(_.iterator)
   }
 
   val bufferFactory: BufferFactory
   val predicateSelectionStrategy: PredicateSelection
+  val signatureStrategy: SignatureStrategy
 
   trait ContextBuilder
 

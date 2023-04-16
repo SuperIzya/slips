@@ -15,7 +15,7 @@ object BuildStep {
   def set(f: => BuildContext): BuildStep[Unit]                 = State.set(f)
 
   def getSourceNode[T](src: Condition.Source[T]): BuildStep[AlphaNode.Source[T]] =
-    BuildStep(_.addSourceNode(src, AlphaNode.Source(src.signature)))
+    BuildStep(_.addSourceNode(src.signature, AlphaNode.Source(src.signature)))
 
   val get: BuildStep[BuildContext] = State.get[BuildContext]
 

@@ -9,9 +9,9 @@ import scala.collection.immutable.SortedSet
 
 private[network] case class FactsFolder(
   // TODO: Make sure nodes are sorted from the largest to the smallest set.
-  unionNodes: SortedMap[Set[Chain], AlphaNode.Combine] = SortedMap.empty,
-  facts: Map[Fact.Source, FactProgress] = Map.empty,
-  origin: Map[Fact.Source, Set[Chain]] = Map.empty
+  unionNodes: SortedMap[Set[Chain], Chain.Combine] = SortedMap.empty,
+  facts: Map[Fact.Alpha[_], FactProgress] = Map.empty,
+  origin: Map[Fact.Alpha[_], Set[Chain]] = Map.empty
 ) {
 
   /**
@@ -25,18 +25,18 @@ private[network] case class FactsFolder(
     * [[FactProgress.InProgress]] if [[left]] is not empty,
     * [[FactProgress.Done]] otherwise.
     */
-  def setFactProgress(head: ToProcess, left: Set[Chain], topNode: AlphaNode.Combine): FactsFolder = setFactProgress {
-    if (left.isEmpty) FactProgress.Done(head.fact, head.chains, topNode)
+  def setFactProgress(tp: ToProcess, left: Set[Chain], topChain: Chain): FactsFolder = setFactProgress {
+    if (left.isEmpty) FactProgress.Done(tp.fact, tp.chains, topChain)
     else
-      FactProgress.InProgress(head.fact, head.chains, head.chains -- left, left, topNode)
+      FactProgress.InProgress(tp.fact, tp.chains, tp.chains -- left, left, topChain)
   }
 
-  def addUnion(chains: Set[Chain], left: AlphaNode, right: AlphaNode): (FactsFolder, AlphaNode.Combine) = {
+  def addUnion(chains: Set[Chain], left: Chain, right: Chain): (FactsFolder, Chain.Combine) = {
     unionNodes
       .get(chains)
       .map(this -> _)
       .getOrElse {
-        val combine = AlphaNode.Combine(left, right)
+        val combine = Chain.Combine(left, right)
         copy(unionNodes = unionNodes + (chains -> combine)) -> combine
       }
   }
@@ -48,18 +48,18 @@ private[network] object FactsFolder {
   import FactProgress.*
 
   /** Adds  last chain for a fact. */
-  private def addImmediate1(fact: Fact.Source, chain: Chain): FoldState[Unit] = for {
+  private def addImmediate1(fact: Fact.Alpha[_], chain: Chain): FoldState[Unit] = for {
     ff   <- FoldState.get
     done <- ff
       .facts
       .get(fact)
       .map {
-        case InProgress(_, totalChains, _, _, topNode) =>
-          FoldState(_.addUnion(totalChains, topNode, chain.head)).map { Done(fact, totalChains, _) }
-        case d: Done                                   => FoldState.pure(d)
+        case InProgress(_, totalChains, _, _, topChain) =>
+          FoldState(_.addUnion(totalChains, topChain, chain)).map { Done(fact, totalChains, _) }
+        case d: Done if d.chains.contains(chain)        => FoldState.pure(d)
       }
       .getOrElse(FoldState.pure {
-        Done(fact, Set(chain), chain.head)
+        Done(fact, Set(chain), chain)
       })
     _    <- FoldState.modify(_.setFactProgress(done))
   } yield ()
@@ -77,20 +77,16 @@ private[network] object FactsFolder {
     *      - None - make [[FactProgress.Done]] with combine
     *        from previous step.
     */
-  private def addImmediate2(fact: Fact.Source, chains: Set[Chain]): FoldState[Unit] = for {
+  private def addImmediate2(fact: Fact.Alpha[_], chains: Set[Chain]): FoldState[Unit] = for {
+    union    <- FoldState(_.addUnion(chains, chains.head, chains.last))
     ff       <- FoldState.get
-    union    <- ff
-      .unionNodes
-      .get(chains)
-      .map { FoldState.pure }
-      .getOrElse(FoldState(_.addUnion(chains, chains.head.head, chains.last.head)))
     progress <- ff.facts.get(fact) match {
       case Some(InProgress(_, totalChains, _, _, topNode)) =>
         FoldState(_.addUnion(totalChains, union, topNode)).map {
           Done(fact, chains, _)
         }
 
-      case Some(d: Done) => FoldState.pure(d)
+      case Some(d: Done) if chains.subsetOf(d.chains) => FoldState.pure(d)
 
       case None => FoldState.pure(Done(fact, chains, union))
     }
@@ -113,9 +109,9 @@ private[network] object FactsFolder {
     */
   @tailrec
   private def findSubset(
-    nodes: SortedMap[Set[Chain], AlphaNode.Combine],
+    nodes: SortedMap[Set[Chain], Chain.Combine],
     supSet: Set[Chain]
-  ): Option[(Set[Chain], AlphaNode.Combine)] = {
+  ): Option[(Set[Chain], Chain.Combine)] = {
     if (nodes.isEmpty) None
     else {
       val head = nodes.head
@@ -141,20 +137,21 @@ private[network] object FactsFolder {
       if (toCompare.isEmpty) solutionM
       else {
         val head = toCompare.head
-        solutionM
-          .flatMap { solution =>
-            if (solution.intersection.size >= head._2.size) Some(solution)
-            else {
-              val next = Solution(matchAgainst, head)
-                .filter { _.intersection.size > solution.intersection.size }
-                .getOrElse(solution)
+        if (solutionM.isDefined) {
+          val solution = solutionM.get
+          if (solution.intersection.size >= head._2.size) Some(solution)
+          else {
+            val next = Solution(matchAgainst, head)
+              .filter {
+                _.intersection.size > solution.intersection.size
+              }
+              .getOrElse(solution)
 
-              findLocalSolution(matchAgainst, toCompare.tail, Some(next))
-            }
+            findLocalSolution(matchAgainst, toCompare.tail, Some(next))
           }
-          .orElse {
-            findLocalSolution(matchAgainst, toCompare.tail, Solution(matchAgainst, head))
-          }
+        } else {
+          findLocalSolution(matchAgainst, toCompare.tail, Solution(matchAgainst, head))
+        }
       }
     }
 
@@ -168,10 +165,12 @@ private[network] object FactsFolder {
       else {
         val head         = toCompare.head
         val nextSolution = findLocalSolution(head, toCompare.tail, solutionM)
-        (nextSolution, toCompare.tail.headOption)
-          .mapN { (a, b) => Option.when(a.intersection.size >= b._2.size)(a) }
+        val res          = (nextSolution, toCompare.tail.headOption)
+          .mapN { (solution, next) => Option.when(solution.intersection.size >= next._2.size)(solution) }
           .flatten
-          .orElse(selectPair(toCompare.tail, nextSolution))
+
+        if (res.isDefined) res
+        else selectPair(toCompare.tail, nextSolution)
       }
     }
   }
@@ -201,15 +200,15 @@ private[network] object FactsFolder {
     }
   }
   private def onSubset(progressM: Option[FactProgress], head: ToProcess)(
-    subset: (Set[Chain], AlphaNode.Combine)
+    subset: (Set[Chain], Chain.Combine)
   ): FoldState[Set[Chain]] = {
     progressM match {
-      case None                                                  =>
+      case None                                                   =>
         val left = head.chains -- subset._1
         FoldState.modify { _.setFactProgress(head, left, subset._2) }.map(_ => left)
-      case Some(InProgress(fact, chains, united, left, topNode)) =>
+      case Some(InProgress(fact, chains, united, left, topChain)) =>
         for {
-          combine <- FoldState(_.addUnion(united ++ subset._1, topNode, subset._2))
+          combine <- FoldState(_.addUnion(united ++ subset._1, topChain, subset._2))
           newLeft = left -- subset._1
           _ <- FoldState.modify(_.setFactProgress(head, newLeft, combine))
         } yield newLeft
@@ -218,39 +217,35 @@ private[network] object FactsFolder {
   }
 
   // TODO: Make sure the order is from the smallest unprocessed to the largest
-  @tailrec
   def fold(toProcess: SortedSet[ToProcess]): FoldState[Unit]                   = {
     if (toProcess.isEmpty) FoldState.pure(())
     else {
-      val head                  = toProcess.head
-      val next: FoldState[Unit] = {
-        if (head.chains.size == 1) addImmediate1(head.fact, head.chains.head).flatMap(_ => fold(toProcess.tail))
-        else if (head.chains.size == 2) addImmediate2(head.fact, head.chains).flatMap(_ => fold(toProcess.tail))
-        else
-          for {
-            fs <- FoldState.get
-            _  <- findSubset(fs.unionNodes, head.chains)
-              .map {
-                onSubset(fs.facts.get(head.fact), head)
-              }
-              .map(_.flatMap { left =>
-                if (left.nonEmpty) fold(toProcess.tail + ToProcess(head.fact, left))
-                else fold(toProcess.tail)
-              })
-              .getOrElse {
-                val (left, right) = suggestPair(toProcess)
-                FoldState(_.addUnion(Set(left, right), left.head, right.head)).flatMap(_ => fold(toProcess))
-              }
-          } yield ()
-      }
-      next
+      val head = toProcess.head
+      if (head.chains.size == 1) addImmediate1(head.fact, head.chains.head).flatMap(_ => fold(toProcess.tail))
+      else if (head.chains.size == 2) addImmediate2(head.fact, head.chains).flatMap(_ => fold(toProcess.tail))
+      else
+        for {
+          fs <- FoldState.get
+          _  <- findSubset(fs.unionNodes, head.chains)
+            .map {
+              onSubset(fs.facts.get(head.fact), head)
+            }
+            .map(_.flatMap { left =>
+              if (left.nonEmpty) fold(toProcess.tail + ToProcess(head.fact, left))
+              else fold(toProcess.tail)
+            })
+            .getOrElse {
+              val (left, right) = suggestPair(toProcess)
+              FoldState(_.addUnion(Set(left, right), left, right)).flatMap(_ => fold(toProcess))
+            }
+        } yield ()
     }
   }
-  def apply(origin: Map[Fact.Source, Set[Chain]]): Map[Fact.Source, AlphaNode] = {
+  def apply(origin: Map[Fact.Alpha[_], Set[Chain]]): Map[Fact.Alpha[_], Chain] = {
 
-    fold(SortedSet.from(origin.view.iterator.map((ToProcess.apply _).tupled)))
-      .runS(FactsFolder(origin = origin))
-      .map(_.facts.view.mapValues(_.topNode).toMap)
+    fold(SortedSet.from(origin.view.iterator.map { case (fact, chains) => ToProcess(fact, chains) }))
+      .runS(new FactsFolder(origin = origin))
+      .map(_.facts.view.mapValues(_.topChain).toMap)
       .value
   }
 }

@@ -2,26 +2,40 @@ package org.slips.core.network.alpha
 
 import org.slips.core.fact.Fact
 
-trait FactProgress  {
-  val fact: Fact.Source
+/**
+  * Describes the progress of the facts collection while
+  * building AlphaNetwork
+  */
+sealed trait FactProgress {
+
+  /** Source fact being tested */
+  val fact: Fact.Alpha[_]
+
+  /** All chains of predicates testing this source fact */
   val chains: Set[Chain]
-  val topNode: AlphaNode
+
+  /** Top chain collecting all the [[chains]] */
+  val topChain: Chain
 }
 
 object FactProgress {
 
+  /** Fact not fully collected */
   case class InProgress(
-    fact: Fact.Source,
+    fact: Fact.Alpha[_],
     chains: Set[Chain],
+    /** Already united chains */
     united: Set[Chain],
+    /** Chains left to unite */
     left: Set[Chain],
-    topNode: AlphaNode.Combine
+    /** Top chain uniting all chains from [[united]] */
+    topChain: Chain
   ) extends FactProgress
 
   case class Done(
-    fact: Fact.Source,
+    fact: Fact.Alpha[_],
     chains: Set[Chain],
-    topNode: AlphaNode
+    topChain: Chain
   ) extends FactProgress
 
 }

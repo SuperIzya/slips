@@ -23,11 +23,10 @@ object Builder {
 
   val materializeAlphaNetwork: BuildStep[Unit] = BuildStep { ctx => ctx -> () }
 
-  val buildAlphaNetwork: BuildStep[AlphaNetwork] = for {
-    ctx     <- BuildStep.get
-    network <- AlphaNetwork(ctx.alphaPredicates)
-    _       <- ctx.addAlphaNetwork(network)
-  } yield network
+  val buildAlphaNetwork: BuildStep[AlphaNetwork] = BuildStep { ctx =>
+    val network = ctx.network.add(AlphaNetwork(ctx.alphaPredicates))
+    ctx.copy(network = network) -> network
+  }
 
   def parse(using env: Environment)(rules: RuleM*): BuildStep[List[ParseResult]] = {
     rules.toList.traverse { r => BuildStep.addParsingResult(ParseResult.fromRule(r)) }

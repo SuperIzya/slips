@@ -28,14 +28,6 @@ sealed trait AlphaNetwork {
 }
 
 object AlphaNetwork {
-  private val empty: Intermediate = Intermediate()
-
-  private case class FactFullSignature(fact: String, predicates: Set[String]) {
-    def add(p: String): FactFullSignature = copy(predicates = predicates + p)
-  }
-
-  // Full signature of the predicate
-  private case class PredicateSignature(predicate: String, ffs: Option[FactFullSignature])
 
   /**
     * Builds alpha network.
@@ -46,32 +38,128 @@ object AlphaNetwork {
     * [[predicates]] are sorted desc by the size of the
     * facts affected. Accumulated in [[Intermediate]] and
     * transformed to [[AlphaNetworkImpl]] in the end.
+    *
+    * For predicates P1 ... P7 and facts F1 ... F6 where
+    * facts are tested by predicates as following:
+    * ```
+    * -F1 - P1, P2, P6, P7
+    * -F2 - P2, P3, P4, P6, P7
+    * -F3 - P3, P4, P5, P6, P7
+    * -F4 - P1, P3, P4, P6, P7
+    * -F5 - P1, P2, P3, P4, P6, P7
+    * -F6 - P1, P2, P3, P5, P6, P7
+    * ```
+    *
+    * Then predicates are testing facts as following:
+    * ```
+    *  -P1 - F1, F4, F5, F6
+    *  -P2 - F1, F2, F5, F6
+    *  -P3 - F2, F3, F4, F5, F6
+    *  -P4 - F2, F3, F4, F5
+    *  -P5 - F3, F6
+    *  -P6 - F1, F2, F3, F4, F5, F6
+    *  -P7 - F1, F2, F3, F4, F5, F6
+    * ```
+    *
+    * The predicates will be added to the network from less
+    * facts to more facts, while the collected predicates
+    * will be added in reverse order: from most facts to
+    * less
+    *
+    * Step 1:
+    *
+    * -P5 - F3, F6
+    *
+    * Step 2-4:
+    * ```
+    *  -P4 - F2, F3, F4, F5
+    *  -P2 - F1, F2, F5, F6
+    *  -P1 - F1, F4, F5, F6
+    *  -P5 - F3, F6
+    * ```
+    * There is no pair from these predicates that their sets
+    * of facts are subset of one another.
+    *
+    * Step 5 (adding P3):
+    * ```
+    *  -P3 - F2, F3, F4, F5, F6 ----> P4 (F2, F3, F4, F5)
+    *  -P4 ----------------------------||
+    *  -P2 - F1, F2, F5, F6
+    *  -P1 - F1, F4, F5, F6
+    *  -P5 - F3, F6
+    * ```
+    * Each predicate from step 4 can be thought of as a
+    * chain of one. The chains are either extended or
+    * updated depending whether facts for predicate in
+    * question (P3) are a subset of one of the already added
+    * chains or exactly the same.
+    *
+    * Step 6, 7:
+    * ```
+    *  -P6,P7 - F1, F2, F3, F4, F5, F6 ----> P3 (F2, F3, F4, F5, F6) ----> P4 (F2, F3, F4, F5)
+    *  -P3 ----------------------------------||                            ||
+    *  -P4 ----------------------------------------------------------------||
+    *  -P2 - F1, F2, F5, F6
+    *  -P1 - F1, F4, F5, F6
+    *  -P5 - F3, F6
+    * ```
+    *
+    * At step 7 P7 was added alongside P6 since their facts
+    * are exactly the same.
+    *
+    * Now that the network of predicates is built facts
+    * needs to be collected into single nodes to provide
+    * that further to beta network.
+    *
+    * First, all chains need to be reversed: P6 alone is
+    * good only for fact F1. All the rest of the facts
+    * should be collected from the tail somewhere.
+    *
+    * ```
+    * -P6,P7 - F1 <---- P3 (F6) <---- P4 (F2, F3, F4, F5)
+    * -P3 --------------||            ||
+    * -P4 ----------------------------||
+    * -P2 - F1, F2, F5, F6
+    * -P1 - F1, F4, F5, F6
+    * -P5 - F3, F6
+    * ```
+    * Fact F1 (as the one with fewer predicates) needs
+    * predicates P6, P7, P2 & P1. At the beginning there are
+    * no union nodes, so it make sense to unite P2 & P1,
+    * since they both have most facts.
+    *
+    * Node `P1 & P2 (F1, F5, F6)` acts as a beta node but
+    * actually is an alpha node. P6, P7 are bound together,
+    * they will be represented as chain of nodes, but for
+    * for now for all intends and purposes they are one
+    * node. Another union node `P6,P7 & (P1 & P2)` and fact
+    * F1 is ready for consumption by beta network.
+    *
+    * For fact F2 it's P4 from the chain and P2 (since chain
+    * starting with P4 already contains P3, P6, P7). So
+    * another union node appears `P4 & P2 (F2, F5)`. etc.
     */
   def apply(predicates: AlphaPredicates): AlphaNetwork = {
     // Collect all predicate's signatures applied to a fact and it's predecessors
-    given ord: Ordering[(Fact.Alpha[_], String)] = Ordering
-      .fromLessThan((a, b) => a._1.predecessors.size < b._1.predecessors.size)
-    val (factsSigns: Map[Fact.Alpha[_], FactFullSignature], successors: Map[Fact.Alpha[_], Set[Fact.Alpha[_]]]) =
+    val successors: FactToSuccessor =
       predicates
+        .values
         .flatMap(ap => ap.facts.map(_ -> ap.predicate.signature))
-        .toList
-        .sorted
-        .foldLeft((Map.empty[Fact.Alpha[_], FactFullSignature], Map.empty[Fact.Alpha[_], Set[Fact.Alpha[_]]])) {
-          case ((signs, succ), f -> p) =>
-            signs.updated(f, signs.getOrElse(f, FactFullSignature(f.signature, Set.empty)).add(p)) ->
-              f.predecessors.foldLeft(succ)((s, p) => s + (p -> (s.getOrElse(p, Set.empty) + f)))
+        .foldLeft[FactToSuccessor](Map.empty) { case (succ, f -> p) =>
+          f.predecessors.foldLeft(succ)((s, p) => s + (p -> (s.getOrElse(p, Set.empty) + f)))
         }
 
-    type PerPredicate[T] = Map[AlphaPredicate, T]
-    val signedPredicates: PerPredicate[PredicateSignature] = predicates
+    val signedPredicates: PredicateToSignature = predicates
+      .values
       .map { ap =>
-        val fact = ap.facts.head
-        val sign = PredicateSignature(ap.predicate.signature, factsSigns.get(fact))
-        ap -> sign
+        ap -> PredicateSignature(
+          ap.predicate.signature,
+          ap.facts.flatMap(f => successors.get(f).toSet.flatten + f)
+        )
       }
       .toMap
 
-    val predicatesBySign: Map[PredicateSignature, AlphaPredicate] = signedPredicates
+    val predicatesBySign: SignatureToPredicate = signedPredicates
       .view
       .map(_.swap)
       .groupBy(_._1)
@@ -80,24 +168,22 @@ object AlphaNetwork {
       .toMap
 
     predicatesBySign
-      .view
       .values
       .toList
       .sorted(using Ordering.fromLessThan[AlphaPredicate]((a, b) => a.facts.size < b.facts.size))
-      .foldLeft(empty) { _ add _ }
+      .foldLeft(Intermediate(successors, signedPredicates, predicatesBySign)) { _ add _ }
       .toAlphaNetwork
   }
 
-  private given Ordering[Set[Fact.Alpha[_]]] = Ordering.fromLessThan((a, b) => a.size < b.size)
-
+  private[AlphaNetwork] given Ordering[Set[Fact.Alpha[_]]] = Ordering.fromLessThan((x, y) => x.size > y.size)
   private[AlphaNetwork] case class Intermediate(
-    private val factsToChains: SortedMap[FactFullSignature, Chain] = SortedMap.from(Map.empty),
-    private val globalSources: Map[String, AlphaPredicate] = Map.empty
+    successors: FactToSuccessor,
+    signedPredicates: PredicateToSignature,
+    predicatesBySign: SignatureToPredicate,
+    private val factsToChains: SortedMap[Set[Fact.Alpha[_]], Chain.Predicates] = SortedMap.from(Map.empty)
   ) {
 
     /**
-      * Called from [[AlphaNetwork.Intermediate.addChain]]
-      *
       * Accumulates alpha nodes for [[AlphaNetworkImpl]].
       * Accumulation is done according to following rules:
       *   1. predicate Q with same facts tested. If found,
@@ -109,90 +195,64 @@ object AlphaNetwork {
       */
     def add(predicate: AlphaPredicate): Intermediate = {
       val facts = predicate.facts
+
       if (factsToChains.contains(facts)) {
-        val tailChain = factsToChains(facts)
-        val newChain  = Chain(predicate, tailChain)
-        copy(factsToChains = factsToChains.updated(facts, newChain))
+        val chain    = factsToChains(facts)
+        val newChain = chain.appendPredicate(predicate, facts)
+
+        copy(factsToChains = factsToChains + (facts -> newChain))
       } else {
         factsToChains
           .values
-          .dropWhile(_.facts.size < facts.size)
-          .find(c => facts.subsetOf(c.facts))
+          .toList
+          .find(c => c.facts.subsetOf(facts))
           .fold {
-            val src   = facts.head.sourceFact.source
-            val node  = globalSources.getOrElse(src.signature, AlphaPredicate(predicate.source))
-            val chain = Chain(predicate, Chain(node, None, Set.empty))
-            copy(
-              globalSources = globalSources + (src.signature -> node),
-              factsToChains = factsToChains + (sources       -> chain)
-            )
+            copy(factsToChains = factsToChains + (facts -> Chain(predicate, facts)))
           } { c =>
-            val newChain = Chain(predicate, c, facts)
+            val newChain = Chain(predicate, facts, c)
             copy(factsToChains = factsToChains + (facts -> newChain))
           }
       }
     }
 
-    private def foldFacts: Map[FactFullSignature, AlphaNode] = {
+    private def foldFacts: Map[Fact.Alpha[_], Chain] = {
 
-      val res: Map[FactFullSignature, Set[Chain]] = factsToChains
+      val res: Map[Fact.Alpha[_], Set[Chain]] = factsToChains
         .view
         .iterator
-        .flatMap { case (facts, chain) => facts.map(_ -> Set(chain)) }
+        .flatMap { case (_, chain) =>
+          val inverted = chain.invert(None)
+          inverted.facts.map(_ -> inverted)
+        }
         .toList
         .groupBy(_._1)
         .view
-        .mapValues(_.flatMap(_._2).toSet)
+        .mapValues(_.map(_._2).toSet)
         .toMap
 
       FactsFolder(res)
     }
 
     def toAlphaNetwork: AlphaNetwork = {
-      val chains: Set[Chain] = factsToChains.values.toSet
-
-      val sources: scala.collection.immutable.Map[String, AlphaNode.Source[_]] = chains
-        .map(findSource)
-        .map(_.signature)
-        .flatMap(s => globalSources.get(s).map(s -> _))
-        .toMap
+      val folded: Map[Fact.Alpha[_], Chain] = foldFacts
+      val chains: Set[Chain]                = folded.values.toSet
 
       new AlphaNetworkImpl(
-        sources = factsToChains.keySet.flatten.map { src => AlphaSource(src.source, src.source.extractNode(sources)) },
-        topNodes = foldFacts,
+        topChains = folded,
         alphaNetwork = chains
       )
     }
 
-    @tailrec
-    private def findSource(chain: Chain): AlphaNode.Source[_] = {
-      chain.tail.fold(chain.head.sourceNode)(findSource)
-    }
-  }
-
-  private[AlphaNetwork] sealed trait AlphaSource {
-    type Type
-    val condition: Condition.Source[Type]
-    val node: AlphaNode.Source[Type]
-  }
-  private[AlphaNetwork] object AlphaSource       {
-    def apply[T](condSource: Condition.Source[T], nodeSource: AlphaNode.Source[T]): AlphaSource = new AlphaSource {
-      override type Type = T
-      override val node: AlphaNode.Source[T]      = nodeSource
-      override val condition: Condition.Source[T] = condSource
-    }
   }
 
   private class AlphaNetworkImpl(
-    private[AlphaNetwork] val sources: Set[AlphaSource],
-    override val topNodes: Map[Fact.Source, AlphaNode],
+    val topChains: Map[Fact.Alpha[_], Chain],
     private[AlphaNetwork] val alphaNetwork: Set[Chain]
   ) extends AlphaNetwork {
     override def add(other: AlphaNetwork): AlphaNetwork = other match
       case impl: AlphaNetworkImpl =>
         new AlphaNetworkImpl(
-          sources = this.sources ++ impl.sources,
-          topNodes = topNodes ++ impl.topNodes,
+          topChains = topChains ++ impl.topChains,
           alphaNetwork = alphaNetwork ++ impl.alphaNetwork
         )
       case Empty                  => this

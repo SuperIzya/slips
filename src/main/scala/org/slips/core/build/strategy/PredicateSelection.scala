@@ -84,7 +84,6 @@ object PredicateSelection {
     */
   case object Clean extends PredicateSelection {
 
-    @tailrec
     private def processDiscarded(selected: SelectedPredicatesAndSources): SelectedPredicatesAndSources = {
       if (selected.discarded.isEmpty) selected
       else selected.discarded.foldLeft(selected.copy(discarded = Set.empty))(collectSources(_, _))

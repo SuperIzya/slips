@@ -1,7 +1,9 @@
 package org.slips.core
 
+import cats.Applicative
 import cats.compat.SortedSet
 import cats.data.State
+import cats.implicits.*
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
@@ -10,16 +12,16 @@ package object build {
 
   type AlphaFacts      = Map[Fact.Source, Set[Predicate]]
   type AllFacts        = Map[Fact[_], Set[Predicate]]
-  type AlphaPredicates = Set[AlphaPredicate]
+  type AlphaPredicates = Map[String, AlphaPredicate]
   type BetaPredicates  = Map[Predicate, Set[Fact[_]]]
   type PredicateRules  = Map[Predicate, Set[RuleM]]
 
-  type BuildStep[x] = State[BuildContext, x]
+  type BuildStep[x] = State[BuildContext, _ <: x]
 
   extension (a: AlphaPredicates) {
     def addAlpha(predicate: Predicate): AlphaPredicates = {
       val alphaPredicate = AlphaPredicate(predicate)
-      alphaPredicate.fold(a)(a + _)
+      alphaPredicate.fold(a)(p => a |+| Map(p.predicate.signature -> p))
     }
   }
 
@@ -27,6 +29,15 @@ package object build {
     def addBeta(predicate: Predicate): BetaPredicates = {
       b + (predicate -> (b.getOrElse(predicate, Set.empty) ++ predicate.facts))
     }
+  }
+
+  given Applicative[BuildStep] = new Applicative[BuildStep] {
+    override def pure[A](x: A): BuildStep[A] = BuildStep.pure(x)
+
+    override def ap[A, B](ff: BuildStep[A => B])(fa: BuildStep[A]): BuildStep[B] = for {
+      a <- fa
+      f <- ff
+    } yield f(a)
   }
 
 }

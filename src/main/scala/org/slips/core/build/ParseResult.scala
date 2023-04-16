@@ -1,6 +1,7 @@
 package org.slips.core.build
 
 import org.slips.Env
+import org.slips.Signature
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
@@ -8,20 +9,19 @@ import org.slips.core.rule.Rule.RuleM
 
 private[slips] case class ParseResult(
   rule: RuleM,
-  sources: Set[Condition.Source[_]],
+  sources: Set[Signature],
   alphaPredicates: AlphaPredicates,
   betaPredicates: BetaPredicates,
   predicatesAndSources: SelectedPredicatesAndSources
 ) {
-  def predicateRules: PredicateRules =
-    (alphaPredicates.map(_.asInstanceOf[Predicate] -> rule) ++ betaPredicates.keys.map(_ -> rule)).toMap
+  def predicateRules: PredicateRules = (betaPredicates.keys ++ alphaPredicates.values.map(_.predicate))
+    .map(_ -> Set(rule))
+    .toMap
 }
 
 private[slips] object ParseResult {
 
-  def fromRule(
-    rule: RuleM
-  ): Env[ParseResult] = {
+  def fromRule(rule: RuleM): Env[ParseResult] = {
     val sp = rule.sourcesAndPredicates
 
     val pc = sp.predicates.keys.foldLeft(ParseCollector.empty)(_ addPredicate _)
@@ -29,7 +29,7 @@ private[slips] object ParseResult {
   }
 
   private case class ParseCollector(
-    alphaPredicates: AlphaPredicates = Set.empty,
+    alphaPredicates: AlphaPredicates = Map.empty,
     betaPredicates: BetaPredicates = Map.empty
   )
 
