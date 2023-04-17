@@ -19,7 +19,9 @@ lazy val root = (project in file(".")).settings(
     "-Yprint-debug",
     "-print-lines",
     "-Xcheck-macros",
-    "-deprecation"
+    "-deprecation",
+    "-rewrite",
+    "-source:3.2-migration"
     /*"-Vprofile",
     "-Vprofile-details 5"*/
     //   "-Yshow-suppressed-errors"

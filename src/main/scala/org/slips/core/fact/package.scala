@@ -10,8 +10,9 @@ package object fact {
   type Predecessors = List[Fact[_]]
 
   extension [T](fact: Fact[T]) {
-    def toVal(using T: FactOps[T]): Fact.Val[T] = T.toVal(fact)
+    def toVal(using T: FactOps[T]): Fact.Val[T] = T.splitToFacts(fact)
   }
+
   extension [T](fact: Fact.Val[T]) {
     def predecessors(using T: FactOps[T]): Predecessors = T.predecessors(fact)
     def sources(using T: FactOps[T]): Set[Signature]    = T.sources(fact)
@@ -20,13 +21,15 @@ package object fact {
   }
 
   extension [T <: NonEmptyTuple](facts: TMap[T]) {
-    def predecessors(using T: TupleOps[T]): Predecessors = T.predecessors(T.toVal(facts))
-    def sources(using T: TupleOps[T]): Set[Signature]    = T.sources(T.toVal(facts))
+    def predecessors(using T: TupleOps[T], ev: TMap[T] =:= Fact.Val[T]): Predecessors = T.predecessors(ev(facts))
+    def sources(using T: TupleOps[T], ev: TMap[T] =:= Fact.Val[T]): Set[Signature]    = T.sources(ev(facts))
 
-    def signature(using T: TupleOps[T]): Signature = T.extract(T.toVal(facts)).mkString("(", ", ", ")")
+    def signature(using T: TupleOps[T], ev: TMap[T] =:= Fact.Val[T]): Signature = T
+      .extract(ev(facts))
+      .mkString("(", ", ", ")")
 
-    def toVal(using T: TupleOps[T]): Fact.Val[T] = T.toVal(facts)
+    def toVal(using ev: TMap[T] =:= Fact.Val[T]): Fact.Val[T] = ev(facts)
 
-    def facts(using T: TupleOps[T]): Set[Fact[_]] = T.facts(T.toVal(facts))
+    def facts(using T: TupleOps[T], ev: TMap[T] =:= Fact.Val[T]): Set[Fact[_]] = T.facts(ev(facts))
   }
 }

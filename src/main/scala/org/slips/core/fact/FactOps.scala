@@ -11,6 +11,7 @@ import org.slips.core.SignatureStrategy
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.fact.Fact.Predecessors
+import org.slips.core.fact.Fact.Source
 import org.slips.core.fact.Fact.TMap
 import org.slips.core.fact.Fact.Val
 import scala.annotation.tailrec
@@ -19,18 +20,19 @@ import scala.deriving.Mirror
 import scala.util.NotGiven
 
 sealed trait FactOps[T] {
-  val signature: Signature = Macros.signType[T]
+  def signature: Signature = Macros.signType[T]
 
   def size: Int
 
   def empty: T
-  def toVal(f: Fact[T]): Fact.Val[T]
 
   def extract(r: Fact.Val[T]): FactOps.TupleSignature
   def predecessors(f: Fact.Val[T]): Predecessors
   def sources(f: Fact.Val[T]): Set[Signature]
   def sourceFacts(f: Fact.Val[T]): Set[Fact.Source]
   def facts(f: Fact.Val[T]): Set[Fact[_]]
+
+  def splitToFacts(f: Fact[T]): Fact.Val[T]
 
 }
 
@@ -42,131 +44,128 @@ object FactOps {
 
   private def getElement[T <: NonEmptyTuple, Q](index: Int)(v: T): Q = v.productElement(index).asInstanceOf[Q]
 
-  sealed trait TupleOps[T <: NonEmptyTuple] extends FactOps[T] {
+  sealed trait TupleOps[T <: Tuple] extends FactOps[T] {
 
     val index: Int
 
     override val size: Int = index
 
-    def chainT(f: TupleFactF): Fact.TMap[T]
-
-    def toVal(f: TMap[T]): Fact.Val[T]
-
   }
 
   object TupleOps {
+    given genTupleEmpty: TupleOps[EmptyTuple] with {
+      override val index: Int = 0
+
+      override def empty: EmptyTuple = EmptyTuple
+
+      override def facts(f: Val[EmptyTuple]): Set[Fact[_]] = Set.empty
+
+      override def sourceFacts(f: Val[EmptyTuple]): Set[Source] = Set.empty
+
+      override def splitToFacts(f: Fact[EmptyTuple]): Val[EmptyTuple] = EmptyTuple
+
+      override def extract(r: Val[EmptyTuple]): TupleSignature = List.empty
+
+      override def predecessors(f: Val[EmptyTuple]): Predecessors = List.empty
+
+      override def sources(f: Val[EmptyTuple]): Set[Signature] = Set.empty
+
+    }
+
     given genTupleOpsStart[H](using
       H: FactOps[H],
-      ev: Fact.Val[H] =:= Fact[H],
-      ev2: Fact.Val[H] =:= Fact[H *: EmptyTuple]
+      ev: Fact[H] *: EmptyTuple =:= Fact.Val[H *: EmptyTuple]
     ): TupleOps[H *: EmptyTuple] with {
       override val index: Int = 1
 
       override def empty: H *: EmptyTuple = H.empty *: EmptyTuple
 
-      def toVal(f: Fact.TMap[H *: EmptyTuple]): Fact[H *: EmptyTuple] = {
-        val (head: Fact[H]) *: EmptyTuple = f
-        ev2(ev.flip(head))
-      }
-
-      override def toVal(f: Fact[H *: EmptyTuple]): Val[H *: EmptyTuple] = {
-        ev2.flip(f)
-      }
-
       override def sourceFacts(f: Fact.Val[H *: EmptyTuple]): Set[Fact.Source] = {
-        val (head: Fact[H]) *: EmptyTuple = f
+        val (head: Fact[H]) *: EmptyTuple = f: @unchecked
 
         head.alphaSources
       }
 
       override def facts(f: Val[H *: EmptyTuple]): Set[Fact[_]] = {
-        val (head: Fact[H]) *: EmptyTuple = f
+        val (head: Fact[H]) *: EmptyTuple = f: @unchecked
         Set(head)
       }
 
-      override def chainT(f: TupleFactF): Fact.TMap[H *: EmptyTuple] = {
-        f[H](0) *: EmptyTuple
-      }
-
       override def extract(f: Fact.Val[H *: EmptyTuple]): TupleSignature = {
-        val (head: Fact[H]) *: EmptyTuple = f
+        val (head: Fact[H]) *: EmptyTuple = f: @unchecked
         List(head.signature)
       }
 
       def predecessors(f: Fact.Val[H *: EmptyTuple]): Predecessors = {
-        val (head: Fact[H]) *: EmptyTuple = f
+        val (head: Fact[H]) *: EmptyTuple = f: @unchecked
         head.predecessors
       }
 
       def sources(f: Fact.Val[H *: EmptyTuple]): Set[Signature] = {
-        val (head: Fact[H]) *: EmptyTuple = f
+        val (head: Fact[H]) *: EmptyTuple = f: @unchecked
         head.sources
+      }
+
+      override def splitToFacts(f: Fact[H *: EmptyTuple]): Fact.Val[H *: EmptyTuple] = {
+        import org.slips.syntax.*
+        ev(SignatureStrategy.Content(f.value(_.head)) *: EmptyTuple)
       }
     }
 
-    given genTupleOpsStep[H, T <: NonEmptyTuple](using
+    given genTupleOpsStep[H, T <: Tuple](using
       H: FactOps[H],
       evH: Fact.Val[H] =:= Fact[H],
-      evHS: NotTuple[H],
       T: TupleOps[T],
-      evT: Fact.Val[T] =:= TMap[T],
-      ev: Fact.Val[H *: T] =:= Fact[H] *: TMap[T]
+      evT: Fact.Val[T] =:= Fact.TMap[T],
+      ev: Fact.Val[H *: T] =:= Fact[H] *: Fact.TMap[T]
     ): TupleOps[H *: T] with {
       override val index: Int = T.index + 1
 
       override def empty: H *: T = H.empty *: T.empty
 
-      override def toVal(f: Fact.TMap[H *: T]): Fact.Val[H *: T] = {
-        val head *: tail = f
-        head *: T.toVal(tail)
-      }
-
-      override def toVal(f: Fact[H *: T]): Val[H *: T] = {
-        import org.slips.syntax.*
-        given strategy: SignatureStrategy = SignatureStrategy.Content
-        f.value(_.head) *: T.toVal(f.value(_.tail))
-      }
-
       override def sourceFacts(f: Fact.Val[H *: T]): Set[Fact.Source] = {
-        val head *: tail = ev.apply(f)
-        H.sourceFacts(H.toVal(head)) ++ T.sourceFacts(T.toVal(tail))
-      }
-
-      override def chainT(f: TupleFactF): Fact.TMap[H *: T] = {
-        val prev: Fact.TMap[T] = T.chainT(f)
-        f[H](index) *: prev
+        val (head: Fact[H]) *: (tail: Fact.TMap[T]) = ev(f)
+        H.sourceFacts(evH.flip(head)) ++ T.sourceFacts(evT.flip(tail))
       }
 
       override def extract(r: Fact.Val[H *: T]): TupleSignature = {
-        val (head: Fact[H]) *: tail = ev.apply(r)
-        head.signature +: T.extract(T.toVal(tail))
+        val (head: Fact[H]) *: (tail: Fact.Val[T]) = ev(r): @unchecked
+        head.signature +: T.extract(tail)
       }
 
       override def predecessors(f: Fact.Val[H *: T]): Predecessors = {
-        val (head: Fact[H]) *: tail = ev.apply(f)
-        head.predecessors ++ tail.predecessors
+        val (head: Fact[H]) *: (tail: Fact.Val[T]) = ev(f): @unchecked
+        head.predecessors ++ T.predecessors(tail)
       }
       override def sources(f: Fact.Val[H *: T]): Set[Signature]    = {
-        val (head: Fact[H]) *: tail = ev.apply(f)
-        head.sources ++ tail.sources
+        val (head: Fact[H]) *: (tail: Fact.Val[T]) = ev(f): @unchecked
+        head.sources ++ T.sources(tail)
       }
 
       override def facts(f: Fact.Val[H *: T]): Set[Fact[_]] = {
-        val (head: Fact[H]) *: (tail: TMap[T]) = ev(f)
-        tail.facts + head
+        val (head: Fact[H]) *: (tail: Fact.Val[T]) = ev(f): @unchecked
+        T.facts(tail) + head
+      }
+
+      override def splitToFacts(f: Fact[H *: T]): Fact.Val[H *: T] = {
+        import org.slips.syntax.*
+        SignatureStrategy.Content[Fact.Val[H *: T]] { strategy ?=>
+          val head: Fact[H]                  = f.value(_.head)
+          val tail: Fact.TMap[T]             = evT(T.splitToFacts(f.value(_.tail)))
+          val tuple: Fact[H] *: Fact.TMap[T] = head *: tail
+          ev.flip(tuple)
+        }
       }
     }
   }
 
-  given genFactOpsSingle[T](using ev: Fact.Val[T] =:= Fact[T], T: Empty[T]): FactOps[T] with {
+  given genFactOpsSingle[T: NotTuple](using ev: Fact.Val[T] =:= Fact[T], T: Empty[T]): FactOps[T] with {
 
     override def size: Int = 1
 
     override def empty: T = T.empty
 
     override def sourceFacts(f: Fact.Val[T]): Set[Fact.Source] = ev(f).alphaSources
-
-    override def toVal(f: Fact[T]): Fact.Val[T] = ev.flip(f)
 
     override def extract(r: Fact.Val[T]): TupleSignature = List(ev(r).signature)
 
@@ -175,10 +174,12 @@ object FactOps {
     def sources(f: Fact.Val[T]): Set[Signature] = ev(f).sources
 
     override def facts(f: Fact.Val[T]): Set[Fact[_]] = Set(ev(f))
+
+    def splitToFacts(f: Fact[T]): Fact.Val[T] = ev.flip(f)
   }
 
   given unitFactOps(using ev: Fact.Val[Unit] =:= Fact[Unit]): FactOps[Unit] with {
-    val signature: Signature = "Unit"
+    override val signature: Signature = "Unit"
 
     def size: Int = 0
 
@@ -194,7 +195,8 @@ object FactOps {
 
     def sourceFacts(f: Fact.Val[Unit]): Set[Fact.Source] = Set.empty
 
-    def facts(f: Fact.Val[Unit]): Set[Fact[_]] = Set(Fact.unit)
+    def facts(f: Fact.Val[Unit]): Set[Fact[_]]      = Set(Fact.unit)
+    def splitToFacts(f: Fact[Unit]): Fact.Val[Unit] = ev.flip(Fact.unit)
   }
 
 }

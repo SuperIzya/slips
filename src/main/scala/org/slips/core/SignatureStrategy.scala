@@ -1,7 +1,12 @@
 package org.slips.core
 
+import org.slips.Signature
+
 sealed trait SignatureStrategy {
-  inline def createSigned[R](factory: String => R, inline toSign: Any): R
+
+  inline def sign[R](factory: Signature => R, inline toSign: Any): R
+
+  inline def apply[T](f: Signed[T]): T = f(using this)
 }
 
 object SignatureStrategy {
@@ -11,13 +16,14 @@ object SignatureStrategy {
     * function.
     */
   object Content extends SignatureStrategy {
-    inline def createSigned[R](factory: String => R, inline toSign: Any): R = Macros.createSigned(factory, toSign)
+    override inline def sign[R](factory: Signature => R, inline toSign: Any): R = Macros.createSigned(factory, toSign)
   }
 
   /**
     * Uses hash code of a function to generate a signature
     */
   object HashCode extends SignatureStrategy {
-    inline def createSigned[R](factory: String => R, inline toSign: Any): R = factory(toSign.hashCode().toHexString)
+    override inline def sign[R](factory: Signature => R, inline toSign: Any): R = factory(toSign.hashCode().toHexString)
   }
+
 }

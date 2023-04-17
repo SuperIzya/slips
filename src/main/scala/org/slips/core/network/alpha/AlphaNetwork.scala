@@ -24,6 +24,8 @@ sealed trait AlphaNetwork {
   // Fact signature ->
   val outlets: Map[String, AlphaNode]          = Map.empty
 
+  val topChains: Map[Fact.Alpha[_], Chain]
+  private[AlphaNetwork] val alphaNetwork: Set[Chain]
   def add(other: AlphaNetwork): AlphaNetwork
 }
 
@@ -259,6 +261,8 @@ object AlphaNetwork {
   }
 
   case object Empty extends AlphaNetwork {
+    override private[AlphaNetwork] val alphaNetwork     = Set.empty[Chain]
+    override val topChains: Map[Fact.Alpha[_], Chain]   = Map.empty
     override def add(other: AlphaNetwork): AlphaNetwork = other
   }
 }

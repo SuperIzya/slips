@@ -120,8 +120,6 @@ object PredicateSelection {
           collectSources(col, left, queue.enqueue(right))
         case Predicate.And(l, right)                                                                =>
           collectSources(col.withDiscard(l), right, queue)
-        case _                                                                                      =>
-          queue.deq(col.withDiscard(p))
       }
     }
 

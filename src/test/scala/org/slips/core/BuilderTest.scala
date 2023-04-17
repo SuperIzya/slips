@@ -223,8 +223,8 @@ object BuilderTest extends ZIOSpecDefault {
 
         steps.runA(BuildContext.empty).value
       }
-      assertTrue(res.sources.nonEmpty) &&
-      assertTrue(res.topNodes.nonEmpty)
+      assertTrue(res.alphaNetwork.nonEmpty) &&
+      assertTrue(res.topChains.nonEmpty)
     } @@ TestAspect.ignore,
     suite("AlphaNodeStrategy.MinimumBuffers")({
       object SEMinBuffs extends SimpleEnvironment {
@@ -239,8 +239,8 @@ object BuilderTest extends ZIOSpecDefault {
 
           steps.runA(BuildContext.empty).value
         }
-        assertTrue(res.sources.nonEmpty) &&
-        assertTrue(res.topNodes.nonEmpty)
+        assertTrue(res.alphaNetwork.nonEmpty) &&
+        assertTrue(res.topChains.nonEmpty)
       }
 
       Seq(simpleTest)

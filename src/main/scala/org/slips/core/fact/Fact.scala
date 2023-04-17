@@ -35,7 +35,7 @@ sealed trait Fact[T] extends WithSignature {
     .foldLeft((Set.empty[Fact.Source], Set.empty[Fact[?]])) { (col, p) =>
       if (p.isAlpha) (col._1 ++ p.alphaSources, col._2)
       else col._1 -> (p.betaSources ++ col._2)
-    }
+    }: @unchecked
 
   def sources: Set[Signature] = alphaSources.map(_.source)
 
@@ -56,9 +56,15 @@ object Fact {
   type TInverseMap = [T <: Tuple] =>> Tuple.InverseMap[T, Fact]
   type TIsMapped   = [T <: Tuple] =>> Tuple.IsMappedBy[Fact][T]
 
-  type Val[X] = X match
-    case x <:< Tuple => TMap[x]
-    case _           => Fact[X]
+  type Val[X] = X match {
+    case x <:< NonEmptyTuple =>
+      x match {
+        case q *: EmptyTuple => Fact[q] *: EmptyTuple
+        case q *: t          => Fact[q] *: Val[t]
+      }
+    case EmptyTuple          => EmptyTuple
+    case _                   => Fact[X]
+  }
 
   type ReverseVal[X] = X match
     case x <:< Tuple => TInverseMap[x]
@@ -92,18 +98,6 @@ object Fact {
 
   }
   object Alpha {
-
-    final case class Same[T](
-      sourceFact: Fact.Source,
-      collected: Fact.Val[T *: T *: EmptyTuple]
-    )(using TT: TupleOps[T *: T *: EmptyTuple]) extends Alpha[T *: T *: EmptyTuple] {
-      override val source: Signature                 = sourceFact.source
-      override def signature: Signature              = s"Same($source, ${ collected.signature })"
-      override lazy val predecessors: List[Alpha[_]] =
-        TT.facts(collected).map(_.asInstanceOf[Alpha[_]]).toList ++ TT
-          .predecessors(collected)
-          .map(_.asInstanceOf[Alpha[_]])
-    }
 
     final case class Multiply[T, Q <: NonEmptyTuple](
       override val signature: Signature,
