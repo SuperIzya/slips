@@ -18,25 +18,15 @@ object SyntaxTest {
   }
 
   val confidenceDrop: Double = 0.99
-  case class Category(
-    theme: Theme,
-    confidence: Double
-  ) {
+  case class Category(heme: Theme, confidence: Double) {
 
     def :*:(
       other: Category
     ): Category = copy(confidence = Math.min(confidence + other.confidence, 1) * confidenceDrop)
   }
 
-  case class Word(
-    word: String,
-    category: Category
-  )
-  case class Text(
-    word1: String,
-    word2: String,
-    categoryM: Option[Category]
-  )
+  case class Word(word: String, category: Category)
+  case class Text(word1: String, word2: String, categoryM: Option[Category])
 
   val categoryEmpty: Text => Boolean = _.categoryM.isEmpty
   val firstWord: Text => String      = _.word1
@@ -63,21 +53,19 @@ object SyntaxTest {
         } yield ()
       }
 
-  val categoryIsDefined: Text => Boolean  = _.categoryM.isDefined
+  val categoryIsDefined: Text => Boolean      = _.categoryM.isDefined
   val textThemeM: Text => Option[Theme]       = _.categoryM.map(_.theme)
   val textCategoryM: Text => Option[Category] = _.categoryM
-  private val shouldMarkWord              = for {
+  private val shouldMarkWord                  = for {
     t1 <- all[Text] if t1.test(categoryIsDefined)
     t2 <- all[Text] if t2.test(categoryIsDefined)
-    _  <- {
-      val words = Seq(firstWord, secondWord)
-      for {
-        w1 <- words
-        w2 <- words
-      } yield t1.value(w1) === t2.value(w2)
-    }.reduceLeft(_ or _)
-    _  <- t1.value(textThemeM) === t2.value(textThemeM)
-    _  <- notExists[Word] { w => w.value(wordValue) === t1.value(firstWord) }
+    words = Seq(firstWord, secondWord)
+    _ <- (for {
+      w1 <- words
+      w2 <- words
+    } yield t1.value(w1) === t2.value(w2)).reduceLeft(_ or _)
+    _ <- t1.value(textThemeM) === t2.value(textThemeM)
+    _ <- notExists[Word] { w => w.value(wordValue) === t1.value(firstWord) }
   } yield (t1.value(firstWord), t1.value(textCategoryM), t2.value(textCategoryM))
 
   private val markWord = (env: Environment) ?=>

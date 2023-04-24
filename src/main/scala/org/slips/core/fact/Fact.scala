@@ -57,13 +57,10 @@ object Fact {
   type TIsMapped   = [T <: Tuple] =>> Tuple.IsMappedBy[Fact][T]
 
   type Val[X] = X match {
-    case x <:< NonEmptyTuple =>
-      x match {
-        case q *: EmptyTuple => Fact[q] *: EmptyTuple
-        case q *: t          => Fact[q] *: Val[t]
-      }
-    case EmptyTuple          => EmptyTuple
-    case _                   => Fact[X]
+    case EmptyTuple      => EmptyTuple
+    case q *: EmptyTuple => Fact[q] *: EmptyTuple
+    case q *: t          => Fact[q] *: Val[t]
+    case _               => Fact[X]
   }
 
   type ReverseVal[X] = X match

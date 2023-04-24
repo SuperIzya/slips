@@ -36,7 +36,6 @@ object syntax {
     }
 
     private inline def buildPredicate(other: Fact[T], inline test: (T, T) => Boolean)(using
-      TT: TupleOps[T *: T *: EmptyTuple],
       T: FactOps[T],
       ev: SimpleTuple2[T]
     ): Signed[Predicate] = {
