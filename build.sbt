@@ -1,10 +1,10 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
-ThisBuild / scalaVersion := "3.2.2"
+ThisBuild / scalaVersion := "3.3.0"
 
 lazy val Version = new {
   lazy val cats       = "2.9.0"
-  lazy val tests      = "3.2.12"
+  lazy val tests      = "3.2.15"
   lazy val magnolia   = "1.3.0"
   lazy val discipline = "2.2.0"
   lazy val zio        = "2.0.12"
@@ -12,19 +12,19 @@ lazy val Version = new {
 }
 
 lazy val root = (project in file(".")).settings(
-  name := "slips4",
+  name := "slips",
   scalacOptions ++= Seq(
-//    "-explain",
+    "-explain",
 //    "-Xprint-suspension",
     "-Yprint-debug",
     "-print-lines",
     "-Xcheck-macros",
     "-deprecation",
     "-rewrite",
-    "-source:3.2-migration"
+    "-source:3.2-migration",
     /*"-Vprofile",
     "-Vprofile-details 5"*/
-    //   "-Yshow-suppressed-errors"
+    "-Yshow-suppressed-errors"
   ),
   libraryDependencies ++= Seq(
     "org.typelevel"                %% "cats-core"            % Version.cats,

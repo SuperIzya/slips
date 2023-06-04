@@ -3,6 +3,7 @@ package org.slips.core.build
 import cats.data.State
 import cats.implicits.*
 import cats.syntax.*
+import org.slips.Env
 import org.slips.Signature
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
@@ -14,10 +15,10 @@ import org.slips.core.rule.Rule.RuleM
 import scala.annotation.tailrec
 
 case class BuildContext private[build] (
-  nodes: Map[Signature, Node] = Map.empty,
+  nodes: Map[String, Node] = Map.empty,
   nodeFacts: Map[Node, Set[Fact[_]]] = Map.empty,
-  sources: Set[Signature] = Set.empty,
-  sourceNodes: Map[Signature, AlphaNode.Source[_]] = Map.empty,
+  sources: Set[String] = Set.empty,
+  sourceNodes: Map[String, AlphaNode.Source[_]] = Map.empty,
   predicateRules: PredicateRules = Map.empty,
   alphaPredicates: AlphaPredicates = Map.empty,
   betaPredicates: BetaPredicates = Map.empty,
@@ -30,22 +31,25 @@ object BuildContext {
   val empty: BuildContext = BuildContext()
 
   extension (ctx: BuildContext) {
-    def addNode(node: Node): (BuildContext, Node) =
-      ctx.copy(nodes = ctx.nodes + (node.signature -> node)) -> node
+    def addNode(node: Node): (BuildContext, Node) = {
+      val signature = node.signature
+      ctx.copy(nodes = ctx.nodes + (signature -> node)) -> node
+    }
 
-    def addSource[T](source: Condition.Source[T]): BuildContext = {
-      if (ctx.sources.contains(source.signature)) ctx
-      else ctx.copy(sources = ctx.sources + source.signature)
+    def addSource[T](source: Condition.Source[T]): Env[BuildContext] = env ?=> {
+      val signature = env.signatureStrategy(source.signature)
+      if (ctx.sources.contains(signature)) ctx
+      else ctx.copy(sources = ctx.sources + signature)
     }
 
     def addSourceNode[T](
-      src: Signature,
+      signature: String,
       node: => AlphaNode.Source[T]
     ): (BuildContext, AlphaNode.Source[T]) = {
-      val nextNode = ctx.sourceNodes.getOrElse(src, node)
+      val nextNode = ctx.sourceNodes.getOrElse(signature, node)
       ctx.copy(
-        sources = ctx.sources + src,
-        sourceNodes = ctx.sourceNodes + (nextNode.signature -> nextNode)
+        sources = ctx.sources + signature,
+        sourceNodes = ctx.sourceNodes + (signature -> nextNode)
       ) -> nextNode.asInstanceOf[AlphaNode.Source[T]]
     }
 

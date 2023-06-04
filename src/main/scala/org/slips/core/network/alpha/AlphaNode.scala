@@ -16,7 +16,7 @@ private[slips] sealed trait AlphaNode extends Node {
 private[slips] object AlphaNode {
 
   /** Source node, producing values of type T */
-  case class Source[T](override val signature: Signature) extends AlphaNode {
+  case class Source[T](override val signature: String) extends AlphaNode {
     override def sourceNode: Source[_] = this
   }
 
@@ -28,7 +28,7 @@ private[slips] object AlphaNode {
     p: TestPredicate,
     prev: AlphaNode
   ) extends AlphaNode {
-    override def signature: Signature = s"${ prev.signature } -> ${ p.signature }"
+    override def signature: String = s"${ prev.signature } -> ${ p.signature }"
 
     override def sourceNode: Source[_] = prev.sourceNode
   }
@@ -41,7 +41,7 @@ private[slips] object AlphaNode {
     left: AlphaNode,
     right: AlphaNode
   ) extends AlphaNode {
-    override def signature: Signature = s"(${ left.signature }) && (${ right.signature })"
+    override def signature: String = s"(${ left.signature }) && (${ right.signature })"
 
     override def sourceNode: Source[_] = left.sourceNode
   }

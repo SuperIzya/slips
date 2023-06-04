@@ -25,7 +25,7 @@ sealed trait AlphaNetwork {
   val outlets: Map[String, AlphaNode]          = Map.empty
 
   val topChains: Map[Fact.Alpha[_], Chain]
-  private[AlphaNetwork] val alphaNetwork: Set[Chain]
+  private[core] val alphaNetwork: Set[Chain]
   def add(other: AlphaNetwork): AlphaNetwork
 }
 
@@ -141,7 +141,7 @@ object AlphaNetwork {
     * starting with P4 already contains P3, P6, P7). So
     * another union node appears `P4 & P2 (F2, F5)`. etc.
     */
-  def apply(predicates: AlphaPredicates): AlphaNetwork = {
+  def apply(predicates: AlphaPredicates): Env[AlphaNetwork] = env ?=> {
     // Collect all predicate's signatures applied to a fact and it's predecessors
     val successors: FactToSuccessor =
       predicates
@@ -155,7 +155,7 @@ object AlphaNetwork {
       .values
       .map { ap =>
         ap -> PredicateSignature(
-          ap.predicate.signature,
+          env.signatureStrategy(ap.predicate.signature),
           ap.facts.flatMap(f => successors.get(f).toSet.flatten + f)
         )
       }
@@ -195,7 +195,7 @@ object AlphaNetwork {
       *   1. add predicate P to network as single chain for
       *      facts P.facts.
       */
-    def add(predicate: AlphaPredicate): Intermediate = {
+    def add(predicate: AlphaPredicate): Env[Intermediate] = {
       val facts = predicate.facts
 
       if (factsToChains.contains(facts)) {
@@ -217,7 +217,7 @@ object AlphaNetwork {
       }
     }
 
-    private def foldFacts: Map[Fact.Alpha[_], Chain] = {
+    private def foldFacts: Env[Map[Fact.Alpha[_], Chain]] = {
 
       val res: Map[Fact.Alpha[_], Set[Chain]] = factsToChains
         .view
@@ -235,7 +235,7 @@ object AlphaNetwork {
       FactsFolder(res)
     }
 
-    def toAlphaNetwork: AlphaNetwork = {
+    def toAlphaNetwork: Env[AlphaNetwork] = {
       val folded: Map[Fact.Alpha[_], Chain] = foldFacts
       val chains: Set[Chain]                = folded.values.toSet
 
@@ -249,7 +249,7 @@ object AlphaNetwork {
 
   private class AlphaNetworkImpl(
     val topChains: Map[Fact.Alpha[_], Chain],
-    private[AlphaNetwork] val alphaNetwork: Set[Chain]
+    private[core] val alphaNetwork: Set[Chain]
   ) extends AlphaNetwork {
     override def add(other: AlphaNetwork): AlphaNetwork = other match
       case impl: AlphaNetworkImpl =>
@@ -261,7 +261,7 @@ object AlphaNetwork {
   }
 
   case object Empty extends AlphaNetwork {
-    override private[AlphaNetwork] val alphaNetwork     = Set.empty[Chain]
+    override private[core] val alphaNetwork             = Set.empty[Chain]
     override val topChains: Map[Fact.Alpha[_], Chain]   = Map.empty
     override def add(other: AlphaNetwork): AlphaNetwork = other
   }

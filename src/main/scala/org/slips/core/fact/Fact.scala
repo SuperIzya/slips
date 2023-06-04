@@ -39,7 +39,7 @@ sealed trait Fact[T] extends WithSignature {
 
   def sources: Set[Signature] = alphaSources.map(_.source)
 
-  override def signature: Signature = s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]"
+  override def signature: Signature = Signature.Manual(s"${ Macros.signType[this.type] }[${ Macros.signType[T] }]")
 
   private[slips] val isAlpha: Boolean
 
@@ -52,20 +52,14 @@ object Fact {
     val empty = List.empty[Fact[_]]
   }
 
-  type TMap        = [T <: Tuple] =>> Tuple.Map[T, Fact]
-  type TInverseMap = [T <: Tuple] =>> Tuple.InverseMap[T, Fact]
-  type TIsMapped   = [T <: Tuple] =>> Tuple.IsMappedBy[Fact][T]
+  type TMap[T <: Tuple]      = Tuple.Map[T, Fact]
+  type TIsMapped[T <: Tuple] = Tuple.IsMappedBy[Fact][T]
 
   type Val[X] = X match {
-    case EmptyTuple      => EmptyTuple
-    case q *: EmptyTuple => Fact[q] *: EmptyTuple
-    case q *: t          => Fact[q] *: Val[t]
-    case _               => Fact[X]
+    case EmptyTuple => EmptyTuple
+    case q *: t     => Fact[q] *: Val[t]
+    case _          => Fact[X]
   }
-
-  type ReverseVal[X] = X match
-    case x <:< Tuple => TInverseMap[x]
-    case Fact[x]     => x
 
   val unit: Fact[Unit] = literal(())
 
@@ -113,7 +107,7 @@ object Fact {
       override val source: Signature                 = sourceFact.source
       override def predecessors: List[Fact.Alpha[?]] = pred +: pred.predecessors
 
-      override def signature: Signature = s"${ pred.signature } -> $mapSign"
+      override def signature: Signature = Signature.DerivedBinary(pred.signature, mapSign, (s1, s2) => s"$s1 -> $s2")
 
       def signed(signature: Signature): Map[T, Q] = copy(mapSign = signature)
     }
@@ -135,7 +129,7 @@ object Fact {
     }
   }
   final case class Literal[I: CanBeLiteral] private[slips] (value: I) extends Fact[I] {
-    override lazy val signature: Signature = value.toString
+    override lazy val signature: Signature = Signature.Manual(value.toString)
 
     override private[slips] val isAlpha = true
 
@@ -144,7 +138,8 @@ object Fact {
   }
 
   final case class Dummy[T] private[slips] (src: Condition[T]) extends Fact[T] {
-    override val signature: Signature = s"${ src.signature } -> Fact[${ Macros.signType[T] }]"
+    override val signature: Signature = Signature
+      .DerivedUnary(src.signature, s => s"$s -> Fact[${ Macros.signType[T] }]")
 
     override private[slips] val isAlpha = true
 
@@ -153,10 +148,15 @@ object Fact {
     override def sources: Set[Signature] = Set.empty
   }
 
-  object CanBeLiteral {
+  object CanBeLiteral extends CanBeLiteral.LowPrio {
+
+    trait LowPrio {
+      given unitCanBeLiteral: CanBeLiteral[Unit] = new CanBeLiteral[Unit] {}
+    }
+
     given [T <: Tuple](using NotGiven[TIsMapped[T]]): CanBeLiteral[T] = new CanBeLiteral[T] {}
 
-    given [T](using NotGiven[T <:< Tuple], NotGiven[T =:= Fact[?]]): CanBeLiteral[T] = new CanBeLiteral[T] {}
+    given [T](using NotTuple[T], NotGiven[T =:= Fact[?]]): CanBeLiteral[T] = new CanBeLiteral[T] {}
   }
 
 }

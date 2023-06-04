@@ -9,7 +9,7 @@ import org.slips.core.rule.Rule.RuleM
 
 private[slips] case class ParseResult(
   rule: RuleM,
-  sources: Set[Signature],
+  sources: Set[String],
   alphaPredicates: AlphaPredicates,
   betaPredicates: BetaPredicates,
   predicatesAndSources: SelectedPredicatesAndSources
@@ -37,20 +37,22 @@ private[slips] object ParseResult {
     val empty: ParseCollector = ParseCollector()
 
     extension (collector: ParseCollector) {
-      def addPredicate(p: Predicate): ParseCollector = {
+      def addPredicate(p: Predicate): Env[ParseCollector] = {
         collector.copy(
           alphaPredicates = collector.alphaPredicates.addAlpha(p),
           betaPredicates = collector.betaPredicates.addBeta(p)
         )
       }
 
-      def toParseResult(ruleM: RuleM, ps: SelectedPredicatesAndSources): ParseResult = ParseResult(
-        rule = ruleM,
-        alphaPredicates = collector.alphaPredicates,
-        betaPredicates = collector.betaPredicates,
-        sources = ps.sources,
-        predicatesAndSources = ps
-      )
+      def toParseResult(ruleM: RuleM, ps: SelectedPredicatesAndSources): Env[ParseResult] = env ?=> {
+        ParseResult(
+          rule = ruleM,
+          alphaPredicates = collector.alphaPredicates,
+          betaPredicates = collector.betaPredicates,
+          sources = ps.sources.map(env.signatureStrategy(_)),
+          predicatesAndSources = ps
+        )
+      }
     }
 
   }

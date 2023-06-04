@@ -26,19 +26,32 @@ object syntax {
 
   inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : FactOps](x: T): Fact[T] = Fact.literal(x)
 
+  extension [T <: Tuple](fact: Fact.Val[T]) {
+    inline def test(inline f: T => Boolean)(using T: TupleOps[T]): Predicate = Signed(f) {
+      Predicate.Test(
+        _,
+        f,
+        fact
+      )
+    }
+  }
+
   extension [T](fact: Fact[T]) {
-    inline def test(inline f: T => Boolean)(using T: FactOps[T], ev: Fact[T] =:= Fact.Val[T]): Signed[Predicate] = {
+    inline def test(inline f: T => Boolean)(using T: FactOps[T], ev: Fact[T] =:= Fact.Val[T]): Predicate = {
       Signed(f)(Predicate.Test(_, f, ev(fact)))
     }
-    inline def value[I](inline f: T => I): Signed[Fact[I]]                                                       = {
+
+    inline def value[I](inline f: T => I): Fact[I] = {
       if (fact.isAlpha) Signed(f) { Fact.Alpha.Map(fact.asInstanceOf[Fact.Alpha[T]], f, _) }
       else ???
     }
 
     private inline def buildPredicate(other: Fact[T], inline test: (T, T) => Boolean)(using
       T: FactOps[T],
-      ev: SimpleTuple2[T]
-    ): Signed[Predicate] = {
+      ev: SimpleTuple2[T],
+      ev2: Fact[T] =:= Fact.Val[T],
+      TT: FactOps[T *: T *: EmptyTuple]
+    ): Predicate = {
       (fact, other) match {
         // case (a: Fact.Alpha[T], b: Fact.Alpha[T]) if a.alphaSources == b.alphaSources =>
 
@@ -47,7 +60,7 @@ object syntax {
             Predicate.Test(
               _,
               test(l.value, _),
-              b
+              ev2(b)
             )
           }
         case (a: Fact[T], l: Fact.Literal[T]) =>
@@ -55,7 +68,7 @@ object syntax {
             Predicate.Test(
               _,
               test(_, l.value),
-              a
+              ev2(a)
             )
           }
         case _                                =>
@@ -72,17 +85,21 @@ object syntax {
     @targetName("repNotEq")
     def =!=(other: Fact[T])(using
       TT: TupleOps[T *: T *: EmptyTuple],
+      F: FactOps[T],
       T: Eq[T],
-      ev: SimpleTuple2[T]
-    ): Signed[Predicate] =
+      ev: SimpleTuple2[T],
+      ev2: Fact[T] =:= Fact.Val[T]
+    ): Predicate =
       buildPredicate(other, T.neqv)
 
     @targetName("repEq")
     inline def ===(other: Fact[T])(using
       TO: TupleOps[T *: T *: EmptyTuple],
+      F: FactOps[T],
       T: Eq[T],
-      ev: SimpleTuple2[T]
-    ): Signed[Predicate] =
+      ev: SimpleTuple2[T],
+      ev2: Fact[T] =:= Fact.Val[T]
+    ): Predicate =
       buildPredicate(other, T.eqv)
 
   }

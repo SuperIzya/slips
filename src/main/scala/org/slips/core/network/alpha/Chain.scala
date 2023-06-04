@@ -1,5 +1,6 @@
 package org.slips.core.network.alpha
 
+import org.slips.Env
 import org.slips.core.build.AlphaPredicate
 import org.slips.core.fact.Fact
 import scala.annotation.tailrec
@@ -21,14 +22,15 @@ private[network] object Chain {
   ) extends Chain {
 
     @tailrec
-    final def invert(newTail: Option[Predicates] = None): Chain = {
+    final def invert(newTail: Option[Predicates] = None): Env[Chain] = env ?=> {
       val tailM = tail.headOption
       val next  = Predicates(
         predicates = predicates,
         tail = newTail,
         facts = tailM.map(_.facts).fold(facts)(facts -- _),
-        allPredicates = newTail
-          .fold(predicates.map(_.predicate.signature))(_.allPredicates ++ predicates.map(_.predicate.signature))
+        allPredicates = newTail.fold(predicates.map(_.predicate.signature).map(env.signatureStrategy.apply))(
+          _.allPredicates ++ predicates.map(_.predicate.signature).map(env.signatureStrategy.apply)
+        )
       )
 
       if (tailM.isEmpty) next
@@ -50,24 +52,30 @@ private[network] object Chain {
   }
 
   extension (chain: Predicates) {
-    def appendPredicate(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]]): Predicates = {
+    def appendPredicate(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]]): Env[Predicates] = env ?=> {
       chain.copy(
         predicates = chain.predicates + predicate,
         facts = chain.facts ++ facts,
-        allPredicates = chain.allPredicates + predicate.predicate.signature
+        allPredicates = chain.allPredicates + env.signatureStrategy(predicate.predicate.signature)
       )
     }
   }
 
   given Ordering[Chain] = (x, y) => x.facts.sizeCompare(y.facts)
 
-  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]]): Predicates =
+  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]]): Env[Predicates] =
     apply(predicate, facts, None)
 
-  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]], tail: Predicates): Predicates =
+  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]], tail: Predicates): Env[Predicates] =
     apply(predicate, facts, Option(tail))
 
-  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]], tail: Option[Predicates]): Predicates =
-    Predicates(Set(predicate), tail, facts, tail.view.toSet.flatMap(_.allPredicates) + predicate.predicate.signature)
+  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]], tail: Option[Predicates]): Env[Predicates] = env ?=> {
+    Predicates(
+      Set(predicate),
+      tail,
+      facts,
+      tail.view.toSet.flatMap(_.allPredicates) + env.signatureStrategy(predicate.predicate.signature)
+    )
+  }
 
 }

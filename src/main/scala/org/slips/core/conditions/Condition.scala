@@ -14,7 +14,7 @@ import scala.annotation.targetName
 
 sealed trait Condition[T] extends WithSignature {
   protected implicit val T: FactOps[T]
-  override val signature: Signature = ""
+  override val signature: Signature = Signature.Manual("")
   private[slips] def parse: ParseStep[T]
 
   def flatMap[Q: FactOps](f: Fact.Val[T] => Condition[Q]): Condition[Q] =
@@ -34,7 +34,7 @@ sealed trait Condition[T] extends WithSignature {
 object Condition {
 
   inline def all[T : FactOps : NotTuple]: All[T] = {
-    All[T](s"All[${ Macros.signType[T] }]")
+    All[T](Signature.Manual(s"All[${ Macros.signType[T] }]"))
   }
 
   sealed trait Source[T] extends Condition[T] {

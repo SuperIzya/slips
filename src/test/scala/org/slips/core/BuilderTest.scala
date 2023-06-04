@@ -10,7 +10,6 @@ import org.slips.core.build.BuildContext
 import org.slips.core.build.Builder
 import org.slips.core.build.BuildStep
 import org.slips.core.build.SelectedPredicatesAndSources
-import org.slips.core.build.strategy.AlphaNodeStrategy
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
@@ -23,6 +22,9 @@ import zio.test.*
 import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
+
+  given signatureStrategy: SignatureStrategy = SignatureStrategy.Content
+
   enum Origin {
     case Field, GreenHouse
   }
@@ -33,41 +35,21 @@ object BuilderTest extends ZIOSpecDefault {
     }
   }
 
-  case class Fruit(
-    name: String,
-    sugar: Double,
-    acidity: Double
-  )
-  case class Vegetable(
-    name: String,
-    origin: Origin
-  )
-  case class Herb(
-    name: String,
-    origin: Origin
-  )
-  case class Berry(
-    name: String,
-    origin: Origin
-  )
+  case class Fruit(name: String, sugar: Double, acidity: Double)
+  case class Vegetable(name: String, origin: Origin)
+  case class Herb(name: String, origin: Origin)
+  case class Berry(name: String, origin: Origin)
 
-  def testFruitAndVegieF(
-    f: Fruit,
-    v: Vegetable
-  ): Boolean = false
+  def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
 
   val notApple: Fact[Fruit] => Predicate = _.test(_.name != "apple")
   private val testFruitAndVegie          = (testFruitAndVegieF _).tupled
 
-  def vegie2FruitsF(
-    v: Vegetable,
-    f1: Fruit,
-    f2: Fruit
-  ): Boolean = true
+  def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
 
   private val vegie2Fruits = vegie2FruitsF.tupled
 
-  private val condition1 = for {
+  private val condition1: Condition[(Fruit, Fruit, Vegetable, Int)] = for {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry] if berry.test(_.origin != Origin.Field)
@@ -82,9 +64,7 @@ object BuilderTest extends ZIOSpecDefault {
     _ <- (v, f1, f2).test(vegie2Fruits)
   } yield (f1, f2, v, _5)
 
-  private val rule1: (
-    SimpleEnvironment
-  ) ?=> Rule.RuleM = (env: SimpleEnvironment) ?=>
+  private val rule1: SimpleEnvironment ?=> Rule.RuleM =
     condition1
       .makeRule("Test rule 1")
       .withAction { case (f1, f2, v, c5) =>
@@ -96,71 +76,35 @@ object BuilderTest extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(
     predicates,
     strategy
-  ) @@ TestAspect.timed
+  )
 
   private val predicates = suite("Predicates should have same signature")({
-    case class Asserts(
-      seq: Seq[
-        (
-          String,
-          TestResult
-        )
-      ]
-    ) {
-      def addStep(
-        s: (
-          String,
-          TestResult
-        )
-      ): Asserts = copy(seq = seq :+ s)
-      def addSteps(
-        s: Seq[
-          (
-            String,
-            TestResult
-          )
-        ]
-      ): Asserts = copy(seq = seq ++ s)
+    case class Asserts(seq: Seq[(String, TestResult)]) {
+      def addStep(s: (String, TestResult)): Asserts       = copy(seq = seq :+ s)
+      def addSteps(s: Seq[(String, TestResult)]): Asserts = copy(seq = seq ++ s)
     }
 
-    def method(
-      f: Fact[Fruit]
-    ): Predicate = f.test(_.name != "apple")
-    def paramMethod(
-      name: String
-    )(
-      f: Fact[Fruit]
-    ): Predicate = f.test(_.name != name)
+    def method(f: Fact[Fruit]): Predicate                    = f.test(_.name != "apple")
+    def paramMethod(name: String)(f: Fact[Fruit]): Predicate = f.test(_.name != name)
+
     val notApleF: Fact[Fruit] => Predicate = method(_)
 
     val testSeq = SimpleEnvironment { env ?=>
       type Step[T] = State[Asserts, T]
-      def predicate(
-        name: String
-      )(
-        cond: Condition[Fruit]
-      ): Step[Option[String]] = State { asserts =>
-        val set: Set[Predicate] = Builder.selectPredicatesAndSources(cond).predicates.values.toSet.flatten
+      def predicate(name: String)(cond: Condition[Fruit]): Step[Option[String]] = State { asserts =>
+        val set: Set[Predicate] = Builder.selectPredicatesAndSources(cond).predicates.keySet
 
         asserts.addStep {
           s"condition created by $name should have only one predicate" -> assert(set)(hasSize(equalTo(1)))
-        } -> set.headOption.map(_.signature)
+        } -> set.headOption.map(_.signature).map(env.signatureStrategy(_))
 
       }
 
       for {
-        m       <- predicate("pure method") {
-          all[Fruit].withFilter(method)
-        }
-        param   <- predicate("parametric method") {
-          all[Fruit].withFilter(paramMethod("apple"))
-        }
-        partial <- predicate("funtion from parial application of pure method") {
-          all[Fruit].withFilter(notApleF)
-        }
-        literal <- predicate("inplace typing") {
-          all[Fruit].withFilter(_.test(_.name != "apple"))
-        }
+        m       <- predicate("pure method") { all[Fruit].withFilter(method) }
+        param   <- predicate("parametric method") { all[Fruit].withFilter(paramMethod("apple")) }
+        partial <- predicate("function from partial application of pure method") { all[Fruit].withFilter(notApleF) }
+        literal <- predicate("inplace typing") { all[Fruit].withFilter(_.test(_.name != "apple")) }
         _       <- State.modify[Asserts](_.addSteps {
           Seq(
             "created by method should be the same as created by partial application" -> assert(m)(equalTo(partial)),
@@ -177,9 +121,7 @@ object BuilderTest extends ZIOSpecDefault {
 
     val res = testSeq.run(Asserts(Seq.empty)).value._2
 
-    res.map { case (name, check) =>
-      test(name)(check)
-    }
+    res.map { case (name, check) => test(name)(check) }
   }: _*)
 
   private val predicateSelectionStrategy = suite(
@@ -195,7 +137,7 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       assert(res.sources)(hasSize(equalTo(4))) &&
-      assert(res.alphaFacts.values.flatten.toSet)(hasSize(equalTo(9)))
+      assert(res.facts.filter(_.isAlpha))(hasSize(equalTo(9)))
     },
     test("PredicateSelection.Clean") {
       object SEClean extends SimpleEnvironment {
@@ -206,7 +148,7 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       assert(res.sources)(hasSize(equalTo(3))) &&
-      assert(res.alphaFacts.values.flatten.toSet)(hasSize(equalTo(6)))
+      assert(res.facts.filter(_.isAlpha))(hasSize(equalTo(6)))
     }
   )
 

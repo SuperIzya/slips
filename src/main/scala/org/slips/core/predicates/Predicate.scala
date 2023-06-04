@@ -18,8 +18,8 @@ import scala.annotation.targetName
 import scala.util.NotGiven
 
 sealed trait Predicate extends WithSignature {
-  // TODO: Have here TASTy of the method that tests the facts.
-  override def signature: Signature = this.getClass.getSimpleName
+  // TODO: Have here TASTy of the method that tests the facts ???
+  override def signature: Signature = Signature.Manual(this.getClass.getSimpleName)
   def facts: Set[Fact[_]]
 
   def and(other: Predicate): Predicate = Predicate.And(this, other)
@@ -91,7 +91,7 @@ object Predicate {
   )(using ops: FactOps[T]) extends Predicate {
     override lazy val facts: Set[Fact[_]] = rep.facts
 
-    def signed(signature: => Signature): Test[T] = copy(signature = signature)
+    def signed(signature: => String): Test[T] = copy(signature = Signature.Manual(signature))
   }
 
   final case class And(
@@ -99,7 +99,8 @@ object Predicate {
     right: Predicate
   ) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
-    override val signature: Signature     = s"${ left.signature } && ${ right.signature }"
+
+    override val signature: Signature = Signature.DerivedBinary(left.signature, right.signature, (l, r) => s"$l && $r")
   }
 
   final case class Or(
@@ -107,12 +108,12 @@ object Predicate {
     right: Predicate
   ) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
-    override val signature: Signature     = s"${ left.signature } || ${ right.signature }"
+    override val signature: Signature = Signature.DerivedBinary(left.signature, right.signature, (l, r) => s"$l || $r")
   }
 
   case class Not(p: Predicate) extends Predicate {
     override lazy val facts: Set[Fact[_]] = p.facts
-    override val signature: Signature     = s"!${ p.signature }"
+    override val signature: Signature     = Signature.DerivedUnary(p.signature, p => s"!$p")
   }
 
   inline def apply[T1, T2](

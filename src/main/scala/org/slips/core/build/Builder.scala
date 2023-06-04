@@ -23,7 +23,7 @@ object Builder {
 
   val materializeAlphaNetwork: BuildStep[Unit] = BuildStep { ctx => ctx -> () }
 
-  val buildAlphaNetwork: BuildStep[AlphaNetwork] = BuildStep { ctx =>
+  val buildAlphaNetwork: Env[BuildStep[AlphaNetwork]] = BuildStep { ctx =>
     val network = ctx.network.add(AlphaNetwork(ctx.alphaPredicates))
     ctx.copy(network = network) -> network
   }

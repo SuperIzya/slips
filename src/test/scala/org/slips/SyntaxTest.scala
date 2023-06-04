@@ -1,11 +1,17 @@
 package org.slips
 
+import cats.Eq
 import org.slips.Environment as SEnv
 import org.slips.core.Empty
+import org.slips.core.SignatureStrategy
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
+import org.slips.core.fact.FactOps
+import org.slips.core.fact.FactOps.TupleOps
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
+import scala.compiletime.summonInline
+import scala.util.NotGiven
 
 object SyntaxTest {
   enum Theme:
@@ -15,10 +21,12 @@ object SyntaxTest {
     given empty: Empty[Theme] with {
       override def empty: Theme = Theme.War
     }
+
+    given eq: Eq[Theme] = (x: Theme, y: Theme) => x == y
   }
 
   val confidenceDrop: Double = 0.99
-  case class Category(heme: Theme, confidence: Double) {
+  case class Category(theme: Theme, confidence: Double) {
 
     def :*:(
       other: Category
@@ -28,18 +36,29 @@ object SyntaxTest {
   case class Word(word: String, category: Category)
   case class Text(word1: String, word2: String, categoryM: Option[Category])
 
+  inline def getFactsOps[T]: FactOps[T] = summonInline[FactOps[T]]
+
+  inline def getTupleOps[T <: NonEmptyTuple] = summonInline[TupleOps[T]]
+  getFactsOps[Fact[Word]]
+  getFactsOps[(Fact[Word], Fact[Text])]
+  getFactsOps[Fact[String] *: Fact[Int] *: Fact[Word] *: Fact[Word] *: Fact[Option[Category]] *: EmptyTuple]
+
+  getTupleOps[(Fact[Word], Fact[Text])]
+  getTupleOps[Fact[String] *: Fact[Int] *: Fact[Word] *: Fact[Word] *: Fact[Option[Category]] *: EmptyTuple]
+
   val categoryEmpty: Text => Boolean = _.categoryM.isEmpty
   val firstWord: Text => String      = _.word1
   val secondWord: Text => String     = _.word2
   val wordValue: Word => String      = _.word
   val wordCategory: Word => Category = _.category
 
-  private val shouldMarkText = for {
-    w <- all[Word]
-    t <- all[Text]
-    _ <- t.test(categoryEmpty)
-    _ <- (t.value(firstWord) === w.value(wordValue)) || (t.value(secondWord) === w.value(wordValue))
-  } yield (w.value(wordCategory), t)
+  private val shouldMarkText: Condition[Category *: Text *: EmptyTuple] =
+    for {
+      w <- all[Word]
+      t <- all[Text]
+      _ <- t.test(categoryEmpty)
+      _ <- (t.value(firstWord) === w.value(wordValue)) || (t.value(secondWord) === w.value(wordValue))
+    } yield w.value(wordCategory) *: t *: EmptyTuple
 
   private val markText = (env: Environment) ?=>
     shouldMarkText
@@ -56,17 +75,19 @@ object SyntaxTest {
   val categoryIsDefined: Text => Boolean      = _.categoryM.isDefined
   val textThemeM: Text => Option[Theme]       = _.categoryM.map(_.theme)
   val textCategoryM: Text => Option[Category] = _.categoryM
-  private val shouldMarkWord                  = for {
-    t1 <- all[Text] if t1.test(categoryIsDefined)
-    t2 <- all[Text] if t2.test(categoryIsDefined)
-    words = Seq(firstWord, secondWord)
-    _ <- (for {
-      w1 <- words
-      w2 <- words
-    } yield t1.value(w1) === t2.value(w2)).reduceLeft(_ or _)
-    _ <- t1.value(textThemeM) === t2.value(textThemeM)
-    _ <- notExists[Word] { w => w.value(wordValue) === t1.value(firstWord) }
-  } yield (t1.value(firstWord), t1.value(textCategoryM), t2.value(textCategoryM))
+  val words                                   = Seq(firstWord, secondWord)
+
+  private val shouldMarkWord: Condition[(String, Option[Category], Option[Category])] =
+    for {
+      t1 <- all[Text] if t1.test(categoryIsDefined)
+      t2 <- all[Text] if t2.test(categoryIsDefined)
+      _  <- (for {
+        w1 <- words
+        w2 <- words
+      } yield t1.value(w1) === t2.value(w2)).reduceLeft(_ or _)
+      _  <- t1.value(textThemeM) === t2.value(textThemeM)
+      _  <- notExists[Word] { w => w.value(wordValue) === t1.value(firstWord) }
+    } yield (t1.value(firstWord), t1.value(textCategoryM), t2.value(textCategoryM))
 
   private val markWord = (env: Environment) ?=>
     shouldMarkWord

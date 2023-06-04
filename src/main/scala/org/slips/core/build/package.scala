@@ -4,6 +4,7 @@ import cats.Applicative
 import cats.compat.SortedSet
 import cats.data.State
 import cats.implicits.*
+import org.slips.Env
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
@@ -19,9 +20,9 @@ package object build {
   type BuildStep[x] = State[BuildContext, _ <: x]
 
   extension (a: AlphaPredicates) {
-    def addAlpha(predicate: Predicate): AlphaPredicates = {
+    def addAlpha(predicate: Predicate): Env[AlphaPredicates] = {
       val alphaPredicate = AlphaPredicate(predicate)
-      alphaPredicate.fold(a)(p => a |+| Map(p.predicate.signature -> p))
+      alphaPredicate.fold(a)(p => a |+| Map(p.source -> p))
     }
   }
 

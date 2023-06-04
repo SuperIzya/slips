@@ -16,7 +16,7 @@ package object fact {
   extension [T](fact: Fact.Val[T]) {
     def predecessors(using T: FactOps[T]): Predecessors = T.predecessors(fact)
     def sources(using T: FactOps[T]): Set[Signature]    = T.sources(fact)
-    def signature(using T: FactOps[T]): Signature       = T.extract(fact).mkString("(", ", ", ")")
+    def signature(using T: FactOps[T]): Signature       = Signature.Manual(T.extract(fact).mkString("(", ", ", ")"))
     def facts(using T: FactOps[T]): Set[Fact[_]]        = T.facts(fact)
   }
 
@@ -24,9 +24,9 @@ package object fact {
     def predecessors(using T: TupleOps[T], ev: TMap[T] =:= Fact.Val[T]): Predecessors = T.predecessors(ev(facts))
     def sources(using T: TupleOps[T], ev: TMap[T] =:= Fact.Val[T]): Set[Signature]    = T.sources(ev(facts))
 
-    def signature(using T: TupleOps[T], ev: TMap[T] =:= Fact.Val[T]): Signature = T
-      .extract(ev(facts))
-      .mkString("(", ", ", ")")
+    def signature(using T: TupleOps[T], ev: TMap[T] =:= Fact.Val[T]): Signature = Signature.Manual {
+      T.extract(ev(facts)).mkString("(", ", ", ")")
+    }
 
     def toVal(using ev: TMap[T] =:= Fact.Val[T]): Fact.Val[T] = ev(facts)
 

@@ -1,6 +1,7 @@
 package org.slips.core.build
 
 import cats.data.State
+import org.slips.Env
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.network.Node
@@ -14,8 +15,10 @@ object BuildStep {
   def update(f: BuildContext => BuildContext): BuildStep[Unit] = State(f.andThen(_ -> ()))
   def set(f: => BuildContext): BuildStep[Unit]                 = State.set(f)
 
-  def getSourceNode[T](src: Condition.Source[T]): BuildStep[AlphaNode.Source[T]] =
-    BuildStep(_.addSourceNode(src.signature, AlphaNode.Source(src.signature)))
+  def getSourceNode[T](src: Condition.Source[T]): Env[BuildStep[AlphaNode.Source[T]]] = env ?=> {
+    val signature = env.signatureStrategy(src.signature)
+    BuildStep(_.addSourceNode(signature, AlphaNode.Source(signature)))
+  }
 
   val get: BuildStep[BuildContext] = State.get[BuildContext]
 
