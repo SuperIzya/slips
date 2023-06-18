@@ -9,10 +9,11 @@ import org.slips.core.conditions.*
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.CanBeLiteral
 import org.slips.core.fact.Fact.Val
-import org.slips.core.fact.FactOps.TupleOps
+import org.slips.core.fact.FactOps.ScalarFact
 import org.slips.core.predicates.*
 import org.slips.core.rule.Rule
 import scala.annotation.targetName
+import scala.compiletime.summonInline
 import scala.language.implicitConversions
 import scala.util.NotGiven
 
@@ -27,29 +28,33 @@ object syntax {
   inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : FactOps](x: T): Fact[T] = Fact.literal(x)
 
   extension [T <: Tuple](fact: Fact.Val[T]) {
-    inline def test(inline f: T => Boolean)(using T: TupleOps[T]): Predicate = Signed(f) {
-      Predicate.Test(
-        _,
-        f,
-        fact
-      )
+    inline def test2(inline f: T => Boolean)(using T: FactOps[T]): Predicate = {
+      Signed(f) {
+        Predicate.Test(
+          _,
+          f,
+          fact
+        )(using T)
+      }
     }
   }
 
   extension [T](fact: Fact[T]) {
-    inline def test(inline f: T => Boolean)(using T: FactOps[T], ev: Fact[T] =:= Fact.Val[T]): Predicate = {
-      Signed(f)(Predicate.Test(_, f, ev(fact)))
+    inline def test(inline f: T => Boolean)(using T: FactOps[T], ev: ScalarFact[T]): Predicate = {
+      Signed(f)(Predicate.Test(_, f, ev.flip(fact)))
     }
 
     inline def value[I](inline f: T => I): Fact[I] = {
-      if (fact.isAlpha) Signed(f) { Fact.Alpha.Map(fact.asInstanceOf[Fact.Alpha[T]], f, _) }
+      if (fact.isAlpha) Signed(f) {
+        Fact.Alpha.Map(fact.asInstanceOf[Fact.Alpha[T]], f, _)
+      }
       else ???
     }
 
     private inline def buildPredicate(other: Fact[T], inline test: (T, T) => Boolean)(using
       T: FactOps[T],
       ev: SimpleTuple2[T],
-      ev2: Fact[T] =:= Fact.Val[T],
+      ev2: Fact.Val[T] =:= Fact[T],
       TT: FactOps[T *: T *: EmptyTuple]
     ): Predicate = {
       (fact, other) match {
@@ -60,7 +65,7 @@ object syntax {
             Predicate.Test(
               _,
               test(l.value, _),
-              ev2(b)
+              ev2.flip(b)
             )
           }
         case (a: Fact[T], l: Fact.Literal[T]) =>
@@ -68,7 +73,7 @@ object syntax {
             Predicate.Test(
               _,
               test(_, l.value),
-              ev2(a)
+              ev2.flip(a)
             )
           }
         case _                                =>
@@ -84,21 +89,21 @@ object syntax {
 
     @targetName("repNotEq")
     def =!=(other: Fact[T])(using
-      TT: TupleOps[T *: T *: EmptyTuple],
+      TT: FactOps[(T, T)],
       F: FactOps[T],
       T: Eq[T],
       ev: SimpleTuple2[T],
-      ev2: Fact[T] =:= Fact.Val[T]
+      ev2: Fact.Val[T] =:= Fact[T]
     ): Predicate =
       buildPredicate(other, T.neqv)
 
     @targetName("repEq")
     inline def ===(other: Fact[T])(using
-      TO: TupleOps[T *: T *: EmptyTuple],
+      TO: FactOps[(T, T)],
       F: FactOps[T],
       T: Eq[T],
       ev: SimpleTuple2[T],
-      ev2: Fact[T] =:= Fact.Val[T]
+      ev2: Fact.Val[T] =:= Fact[T]
     ): Predicate =
       buildPredicate(other, T.eqv)
 

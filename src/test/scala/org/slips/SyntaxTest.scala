@@ -7,7 +7,6 @@ import org.slips.core.SignatureStrategy
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.fact.FactOps
-import org.slips.core.fact.FactOps.TupleOps
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
 import scala.compiletime.summonInline
@@ -38,13 +37,9 @@ object SyntaxTest {
 
   inline def getFactsOps[T]: FactOps[T] = summonInline[FactOps[T]]
 
-  inline def getTupleOps[T <: NonEmptyTuple] = summonInline[TupleOps[T]]
   getFactsOps[Fact[Word]]
   getFactsOps[(Fact[Word], Fact[Text])]
   getFactsOps[Fact[String] *: Fact[Int] *: Fact[Word] *: Fact[Word] *: Fact[Option[Category]] *: EmptyTuple]
-
-  getTupleOps[(Fact[Word], Fact[Text])]
-  getTupleOps[Fact[String] *: Fact[Int] *: Fact[Word] *: Fact[Word] *: Fact[Option[Category]] *: EmptyTuple]
 
   val categoryEmpty: Text => Boolean = _.categoryM.isEmpty
   val firstWord: Text => String      = _.word1
@@ -58,7 +53,7 @@ object SyntaxTest {
       t <- all[Text]
       _ <- t.test(categoryEmpty)
       _ <- (t.value(firstWord) === w.value(wordValue)) || (t.value(secondWord) === w.value(wordValue))
-    } yield w.value(wordCategory) *: t *: EmptyTuple
+    } yield w.value(wordCategory) *: t
 
   private val markText = (env: Environment) ?=>
     shouldMarkText

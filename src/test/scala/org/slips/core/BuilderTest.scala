@@ -58,7 +58,7 @@ object BuilderTest extends ZIOSpecDefault {
     f1    <- all[Fruit] if f1.value(_.sugar) =!= 1
     f2    <- all[Fruit] if notApple(f2) || notApple(f1)
     v     <- all[Vegetable]
-    _     <- (f1, v).test(testFruitAndVegie)
+    _     <- (f1, v).test2(testFruitAndVegie)
     _     <- h.value(_.name) =!= f1.value(_.name)
     _5 = Fact.literal(5)
     _ <- (v, f1, f2).test(vegie2Fruits)

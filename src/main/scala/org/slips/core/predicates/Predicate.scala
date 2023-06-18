@@ -11,7 +11,6 @@ import org.slips.core.conditions.Condition.Source
 import org.slips.core.conditions.ParseStep
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.TMap
-import org.slips.core.fact.FactOps.TupleOps
 import org.slips.core.network.alpha.AlphaNode
 import scala.annotation.tailrec
 import scala.annotation.targetName
@@ -121,10 +120,10 @@ object Predicate {
     rep2: Fact[T2],
     inline test: (T1, T2) => Boolean
   )(using
-    TupleOps[T1 *: T2 *: EmptyTuple]
-  ): Test[T1 *: T2 *: EmptyTuple] = ???
+    FactOps[(T1, T2)]
+  ): Test[(T1, T2)] = ???
 
-  inline def fromTuple[T <: NonEmptyTuple : FactOps.TupleOps](
+  inline def fromTuple[T <: NonEmptyTuple : FactOps](
     rep: Fact.TMap[T],
     inline test: T => Boolean
   ): Test[T] = ???
