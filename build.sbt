@@ -5,9 +5,9 @@ ThisBuild / scalaVersion := "3.3.0"
 lazy val Version = new {
   lazy val cats       = "2.9.0"
   lazy val tests      = "3.2.15"
-  lazy val magnolia   = "1.3.1"
+  lazy val magnolia   = "1.3.2"
   lazy val discipline = "2.2.0"
-  lazy val zio        = "2.0.14"
+  lazy val zio        = "2.0.15"
 
 }
 
