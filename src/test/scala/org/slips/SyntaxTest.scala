@@ -26,20 +26,12 @@ object SyntaxTest {
 
   val confidenceDrop: Double = 0.99
   case class Category(theme: Theme, confidence: Double) {
-
-    def :*:(
-      other: Category
-    ): Category = copy(confidence = Math.min(confidence + other.confidence, 1) * confidenceDrop)
+    def :*:(other: Category): Category =
+      copy(confidence = Math.min(confidence + other.confidence, 1) * confidenceDrop)
   }
 
   case class Word(word: String, category: Category)
   case class Text(word1: String, word2: String, categoryM: Option[Category])
-
-  inline def getFactsOps[T]: FactOps[T] = summonInline[FactOps[T]]
-
-  getFactsOps[Fact[Word]]
-  getFactsOps[(Fact[Word], Fact[Text])]
-  getFactsOps[Fact[String] *: Fact[Int] *: Fact[Word] *: Fact[Word] *: Fact[Option[Category]] *: EmptyTuple]
 
   val categoryEmpty: Text => Boolean = _.categoryM.isEmpty
   val firstWord: Text => String      = _.word1
@@ -47,13 +39,13 @@ object SyntaxTest {
   val wordValue: Word => String      = _.word
   val wordCategory: Word => Category = _.category
 
-  private val shouldMarkText: Condition[Category *: Text *: EmptyTuple] =
+  private val shouldMarkText: Condition[(Category, Text)] =
     for {
       w <- all[Word]
       t <- all[Text]
       _ <- t.test(categoryEmpty)
       _ <- (t.value(firstWord) === w.value(wordValue)) || (t.value(secondWord) === w.value(wordValue))
-    } yield w.value(wordCategory) *: t
+    } yield (w.value(wordCategory), t)
 
   private val markText = (env: Environment) ?=>
     shouldMarkText

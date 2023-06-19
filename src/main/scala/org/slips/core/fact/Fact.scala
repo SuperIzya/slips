@@ -46,34 +46,16 @@ sealed trait Fact[T] extends WithSignature {
 
 object Fact {
 
-  type Source                = Fact.Alpha.Source[?]
-  type TMap[T <: Tuple]      = Tuple.Map[T, Fact]
-  type TIsMapped[T <: Tuple] = Tuple.IsMappedBy[Fact][T]
+  type Source           = Fact.Alpha.Source[?]
+  type TMap[T <: Tuple] = Tuple.Map[T, Fact]
+  type TIsMapped        = [t <: Tuple] =>> Tuple.IsMappedBy[Fact][t]
 
   type Val[X] = X match {
-    case EmptyTuple       => EmptyTuple
-    case t *: q <:< Tuple => Fact[t] *: Val[q]
-    case _                => Fact[X]
+    case Tuple => TMap[X]
+    case _     => Fact[X]
   }
 
-  /*type Val[X]                = X match {
-    case EmptyTuple.type => EmptyTuple
-    case t *: q          => Fact[t] *: Fact.Val[q]
-    case _               => Fact[X]
-  }*/
   val unit: Fact[Unit] = literal(())
-
-  private[slips] object EmptyTupleFact extends Fact[EmptyTuple] {
-    override lazy val alphaSources: Set[Source] = Set.empty
-    override lazy val betaSources: Set[Fact[_]] = Set.empty
-    override private[slips] val isAlpha         = true
-
-    override def sources: Set[Signature] = Set.empty
-
-    override def signature: Signature = Signature.Manual("")
-
-    override def predecessors: Predecessors = List.empty
-  }
 
   def literal[T : CanBeLiteral : FactOps](v: T): Fact[T] = Literal(v)
 

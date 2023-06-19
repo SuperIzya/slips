@@ -27,7 +27,7 @@ object syntax {
 
   inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : FactOps](x: T): Fact[T] = Fact.literal(x)
 
-  extension [T <: Tuple](fact: Fact.Val[T]) {
+  extension [T <: Tuple](fact: Fact.TMap[T]) {
     inline def test2(inline f: T => Boolean)(using T: FactOps[T]): Predicate = {
       Signed(f) {
         Predicate.Test(
