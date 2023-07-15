@@ -10,7 +10,7 @@ import org.slips.core.predicates.Predicate
 
 case class AlphaPredicate private[slips] (
   source: String,
-  facts: Set[Fact.Alpha[_]],
+  facts: Set[Fact.Alpha[?]],
   predicate: Predicate
 )
 
@@ -20,7 +20,7 @@ object AlphaPredicate {
     Predicate
       .IsAlpha
       .unapply(p)
-      .map { case (p, src) => AlphaPredicate(signature, p.facts.map(_.asInstanceOf[Fact.Alpha[_]]), p) }
+      .map { case (p, src) => AlphaPredicate(signature, p.facts.map(_.asInstanceOf[Fact.Alpha[?]]), p) }
   }
 
   given Semigroup[AlphaPredicate] = Semigroup

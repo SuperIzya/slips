@@ -27,7 +27,7 @@ import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
 
-sealed trait Fact[T] extends WithSignature {
+sealed trait Fact[+T] extends WithSignature {
 
   lazy val (alphaSources: Set[Fact.Source], betaSources: Set[Fact[?]]) = predecessors
     .foldLeft((Set.empty[Fact.Source], Set.empty[Fact[?]])) { (col, p) =>
@@ -48,11 +48,17 @@ object Fact {
 
   type Source           = Fact.Alpha.Source[?]
   type TMap[T <: Tuple] = Tuple.Map[T, Fact]
+  type TInverseMap      = [x <: Tuple] =>> Tuple.InverseMap[x, Fact]
   type TIsMapped        = [t <: Tuple] =>> Tuple.IsMappedBy[Fact][t]
 
   type Val[X] = X match {
     case Tuple => TMap[X]
     case _     => Fact[X]
+  }
+
+  type InverseVal[X] = X match {
+    case Tuple   => TInverseMap[X]
+    case Fact[t] => t
   }
 
   val unit: Fact[Unit] = literal(())
@@ -69,7 +75,7 @@ object Fact {
 
   sealed trait Alpha[T] extends Fact[T] {
 
-    override lazy val betaSources: Set[Fact[_]] = Set.empty
+    override lazy val betaSources: Set[Fact[?]] = Set.empty
     override lazy val alphaSources: Set[Source] = Set(sourceFact)
     private[slips] override val isAlpha         = true
 
@@ -77,7 +83,7 @@ object Fact {
 
     def sourceFact: Fact.Source
 
-    override def predecessors: List[Fact.Alpha[_]]
+    override def predecessors: List[Fact.Alpha[?]]
 
     override def sources: Set[Signature] = alphaSources.flatMap(_.sources)
 
@@ -104,10 +110,21 @@ object Fact {
   }
 
   object Predecessors {
-    val empty = List.empty[Fact[_]]
+    val empty = List.empty[Fact[?]]
   }
 
-  object Beta {}
+  object Beta {
+    final case class Map[T, Q](pred: Fact.Val[T], map: T => Q, mapSign: Signature)(using T: FactOps[T])
+        extends Beta[Q] {
+      override def sources: Set[Signature] = ???
+
+      override def predecessors: List[Fact[?]] = List.empty
+
+      override def signature: Signature = Signature.DerivedBinary(pred.signature, mapSign, (s1, s2) => s"$s1 -> $s2")
+
+      def signed(signature: Signature): Map[T, Q] = copy(mapSign = signature)
+    }
+  }
 
   object Alpha {
 
@@ -137,7 +154,7 @@ object Fact {
 
       override val signature: Signature = source
 
-      override val predecessors: List[Fact.Alpha[_]] = List.empty
+      override val predecessors: List[Fact.Alpha[?]] = List.empty
       override val sourceFact: Fact.Source           = this
 
       def conditionSource: Condition.Source[T] = Condition.All[T](signature)

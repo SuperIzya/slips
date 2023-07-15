@@ -9,6 +9,6 @@ package object alpha {
 
   private[alpha] type PredicateToSignature = Map[AlphaPredicate, PredicateSignature]
   private[alpha] type SignatureToPredicate = Map[PredicateSignature, AlphaPredicate]
-  private[alpha] type FactToSignature      = Map[Fact.Alpha[_], FactFullSignature]
-  private[alpha] type FactToSuccessor      = Map[Fact.Alpha[_], Set[Fact.Alpha[_]]]
+  private[alpha] type FactToSignature      = Map[Fact.Alpha[?], FactFullSignature]
+  private[alpha] type FactToSuccessor      = Map[Fact.Alpha[?], Set[Fact.Alpha[?]]]
 }

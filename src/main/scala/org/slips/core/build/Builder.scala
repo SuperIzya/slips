@@ -32,7 +32,7 @@ object Builder {
     rules.toList.traverse { r => BuildStep.addParsingResult(ParseResult.fromRule(r)) }
   }
 
-  def selectPredicatesAndSources[T](condition: Condition[T])(using T: FactOps[T]): Env[SelectedPredicatesAndSources] = {
+  def selectPredicatesAndSources[T: FactOps](condition: Condition[T]): Env[SelectedPredicatesAndSources] = {
     val (predicates, result) = Parser(condition)
 
     PredicateSelection.select(

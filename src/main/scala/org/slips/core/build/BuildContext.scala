@@ -16,9 +16,9 @@ import scala.annotation.tailrec
 
 case class BuildContext private[build] (
   nodes: Map[String, Node] = Map.empty,
-  nodeFacts: Map[Node, Set[Fact[_]]] = Map.empty,
+  nodeFacts: Map[Node, Set[Fact[?]]] = Map.empty,
   sources: Set[String] = Set.empty,
-  sourceNodes: Map[String, AlphaNode.Source[_]] = Map.empty,
+  sourceNodes: Map[String, AlphaNode.Source[?]] = Map.empty,
   predicateRules: PredicateRules = Map.empty,
   alphaPredicates: AlphaPredicates = Map.empty,
   betaPredicates: BetaPredicates = Map.empty,

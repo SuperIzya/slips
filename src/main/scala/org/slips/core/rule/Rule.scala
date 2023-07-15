@@ -24,43 +24,17 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
   override private[slips] def sourcesAndPredicates: Env[SelectedPredicatesAndSources] =
     Builder.selectPredicatesAndSources(condition)
 
-  case class Context(
-    values: T,
-    asserted: Seq[Any],
-    retracted: Seq[Fact[_]]
-  ) {
+  case class Context(values: T, asserted: Seq[Any], retracted: Seq[Fact[?]]) {
 
-    def addFact[Q](
-      t: Q
-    )(using ThisRule
-    ): F[
-      (
-        Context,
-        Unit
-      )
-    ] = F.pure(copy(asserted = asserted :+ t) -> ())
+    def addFact[Q](t: Q)(using ThisRule): F[(Context, Unit)] =
+      F.pure(copy(asserted = asserted :+ t) -> ())
 
-    def remove[Q](
-      x: Value[Q]
-    )(using ThisRule
-    ): F[
-      (
-        Context,
-        Unit
-      )
-    ] = F.pure(copy(retracted = retracted :+ x.fact) -> ())
+    def remove[Q](x: Value[Q])(using ThisRule): F[(Context, Unit)] =
+      F.pure(copy(retracted = retracted :+ x.fact) -> ())
 
-    def removeAll[Q](
-      t: Value.Val[Q]
-    )(using ThisRule
-    ): F[
-      (
-        Context,
-        Unit
-      )
-    ] = t match {
+    def removeAll[Q](t: Value.Val[Q])(using ThisRule): F[(Context, Unit)] = t match {
       case _: EmptyTuple                                            => F.pure(this -> ())
-      case (x: Value[_] @unchecked) *: (v: Value.Val[_] @unchecked) => remove(x) >> removeAll(v)
+      case (x: Value[?] @unchecked) *: (v: Value.Val[?] @unchecked) => remove(x) >> removeAll(v)
       case x: Value[Q] @unchecked                                   => remove(x)
     }
 
@@ -83,11 +57,7 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
 }
 
 object Rule {
-  type RuleAction[F[_], T] = (
-    r: Rule[F, T]
-  ) ?=> (
-    r.Value.Val[T] => r.Action[Unit]
-  )
+  type RuleAction[F[_], T] = (r: Rule[F, T]) ?=> (r.Value.Val[T] => r.Action[Unit])
 
   private[slips] trait RuleWithAction[F[_]: Monad, T: FactOps](
     val name: String,
@@ -96,16 +66,9 @@ object Rule {
     def action: this.Value.Val[T] => this.Action[Unit]
   }
 
-  class Builder[T: FactOps](
-    name: String,
-    condition: Condition[T]
-  ) {
+  class Builder[T: FactOps](name: String, condition: Condition[T]) {
 
-    def withAction(
-      using env: Environment
-    )(
-      actions: RuleAction[env.Effect, T]
-    ): env.Rule[T] = {
+    def withAction(using env: Environment)(actions: RuleAction[env.Effect, T]): env.Rule[T] = {
       new RuleWithAction[env.Effect, T](name, condition) {
         override lazy val action: this.Value.Val[T] => this.Action[Unit] = actions(using this)
       }

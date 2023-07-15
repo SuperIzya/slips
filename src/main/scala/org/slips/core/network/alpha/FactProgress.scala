@@ -9,7 +9,7 @@ import org.slips.core.fact.Fact
 sealed trait FactProgress {
 
   /** Source fact being tested */
-  val fact: Fact.Alpha[_]
+  val fact: Fact.Alpha[?]
 
   /** All chains of predicates testing this source fact */
   val chains: Set[Chain]
@@ -22,7 +22,7 @@ object FactProgress {
 
   /** Fact not fully collected */
   case class InProgress(
-    fact: Fact.Alpha[_],
+    fact: Fact.Alpha[?],
     chains: Set[Chain],
     /** Already united chains */
     united: Set[Chain],
@@ -33,7 +33,7 @@ object FactProgress {
   ) extends FactProgress
 
   case class Done(
-    fact: Fact.Alpha[_],
+    fact: Fact.Alpha[?],
     chains: Set[Chain],
     topChain: Chain
   ) extends FactProgress

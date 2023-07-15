@@ -97,8 +97,8 @@ object PredicateSelection {
       }
     }
 
-    extension (facts: Set[Fact[_]]) {
-      private inline def allPredecessors: Set[Fact[_]] = facts.flatMap(f => f +: f.predecessors)
+    extension (facts: Set[Fact[?]]) {
+      private inline def allPredecessors: Set[Fact[?]] = facts.flatMap(f => f +: f.predecessors)
     }
 
     @tailrec

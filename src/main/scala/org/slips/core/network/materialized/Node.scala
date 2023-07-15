@@ -1,7 +1,7 @@
 package org.slips.core.network.materialized
 
 trait Node {
-  val publisher: Publisher[_]
+  val publisher: Publisher[?]
 }
 
 object Node {

@@ -6,6 +6,7 @@ import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
+import scala.annotation.showAsInfix
 
 private[slips] case class ParseResult(
   rule: RuleM,
@@ -37,6 +38,7 @@ private[slips] object ParseResult {
     val empty: ParseCollector = ParseCollector()
 
     extension (collector: ParseCollector) {
+      @showAsInfix
       def addPredicate(p: Predicate): Env[ParseCollector] = {
         collector.copy(
           alphaPredicates = collector.alphaPredicates.addAlpha(p),

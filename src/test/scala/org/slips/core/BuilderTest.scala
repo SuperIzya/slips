@@ -43,23 +43,27 @@ object BuilderTest extends ZIOSpecDefault {
   def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
 
   val notApple: Fact[Fruit] => Predicate = _.test(_.name != "apple")
-  private val testFruitAndVegie          = (testFruitAndVegieF _).tupled
+  private val testFruitAndVegie          = testFruitAndVegieF.tupled
 
   def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
 
   private val vegie2Fruits = vegie2FruitsF.tupled
 
-  private val condition1: Condition[(Fruit, Fruit, Vegetable, Int)] = for {
+  private val condition1 = for {
     h     <- all[Herb]
     b     <- all[Herb]
-    berry <- all[Berry] if berry.test(_.origin != Origin.Field)
+    berry <- all[Berry]
+    _     <- berry.test(_.origin != Origin.Field)
     _     <- b.test(_.origin != Origin.GreenHouse) && b.test(_.name.nonEmpty)
     _     <- h.test(_.name.nonEmpty)
-    f1    <- all[Fruit] if f1.value(_.sugar) =!= 1
-    f2    <- all[Fruit] if notApple(f2) || notApple(f1)
-    v     <- all[Vegetable]
-    _     <- (f1, v).test2(testFruitAndVegie)
-    _     <- h.value(_.name) =!= f1.value(_.name)
+    _ = berry.value(_.origin)
+    f1 <- all[Fruit]
+    _  <- f1.value(_.sugar) =!= 1.0
+    f2 <- all[Fruit]
+    _  <- notApple(f2) || notApple(f1)
+    v  <- all[Vegetable]
+    _  <- (f1, v).test(testFruitAndVegie)
+    _  <- h.value(_.name) =!= f1.value(_.name)
     _5 = Fact.literal(5)
     _ <- (v, f1, f2).test(vegie2Fruits)
   } yield (f1, f2, v, _5)
@@ -122,7 +126,7 @@ object BuilderTest extends ZIOSpecDefault {
     val res = testSeq.run(Asserts(Seq.empty)).value._2
 
     res.map { case (name, check) => test(name)(check) }
-  }: _*)
+  }*)
 
   private val predicateSelectionStrategy = suite(
     "Condition parser should find all predicates and sources with respect to Environment.predicateSelectionStrategy"
@@ -186,7 +190,7 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       Seq(simpleTest)
-    }: _*)
+    }*)
   )
 
   private val strategy = suite("Strategies should work")(

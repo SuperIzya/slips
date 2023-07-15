@@ -6,14 +6,14 @@ import org.slips.core.fact.*
 import org.slips.core.predicates.Predicate
 
 case class SelectedPredicatesAndSources(
-  predicates: Map[Predicate, Set[Fact[_]]] = Map.empty,
+  predicates: Map[Predicate, Set[Fact[?]]] = Map.empty,
   sources: Set[Signature] = Set.empty,
   alphaSources: Set[Fact.Source] = Set.empty,
-  facts: Set[Fact[_]] = Set.empty,
+  facts: Set[Fact[?]] = Set.empty,
   discarded: Set[Predicate] = Set.empty
 ) {
 
-  import SelectedPredicatesAndSources._
+  import SelectedPredicatesAndSources.*
 
   def withPredicate(p: Predicate): SelectedPredicatesAndSources = {
     copy(

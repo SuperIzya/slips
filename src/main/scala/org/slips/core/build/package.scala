@@ -12,12 +12,12 @@ import org.slips.core.rule.Rule.RuleM
 package object build {
 
   type AlphaFacts      = Map[Fact.Source, Set[Predicate]]
-  type AllFacts        = Map[Fact[_], Set[Predicate]]
+  type AllFacts        = Map[Fact[?], Set[Predicate]]
   type AlphaPredicates = Map[String, AlphaPredicate]
-  type BetaPredicates  = Map[Predicate, Set[Fact[_]]]
+  type BetaPredicates  = Map[Predicate, Set[Fact[?]]]
   type PredicateRules  = Map[Predicate, Set[RuleM]]
 
-  type BuildStep[x] = State[BuildContext, _ <: x]
+  type BuildStep[x] = State[BuildContext, ? <: x]
 
   extension (a: AlphaPredicates) {
     def addAlpha(predicate: Predicate): Env[AlphaPredicates] = {

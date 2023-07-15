@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 private[network] sealed trait Chain {
   def predicates: Set[AlphaPredicate]
   def tail: Iterable[Chain]
-  def facts: Set[Fact.Alpha[_]]
+  def facts: Set[Fact.Alpha[?]]
   def allPredicates: Set[String]
 }
 
@@ -17,7 +17,7 @@ private[network] object Chain {
   case class Predicates(
     predicates: Set[AlphaPredicate],
     tail: Iterable[Predicates],
-    facts: Set[Fact.Alpha[_]],
+    facts: Set[Fact.Alpha[?]],
     allPredicates: Set[String]
   ) extends Chain {
 
@@ -44,7 +44,7 @@ private[network] object Chain {
   ) extends Chain {
     override def tail: Iterable[Chain] = Seq(left, right)
 
-    override lazy val facts: Set[Fact.Alpha[_]] = left.facts ++ right.facts
+    override lazy val facts: Set[Fact.Alpha[?]] = left.facts ++ right.facts
 
     override def predicates: Set[AlphaPredicate] = Set.empty
 
@@ -52,7 +52,7 @@ private[network] object Chain {
   }
 
   extension (chain: Predicates) {
-    def appendPredicate(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]]): Env[Predicates] = env ?=> {
+    def appendPredicate(predicate: AlphaPredicate, facts: Set[Fact.Alpha[?]]): Env[Predicates] = env ?=> {
       chain.copy(
         predicates = chain.predicates + predicate,
         facts = chain.facts ++ facts,
@@ -63,13 +63,13 @@ private[network] object Chain {
 
   given Ordering[Chain] = (x, y) => x.facts.sizeCompare(y.facts)
 
-  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]]): Env[Predicates] =
+  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[?]]): Env[Predicates] =
     apply(predicate, facts, None)
 
-  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]], tail: Predicates): Env[Predicates] =
+  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[?]], tail: Predicates): Env[Predicates] =
     apply(predicate, facts, Option(tail))
 
-  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[_]], tail: Option[Predicates]): Env[Predicates] = env ?=> {
+  def apply(predicate: AlphaPredicate, facts: Set[Fact.Alpha[?]], tail: Option[Predicates]): Env[Predicates] = env ?=> {
     Predicates(
       Set(predicate),
       tail,

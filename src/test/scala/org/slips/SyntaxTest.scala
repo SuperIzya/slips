@@ -39,7 +39,7 @@ object SyntaxTest {
   val wordValue: Word => String      = _.word
   val wordCategory: Word => Category = _.category
 
-  private val shouldMarkText: Condition[(Category, Text)] =
+  private val shouldMarkText =
     for {
       w <- all[Word]
       t <- all[Text]
@@ -71,7 +71,7 @@ object SyntaxTest {
       _  <- (for {
         w1 <- words
         w2 <- words
-      } yield t1.value(w1) === t2.value(w2)).reduceLeft(_ or _)
+      } yield t1.value(w1) === t2.value(w2)).reduceLeft(_.or(_))
       _  <- t1.value(textThemeM) === t2.value(textThemeM)
       _  <- notExists[Word] { w => w.value(wordValue) === t1.value(firstWord) }
     } yield (t1.value(firstWord), t1.value(textCategoryM), t2.value(textCategoryM))

@@ -11,6 +11,7 @@ import org.slips.core.fact.*
 import org.slips.core.network
 import org.slips.core.network.alpha.*
 import org.slips.core.predicates.Predicate
+import scala.annotation.showAsInfix
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.collection.MapView
@@ -20,11 +21,11 @@ import scala.collection.immutable.SortedSet
 sealed trait AlphaNetwork {
   // Source signature -> Source alpha node -- Data will be passed there
   // TODO: Is this needed?
-  val inlets: Map[String, AlphaNode.Source[_]] = Map.empty
+  val inlets: Map[String, AlphaNode.Source[?]] = Map.empty
   // Fact signature ->
   val outlets: Map[String, AlphaNode]          = Map.empty
 
-  val topChains: Map[Fact.Alpha[_], Chain]
+  val topChains: Map[Fact.Alpha[?], Chain]
   private[core] val alphaNetwork: Set[Chain]
   def add(other: AlphaNetwork): AlphaNetwork
 }
@@ -177,12 +178,12 @@ object AlphaNetwork {
       .toAlphaNetwork
   }
 
-  private[AlphaNetwork] given Ordering[Set[Fact.Alpha[_]]] = Ordering.fromLessThan((x, y) => x.size > y.size)
+  private[AlphaNetwork] given Ordering[Set[Fact.Alpha[?]]] = Ordering.fromLessThan((x, y) => x.size > y.size)
   private[AlphaNetwork] case class Intermediate(
     successors: FactToSuccessor,
     signedPredicates: PredicateToSignature,
     predicatesBySign: SignatureToPredicate,
-    private val factsToChains: SortedMap[Set[Fact.Alpha[_]], Chain.Predicates] = SortedMap.from(Map.empty)
+    private val factsToChains: SortedMap[Set[Fact.Alpha[?]], Chain.Predicates] = SortedMap.from(Map.empty)
   ) {
 
     /**
@@ -195,6 +196,7 @@ object AlphaNetwork {
       *   1. add predicate P to network as single chain for
       *      facts P.facts.
       */
+    @showAsInfix
     def add(predicate: AlphaPredicate): Env[Intermediate] = {
       val facts = predicate.facts
 
@@ -217,9 +219,9 @@ object AlphaNetwork {
       }
     }
 
-    private def foldFacts: Env[Map[Fact.Alpha[_], Chain]] = {
+    private def foldFacts: Env[Map[Fact.Alpha[?], Chain]] = {
 
-      val res: Map[Fact.Alpha[_], Set[Chain]] = factsToChains
+      val res: Map[Fact.Alpha[?], Set[Chain]] = factsToChains
         .view
         .iterator
         .flatMap { case (_, chain) =>
@@ -236,7 +238,7 @@ object AlphaNetwork {
     }
 
     def toAlphaNetwork: Env[AlphaNetwork] = {
-      val folded: Map[Fact.Alpha[_], Chain] = foldFacts
+      val folded: Map[Fact.Alpha[?], Chain] = foldFacts
       val chains: Set[Chain]                = folded.values.toSet
 
       new AlphaNetworkImpl(
@@ -248,7 +250,7 @@ object AlphaNetwork {
   }
 
   private class AlphaNetworkImpl(
-    val topChains: Map[Fact.Alpha[_], Chain],
+    val topChains: Map[Fact.Alpha[?], Chain],
     private[core] val alphaNetwork: Set[Chain]
   ) extends AlphaNetwork {
     override def add(other: AlphaNetwork): AlphaNetwork = other match
@@ -262,7 +264,7 @@ object AlphaNetwork {
 
   case object Empty extends AlphaNetwork {
     override private[core] val alphaNetwork             = Set.empty[Chain]
-    override val topChains: Map[Fact.Alpha[_], Chain]   = Map.empty
+    override val topChains: Map[Fact.Alpha[?], Chain]   = Map.empty
     override def add(other: AlphaNetwork): AlphaNetwork = other
   }
 }

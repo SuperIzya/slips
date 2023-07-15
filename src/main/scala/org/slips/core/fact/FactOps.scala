@@ -27,7 +27,7 @@ sealed trait FactOps[T] {
   def predecessors(f: Fact.Val[T]): Predecessors
   def sources(f: Fact.Val[T]): Set[Signature]
   def sourceFacts(f: Fact.Val[T]): Set[Fact.Source]
-  def facts(f: Fact.Val[T]): Set[Fact[_]]
+  def facts(f: Fact.Val[T]): Set[Fact[?]]
 
   def splitToFacts(f: Fact[T]): Fact.Val[T]
 
@@ -40,6 +40,26 @@ object FactOps {
   type ScalarFact[x] = Fact.Val[x] =:= Fact[x]
 
   private def getElement[T <: NonEmptyTuple, Q](index: Int)(v: T): Q = v.productElement(index).asInstanceOf[Q]
+
+  given emptyTupleOps: FactOps[EmptyTuple] with {
+    override def empty: EmptyTuple                            = EmptyTuple
+    override def facts(f: Fact.Val[EmptyTuple]): Set[Fact[?]] = Set.empty
+
+    override def splitToFacts(f: Fact[EmptyTuple]): Fact.Val[EmptyTuple] = EmptyTuple
+
+    override def sourceFacts(f: Fact.Val[EmptyTuple]): Set[Source] = Set.empty
+
+    override def extract(r: Fact.Val[EmptyTuple]): TupleSignature = List.empty
+
+    override def predecessors(f: Fact.Val[EmptyTuple]): Predecessors = List.empty
+
+    override def sources(f: Fact.Val[EmptyTuple]): Set[Signature] = Set.empty
+
+    override def signature: Signature = Signature.Manual("")
+
+    override def size: Int = 0
+
+  }
 
   given genLastTupleOpsStep[H](using
     H: FactOps[H],
@@ -66,7 +86,7 @@ object FactOps {
       ev(f)._1.sources
     }
 
-    override def facts(f: Fact.Val[H *: EmptyTuple]): Set[Fact[_]] = {
+    override def facts(f: Fact.Val[H *: EmptyTuple]): Set[Fact[?]] = {
       H.facts(evH.flip(ev(f)._1))
     }
 
@@ -95,7 +115,7 @@ object FactOps {
 
     def sources(f: Fact.Val[T]): Set[Signature] = ev(f).sources
 
-    override def facts(f: Fact.Val[T]): Set[Fact[_]] = Set(ev(f))
+    override def facts(f: Fact.Val[T]): Set[Fact[?]] = Set(ev(f))
 
     def splitToFacts(f: Fact[T]): Fact.Val[T] = ev.flip(f)
   }
@@ -138,7 +158,7 @@ object FactOps {
       head.sources ++ T.sources(tail)
     }
 
-    override def facts(f: Fact.Val[H *: T]): Set[Fact[_]] = {
+    override def facts(f: Fact.Val[H *: T]): Set[Fact[?]] = {
       val (head: Fact[H], tail: Fact.Val[T]) = split(f)
       T.facts(tail) + head
     }
@@ -169,7 +189,7 @@ object FactOps {
 
     def sourceFacts(f: Fact.Val[Unit]): Set[Fact.Source] = ev(f).alphaSources
 
-    def facts(f: Fact.Val[Unit]): Set[Fact[_]] = Set(ev(f))
+    def facts(f: Fact.Val[Unit]): Set[Fact[?]] = Set(ev(f))
 
     def splitToFacts(f: Fact[Unit]): Fact.Val[Unit] = ev.flip(f)
   }*/

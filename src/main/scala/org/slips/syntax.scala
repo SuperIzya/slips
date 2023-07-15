@@ -27,14 +27,14 @@ object syntax {
 
   inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : FactOps](x: T): Fact[T] = Fact.literal(x)
 
-  extension [T <: Tuple](fact: Fact.TMap[T]) {
-    inline def test2(inline f: T => Boolean)(using T: FactOps[T]): Predicate = {
+  extension [T <: Tuple](fact: T) {
+    inline def test[Q](inline f: Q => Boolean)(using ev: T =:= Fact.Val[Q], Q: FactOps[Q]): Predicate = {
       Signed(f) {
         Predicate.Test(
           _,
           f,
-          fact
-        )(using T)
+          ev(fact)
+        )
       }
     }
   }
@@ -54,7 +54,7 @@ object syntax {
     private inline def buildPredicate(other: Fact[T], inline test: (T, T) => Boolean)(using
       T: FactOps[T],
       ev: SimpleTuple2[T],
-      ev2: Fact.Val[T] =:= Fact[T],
+      ev2: ScalarFact[T],
       TT: FactOps[T *: T *: EmptyTuple]
     ): Predicate = {
       (fact, other) match {
@@ -93,7 +93,7 @@ object syntax {
       F: FactOps[T],
       T: Eq[T],
       ev: SimpleTuple2[T],
-      ev2: Fact.Val[T] =:= Fact[T]
+      ev2: ScalarFact[T]
     ): Predicate =
       buildPredicate(other, T.neqv)
 
@@ -103,7 +103,7 @@ object syntax {
       F: FactOps[T],
       T: Eq[T],
       ev: SimpleTuple2[T],
-      ev2: Fact.Val[T] =:= Fact[T]
+      ev2: ScalarFact[T]
     ): Predicate =
       buildPredicate(other, T.eqv)
 

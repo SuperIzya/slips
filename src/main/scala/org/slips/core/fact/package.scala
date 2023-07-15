@@ -6,7 +6,7 @@ import org.slips.core.fact.Fact.TMap
 
 package object fact {
 
-  type Predecessors = List[Fact[_]]
+  type Predecessors = List[Fact[?]]
 
   extension [T](fact: Fact[T]) {
     def toVal(using T: FactOps[T]): Fact.Val[T] = T.splitToFacts(fact)
@@ -16,7 +16,7 @@ package object fact {
     def predecessors(using T: FactOps[T]): Predecessors = T.predecessors(fact)
     def sources(using T: FactOps[T]): Set[Signature]    = T.sources(fact)
     def signature(using T: FactOps[T]): Signature       = Signature.Manual(T.extract(fact).mkString("(", ", ", ")"))
-    def facts(using T: FactOps[T]): Set[Fact[_]]        = T.facts(fact)
+    def facts(using T: FactOps[T]): Set[Fact[?]]        = T.facts(fact)
   }
 
 }

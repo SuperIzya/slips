@@ -7,10 +7,12 @@ import org.slips.core.*
 import org.slips.core.build.*
 import org.slips.core.build.BuildStep
 import org.slips.core.fact.*
+import org.slips.core.fact.FactOps.ScalarFact
 import org.slips.core.network.Node
 import org.slips.core.network.alpha.AlphaNode
 import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
+import scala.compiletime.summonInline
 
 sealed trait Condition[T] extends WithSignature {
   protected implicit val T: FactOps[T]
@@ -20,18 +22,27 @@ sealed trait Condition[T] extends WithSignature {
   def flatMap[Q: FactOps](f: Fact.Val[T] => Condition[Q]): Condition[Q] =
     Condition.FlatMap[T, Q](this, f)
 
-  def map[R, Q: FactOps](f: Fact.Val[T] => R)(using ev: R =:= Fact.Val[Q]): Condition[Q] =
-    Condition.Map[T, Q](this, f.andThen(ev(_)))
+  def map[R](f: Fact.Val[T] => R)(using ev: FactOps[Fact.InverseVal[R]]): Condition[Fact.InverseVal[R]] =
+    Condition.Map(this, f.andThen(_.asInstanceOf[Fact.Val[Fact.InverseVal[R]]]))
 
   def withFilter(f: Fact.Val[T] => Predicate): Condition[T] =
     Condition.Filter(this, f)
 
   @targetName("withFilterSingle")
-  def withFilter(f: Fact[T] => Boolean)(using NotTuple[T], FactOps[T], Fact.Val[T] =:= Fact[T]): Condition[T] =
+  def withFilter(f: Fact[T] => Boolean)(using NotTuple[T], FactOps[T], ScalarFact[T]): Condition[T] =
     Condition.ScalarFilter(this, f)
 }
 
 object Condition {
+
+  final case class MapOps[T, R](self: Condition[T], f: Fact.Val[T] => R)
+  object MapOps {
+    implicit def toCondition[T, R, Q: FactOps](
+      mo: MapOps[T, R])(using ev2: Fact.InverseVal[R] =:= Q, ev: R =:= Fact.Val[Q]): Condition[Q] = {
+      import mo.self.T
+      Condition.Map[T, Q](mo.self, mo.f.andThen(ev))
+    }
+  }
 
   inline def all[T : FactOps : NotTuple]: All[T] = {
     All[T](Signature.Manual(s"All[${ Macros.signType[T] }]"))
