@@ -1,9 +1,8 @@
 package org.slips.core.build
 
 import org.slips.Signature
-import org.slips.core.conditions.Condition
+import org.slips.core.conditions.*
 import org.slips.core.fact.*
-import org.slips.core.predicates.Predicate
 
 case class SelectedPredicatesAndSources(
   predicates: Map[Predicate, Set[Fact[?]]] = Map.empty,

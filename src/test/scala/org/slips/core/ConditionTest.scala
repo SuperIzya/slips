@@ -1,13 +1,10 @@
 package org.slips.core
 
-import org.scalacheck.Arbitrary
-import org.scalacheck.Gen
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.slips.core.conditions.Condition
-import org.slips.core.fact.Fact
-import org.slips.core.fact.FactOps
+import org.slips.core.fact.{Fact, FactOps}
 import org.slips.syntax.*
-import org.typelevel.discipline.scalatest.FunSuiteDiscipline
+
 import scala.annotation.tailrec
 import scala.util.NotGiven
 

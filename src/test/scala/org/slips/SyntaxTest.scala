@@ -40,12 +40,13 @@ object SyntaxTest {
   val wordCategory: Word => Category = _.category
 
   private val shouldMarkText =
-    for {
-      w <- all[Word]
-      t <- all[Text]
-      _ <- t.test(categoryEmpty)
-      _ <- (t.value(firstWord) === w.value(wordValue)) || (t.value(secondWord) === w.value(wordValue))
-    } yield (w.value(wordCategory), t)
+    all[Word]
+      .flatMap(w =>
+        all[Text]
+          .map { t => val _ = t.test(categoryEmpty); t }
+          .map { t => val _ = (t.value(firstWord) === w.value(wordValue)) || (t.value(secondWord) === w.value(wordValue)); t }
+          .map(t => (w.value(wordCategory), t))
+      )
 
   private val markText = (env: Environment) ?=>
     shouldMarkText
@@ -64,16 +65,16 @@ object SyntaxTest {
   val textCategoryM: Text => Option[Category] = _.categoryM
   val words                                   = Seq(firstWord, secondWord)
 
-  private val shouldMarkWord: Condition[(String, Option[Category], Option[Category])] =
+  private val shouldMarkWord =
     for {
       t1 <- all[Text] if t1.test(categoryIsDefined)
       t2 <- all[Text] if t2.test(categoryIsDefined)
-      _  <- (for {
+      _ = (for {
         w1 <- words
         w2 <- words
       } yield t1.value(w1) === t2.value(w2)).reduceLeft(_.or(_))
-      _  <- t1.value(textThemeM) === t2.value(textThemeM)
-      _  <- notExists[Word] { w => w.value(wordValue) === t1.value(firstWord) }
+      _ = t1.value(textThemeM) === t2.value(textThemeM)
+      _ = notExists[Word] { w => w.value(wordValue) === t1.value(firstWord) }
     } yield (t1.value(firstWord), t1.value(textCategoryM), t2.value(textCategoryM))
 
   private val markWord = (env: Environment) ?=>

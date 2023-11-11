@@ -5,8 +5,8 @@ import cats.implicits.*
 import cats.syntax.*
 import org.slips.Env
 import org.slips.Signature
+import org.slips.core.conditions.Predicate
 import org.slips.core.fact.*
-import org.slips.core.predicates.Predicate
 
 case class AlphaPredicate private[slips] (
   source: String,

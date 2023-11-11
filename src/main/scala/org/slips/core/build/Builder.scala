@@ -6,13 +6,10 @@ import cats.syntax.traverse.*
 import org.slips.Env
 import org.slips.Environment
 import org.slips.core.build.strategy.PredicateSelection
-import org.slips.core.conditions.Condition
-import org.slips.core.conditions.Condition.Source
-import org.slips.core.conditions.Parser
+import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
 import org.slips.core.fact.FactOps
 import org.slips.core.network.alpha.AlphaNetwork
-import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
 import scala.annotation.tailrec
 import scala.collection.SeqView.Sorted

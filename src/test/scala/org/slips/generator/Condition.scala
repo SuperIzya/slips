@@ -1,7 +1,7 @@
 package org.slips.generator
 
+import org.slips.core.conditions.Predicate
 import org.slips.core.fact.Fact
-import org.slips.core.predicates.Predicate
 import org.slips.data.*
 import org.slips.data.Data.*
 import org.slips.generator.*
@@ -31,9 +31,9 @@ object Condition {
     def next: DGen[PredicateOps] = Gen.elements(And, Or, Not)
   }
 
-  def nextAlphaPredicate[D <: Data](data: D)(using pa: PossibleAlpha[D], D: DGen[D]): AlphaGen[D] = D.flatMap(pa.next)
+  def nextAlphaPredicate[D <: Data](data: D)(using pa: GenAlpha[D], D: DGen[D]): AlphaGen[D] = D.flatMap(pa.next)
 
-  def nextAlphaPredicates[D <: Data](data: D, count: Int)(using pa: PossibleAlpha[D], D: DGen[D]): AlphaGen[D] = {
+  def nextAlphaPredicates[D <: Data](data: D, count: Int)(using pa: GenAlpha[D], D: DGen[D]): AlphaGen[D] = {
     val genNext = D.flatMap(pa.next)
 
     @tailrec

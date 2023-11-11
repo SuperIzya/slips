@@ -1,7 +1,7 @@
 package org.slips
 
+import org.slips.core.conditions.Predicate
 import org.slips.core.fact.Fact
-import org.slips.core.predicates.Predicate
 import org.slips.data.*
 
 package object generator {

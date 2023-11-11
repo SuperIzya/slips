@@ -3,13 +3,14 @@ package org.slips.core
 import org.slips.Signature
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact.TMap
+import org.slips.core.fact.FactOps.ScalarFact
 
 package object fact {
 
   type Predecessors = List[Fact[?]]
 
   extension [T](fact: Fact[T]) {
-    def toVal(using T: FactOps[T]): Fact.Val[T] = T.splitToFacts(fact)
+    def toVal(using T: FactOps[T], ev: ScalarFact[T]): Fact.Val[T] = ev.flip(fact)
   }
 
   extension [T](fact: Fact.Val[T]) {

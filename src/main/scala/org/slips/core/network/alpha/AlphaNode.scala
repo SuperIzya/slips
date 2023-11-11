@@ -2,11 +2,10 @@ package org.slips.core.network.alpha
 
 import org.slips.Signature
 import org.slips.core.build.BuildStep
-import org.slips.core.conditions.Condition
+import org.slips.core.conditions.{Predicate as TestPredicate, *}
 import org.slips.core.fact.Fact
 import org.slips.core.network.Node
 import org.slips.core.network.materialized.Publisher
-import org.slips.core.predicates.Predicate as TestPredicate
 
 private[slips] sealed trait AlphaNode extends Node {
 

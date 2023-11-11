@@ -4,9 +4,9 @@ import org.slips.Env
 import org.slips.Environment
 import org.slips.core.build.*
 import org.slips.core.conditions.Condition.Source
+import org.slips.core.conditions.Predicate
 import org.slips.core.fact.*
 import org.slips.core.network.alpha.AlphaNode
-import org.slips.core.predicates.Predicate
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
@@ -28,6 +28,17 @@ object PredicateSelection {
 
   /** Keep all predicates */
   case object Keep extends PredicateSelection {
+    override def selectPredicatesAndSources[T: FactOps](
+      initial: Fact.Val[T],
+      allFacts: AllFacts
+    ): SelectedPredicatesAndSources = {
+
+      collectPredicates(
+        allFacts.values.flatten.toList,
+        SelectedPredicatesAndSources(initial)
+      )
+    }
+
     @tailrec
     private def collectPredicates(
       predicates: List[Predicate],
@@ -43,17 +54,6 @@ object PredicateSelection {
             collectPredicates(next, collected.withPredicate(head))
         }
       case Nil          => collected
-    }
-
-    override def selectPredicatesAndSources[T: FactOps](
-      initial: Fact.Val[T],
-      allFacts: AllFacts
-    ): SelectedPredicatesAndSources = {
-
-      collectPredicates(
-        allFacts.values.toList.flatten,
-        SelectedPredicatesAndSources(initial)
-      )
     }
   }
 
@@ -84,21 +84,38 @@ object PredicateSelection {
     */
   case object Clean extends PredicateSelection {
 
-    private def processDiscarded(selected: SelectedPredicatesAndSources): SelectedPredicatesAndSources = {
-      if (selected.discarded.isEmpty) selected
-      else selected.discarded.foldLeft(selected.copy(discarded = Set.empty))(collectSources(_, _))
+    override def selectPredicatesAndSources[T: FactOps](
+      initial: Fact.Val[T],
+      allFacts: AllFacts
+    ): SelectedPredicatesAndSources = {
+      val res = processPredicates(
+        allFacts.values.flatten.toList,
+        SelectedPredicatesAndSources
+          .empty
+          .copy(
+            facts = initial.predecessors.toSet,
+            sources = initial.sources
+          )
+      )
+
+      processDiscarded(res)
     }
 
     extension (q: Queue[Predicate]) {
-      private inline def deq(selected: SelectedPredicatesAndSources): SelectedPredicatesAndSources = q
-        .dequeueOption match {
-        case Some((pd, qu)) => collectSources(selected, pd, qu)
-        case None           => selected
-      }
+      private inline def deq(selected: SelectedPredicatesAndSources): SelectedPredicatesAndSources =
+        q.dequeueOption match {
+          case Some((pd, qu)) => collectSources(selected, pd, qu)
+          case None           => selected
+        }
     }
 
     extension (facts: Set[Fact[?]]) {
       private inline def allPredecessors: Set[Fact[?]] = facts.flatMap(f => f +: f.predecessors)
+    }
+
+    private def processDiscarded(selected: SelectedPredicatesAndSources): SelectedPredicatesAndSources = {
+      if (selected.discarded.isEmpty) selected
+      else selected.discarded.foldLeft(selected.copy(discarded = Set.empty))(collectSources(_, _))
     }
 
     @tailrec
@@ -126,9 +143,8 @@ object PredicateSelection {
     private def selectPredicates(
       toCheck: List[Predicate],
       collected: SelectedPredicatesAndSources
-    ): SelectedPredicatesAndSources = {
+    ): SelectedPredicatesAndSources =
       toCheck.foldLeft(collected)(collectSources(_, _))
-    }
 
     @tailrec
     private def processPredicates(
@@ -138,22 +154,6 @@ object PredicateSelection {
       val result = selectPredicates(toCheck, collected)
       if (result.discarded == collected.discarded) result
       else processPredicates(result.discarded.toList, result.copy(discarded = Set.empty))
-    }
-    override def selectPredicatesAndSources[T: FactOps](
-      initial: Fact.Val[T],
-      allFacts: AllFacts
-    ): SelectedPredicatesAndSources = {
-      val res = selectPredicates(
-        allFacts.values.flatten.toList,
-        SelectedPredicatesAndSources
-          .empty
-          .copy(
-            facts = initial.predecessors.toSet,
-            sources = initial.sources
-          )
-      )
-
-      processPredicates(res.discarded.toList, res)
     }
   }
 }

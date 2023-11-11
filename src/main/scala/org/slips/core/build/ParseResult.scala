@@ -2,9 +2,8 @@ package org.slips.core.build
 
 import org.slips.Env
 import org.slips.Signature
-import org.slips.core.conditions.Condition
+import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
-import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
 import scala.annotation.showAsInfix
 
@@ -25,7 +24,7 @@ private[slips] object ParseResult {
   def fromRule(rule: RuleM): Env[ParseResult] = {
     val sp = rule.sourcesAndPredicates
 
-    val pc = sp.predicates.keys.foldLeft(ParseCollector.empty)(_ addPredicate _)
+    val pc = sp.predicates.keys.foldLeft(ParseCollector.empty)(_.addPredicate(_))
     pc.toParseResult(rule, sp)
   }
 

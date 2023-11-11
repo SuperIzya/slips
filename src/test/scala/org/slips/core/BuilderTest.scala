@@ -1,5 +1,6 @@
 package org.slips.core
 
+import cats.Eq
 import cats.Eval
 import cats.data.State
 import org.slips.Env
@@ -11,10 +12,9 @@ import org.slips.core.build.Builder
 import org.slips.core.build.BuildStep
 import org.slips.core.build.SelectedPredicatesAndSources
 import org.slips.core.build.strategy.PredicateSelection
-import org.slips.core.conditions.Condition
+import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
 import org.slips.core.network.alpha.AlphaNetwork
-import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
 import zio.*
@@ -23,49 +23,25 @@ import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
 
-  given signatureStrategy: SignatureStrategy = SignatureStrategy.Content
-
-  enum Origin {
-    case Field, GreenHouse
-  }
-
-  object Origin {
-    given Empty[Origin] with {
-      override def empty: Origin = Origin.GreenHouse
-    }
-  }
-
-  case class Fruit(name: String, sugar: Double, acidity: Double)
-  case class Vegetable(name: String, origin: Origin)
-  case class Herb(name: String, origin: Origin)
-  case class Berry(name: String, origin: Origin)
-
-  def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
-
   val notApple: Fact[Fruit] => Predicate = _.test(_.name != "apple")
   private val testFruitAndVegie          = testFruitAndVegieF.tupled
-
-  def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
-
-  private val vegie2Fruits = vegie2FruitsF.tupled
-
-  private val condition1 = for {
+  private val vegie2Fruits               = vegie2FruitsF.tupled
+  private val condition1                 = for {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry]
-    _     <- berry.test(_.origin != Origin.Field)
-    _     <- b.test(_.origin != Origin.GreenHouse) && b.test(_.name.nonEmpty)
-    _     <- h.test(_.name.nonEmpty)
-    _ = berry.value(_.origin)
+    _     = berry.test(_.origin != Origin.Field)
+    _     = (b.value(_.origin) =!= Origin.GreenHouse) && b.test(_.name.nonEmpty)
+    _     = h.test(_.name.nonEmpty)
     f1 <- all[Fruit]
-    _  <- f1.value(_.sugar) =!= 1.0
+    _  = f1.value(_.sugar) =!= 1.0
     f2 <- all[Fruit]
-    _  <- notApple(f2) || notApple(f1)
+    _  = notApple(f2) || notApple(f1)
     v  <- all[Vegetable]
-    _  <- (f1, v).test(testFruitAndVegie)
-    _  <- h.value(_.name) =!= f1.value(_.name)
+    _  = (f1, v).test(testFruitAndVegie)
+    _  = h.value(_.name) =!= f1.value(_.name)
     _5 = Fact.literal(5)
-    _ <- (v, f1, f2).test(vegie2Fruits)
+    _ = (v, f1, f2).test(vegie2Fruits)
   } yield (f1, f2, v, _5)
 
   private val rule1: SimpleEnvironment ?=> Rule.RuleM =
@@ -74,13 +50,9 @@ object BuilderTest extends ZIOSpecDefault {
       .withAction { case (f1, f2, v, c5) =>
         for {
           x1 <- f1.value
+          vv <- v.value
         } yield ()
       }
-
-  override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(
-    predicates,
-    strategy
-  )
 
   private val predicates = suite("Predicates should have same signature")({
     case class Asserts(seq: Seq[(String, TestResult)]) {
@@ -91,7 +63,7 @@ object BuilderTest extends ZIOSpecDefault {
     def method(f: Fact[Fruit]): Predicate                    = f.test(_.name != "apple")
     def paramMethod(name: String)(f: Fact[Fruit]): Predicate = f.test(_.name != name)
 
-    val notApleF: Fact[Fruit] => Predicate = method(_)
+    val notAppleF: Fact[Fruit] => Predicate = method(_)
 
     val testSeq = SimpleEnvironment { env ?=>
       type Step[T] = State[Asserts, T]
@@ -107,15 +79,13 @@ object BuilderTest extends ZIOSpecDefault {
       for {
         m       <- predicate("pure method") { all[Fruit].withFilter(method) }
         param   <- predicate("parametric method") { all[Fruit].withFilter(paramMethod("apple")) }
-        partial <- predicate("function from partial application of pure method") { all[Fruit].withFilter(notApleF) }
+        partial <- predicate("function from partial application of pure method") { all[Fruit].withFilter(notAppleF) }
         literal <- predicate("inplace typing") { all[Fruit].withFilter(_.test(_.name != "apple")) }
         _       <- State.modify[Asserts](_.addSteps {
           Seq(
-            "created by method should be the same as created by partial application" -> assert(m)(equalTo(partial)),
-            "created by partial application should be the same as created literally" -> assert(partial)(equalTo(literal)),
-            "created by parametric method should not be the same as created literally" -> assert(param)(
-              not(equalTo(literal))
-            )
+            "created by method should be the same as created by partial application" -> assertTrue(m == partial),
+            "created by partial application should be the same as created literally" -> assertTrue(partial == literal),
+            "created by parametric method should not be the same as created literally" -> assertTrue(param != literal)
           )
         })
         asserts <- State.get[Asserts]
@@ -155,13 +125,9 @@ object BuilderTest extends ZIOSpecDefault {
       assert(res.facts.filter(_.isAlpha))(hasSize(equalTo(6)))
     }
   )
-
-  private val alphaNodeStrategy = suite("Alpha network should be build with respect to Environment.alphaNodeStrategy")(
-    test("AlphaNodeStrategy.MaximumUtil - needs to be optimized") {
-      object SEMaxUtil extends SimpleEnvironment {
-        override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
-      }
-      val res: AlphaNetwork = SEMaxUtil {
+  private val alphaNetwork               = suite("Alpha network")(
+    test("is built") {
+      val res: AlphaNetwork = SimpleEnvironment {
         val steps: BuildStep[AlphaNetwork] = for {
           _       <- Builder.parse(rule1)
           network <- Builder.buildAlphaNetwork
@@ -169,32 +135,44 @@ object BuilderTest extends ZIOSpecDefault {
 
         steps.runA(BuildContext.empty).value
       }
-      assertTrue(res.alphaNetwork.nonEmpty) &&
-      assertTrue(res.topChains.nonEmpty)
-    } @@ TestAspect.ignore,
-    suite("AlphaNodeStrategy.MinimumBuffers")({
-      object SEMinBuffs extends SimpleEnvironment {
-        override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
-      }
-      val simpleTest = test("Small case") {
-        val res: AlphaNetwork = SEMinBuffs {
-          val steps: BuildStep[AlphaNetwork] = for {
-            _       <- Builder.parse(rule1)
-            network <- Builder.buildAlphaNetwork
-          } yield network
-
-          steps.runA(BuildContext.empty).value
-        }
-        assertTrue(res.alphaNetwork.nonEmpty) &&
-        assertTrue(res.topChains.nonEmpty)
-      }
-
-      Seq(simpleTest)
-    }*)
+      assertTrue(
+        res.alphaNetwork.nonEmpty,
+        res.topChains.nonEmpty
+      )
+    }
   )
 
-  private val strategy = suite("Strategies should work")(
+  given signatureStrategy: SignatureStrategy = SignatureStrategy.Content
+
+  def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
+
+  def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
+
+  override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(
+    predicates,
     predicateSelectionStrategy,
-    alphaNodeStrategy
+    alphaNetwork
   )
+
+  case class Fruit(name: String, sugar: Double, acidity: Double)
+
+  case class Vegetable(name: String, origin: Origin)
+
+  case class Herb(name: String, origin: Origin)
+
+  case class Berry(name: String, origin: Origin)
+
+  object Origin {
+    given Empty[Origin] with {
+      override def empty: Origin = Origin.GreenHouse
+    }
+
+    given Eq[Origin] with {
+      override def eqv(x: Origin, y: Origin): Boolean = x == y
+    }
+  }
+
+  enum Origin {
+    case Field, GreenHouse
+  }
 }

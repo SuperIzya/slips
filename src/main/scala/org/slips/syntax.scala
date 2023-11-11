@@ -3,14 +3,13 @@ package org.slips
 import cats.Eq
 import cats.data.StateT
 import org.slips.core.Macros
-import org.slips.core.SignatureStrategy
 import org.slips.core.Signed
 import org.slips.core.conditions.*
+import org.slips.core.conditions.Condition.*
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.CanBeLiteral
 import org.slips.core.fact.Fact.Val
 import org.slips.core.fact.FactOps.ScalarFact
-import org.slips.core.predicates.*
 import org.slips.core.rule.Rule
 import scala.annotation.targetName
 import scala.compiletime.summonInline
@@ -21,9 +20,7 @@ object syntax {
 
   type SimpleTuple2[T] = Fact.Val[T *: T *: EmptyTuple] =:= Fact[T] *: Fact[T] *: EmptyTuple
 
-  inline def all[T : FactOps : NotTuple]: Condition.Source[T] = Condition.all[T]
-
-  inline implicit def predicateToCondition(p: Predicate): Condition[Unit] = Condition.OpaquePredicate(p)
+  inline def all[T : FactOps : NotTuple : ScalarFact]: Condition.Source[T] = Condition.all[T]
 
   inline implicit def liftToLiteralFact[T : Fact.CanBeLiteral : FactOps](x: T): Fact[T] = Fact.literal(x)
 
@@ -111,9 +108,9 @@ object syntax {
 
   def notExists[T](f: Fact.Val[T] => Predicate)(using F: FactOps[T]): Condition[Unit] = ???
 
-  extension [T: FactOps](c: Condition[T])
+  extension [T](c: Condition[T])
     def makeRule(name: String): Rule.Builder[T] =
-      new Rule.Builder(name, c)
+      new Rule.Builder(name, c)(using c.T)
 
   def addFact[Q, T: NotTuple](t: T)(using env: Environment)(using r: env.Rule[Q]): r.Action[Unit] =
     StateT(_.addFact(t))

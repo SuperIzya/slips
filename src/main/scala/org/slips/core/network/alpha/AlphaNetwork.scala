@@ -1,16 +1,17 @@
 package org.slips.core.network.alpha
 
+import cats.Applicative
+import cats.Semigroup
 import cats.data.State
+import cats.kernel.Monoid
 import cats.syntax.all.*
 import org.slips.Env
 import org.slips.core.build
 import org.slips.core.build.*
-import org.slips.core.conditions
-import org.slips.core.conditions.Condition
+import org.slips.core.conditions.*
 import org.slips.core.fact.*
 import org.slips.core.network
 import org.slips.core.network.alpha.*
-import org.slips.core.predicates.Predicate
 import scala.annotation.showAsInfix
 import scala.annotation.tailrec
 import scala.annotation.targetName
@@ -174,7 +175,7 @@ object AlphaNetwork {
       .values
       .toList
       .sorted(using Ordering.fromLessThan[AlphaPredicate]((a, b) => a.facts.size < b.facts.size))
-      .foldLeft(Intermediate(successors, signedPredicates, predicatesBySign)) { _ add _ }
+      .foldLeft(Intermediate(successors, signedPredicates, predicatesBySign))(_ |+| _)
       .toAlphaNetwork
   }
 
@@ -196,8 +197,8 @@ object AlphaNetwork {
       *   1. add predicate P to network as single chain for
       *      facts P.facts.
       */
-    @showAsInfix
-    def add(predicate: AlphaPredicate): Env[Intermediate] = {
+    @showAsInfix @targetName("flus")
+    def |+|(predicate: AlphaPredicate): Env[Intermediate] = {
       val facts = predicate.facts
 
       if (factsToChains.contains(facts)) {

@@ -1,6 +1,13 @@
 package org.slips
 
-sealed trait Signature
+import scala.annotation.showAsInfix
+import scala.annotation.targetName
+
+sealed trait Signature { self =>
+  @showAsInfix @targetName("append")
+  def |+|(postfix: String): Signature = Signature.DerivedUnary(self, _ + postfix)
+  def <<(prefix: String): Signature   = Signature.DerivedUnary(self, s => prefix + s)
+}
 
 object Signature {
   case class Automatic(hash: String, content: String) extends Signature

@@ -5,12 +5,11 @@ import cats.implicits.*
 import cats.syntax.*
 import org.slips.Env
 import org.slips.Signature
-import org.slips.core.conditions.Condition
+import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
 import org.slips.core.network.Node
 import org.slips.core.network.alpha.AlphaNetwork
 import org.slips.core.network.alpha.AlphaNode
-import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
 import scala.annotation.tailrec
 

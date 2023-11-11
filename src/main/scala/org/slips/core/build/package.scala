@@ -5,8 +5,8 @@ import cats.compat.SortedSet
 import cats.data.State
 import cats.implicits.*
 import org.slips.Env
+import org.slips.core.conditions.Predicate
 import org.slips.core.fact.Fact
-import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule.RuleM
 
 package object build {

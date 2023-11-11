@@ -9,7 +9,6 @@ import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
 import org.slips.core.fact.FactOps
-import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule
 import scala.annotation.tailrec
 import scala.annotation.targetName

@@ -3,6 +3,7 @@ package org.slips.core.rule
 import cats.Monad
 import cats.data.StateT
 import cats.syntax.all.*
+import compiletime.asMatchable
 import org.slips.Env
 import org.slips.Environment
 import org.slips.NotTuple
@@ -12,9 +13,9 @@ import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.fact.FactOps
 
-sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
+sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM { self =>
 
-  type ThisRule  = this.type
+  type ThisRule  = self.type
   type Action[q] = StateT[F, Context, q]
   type Facts     = Fact.Val[T]
 
@@ -24,7 +25,7 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
   override private[slips] def sourcesAndPredicates: Env[SelectedPredicatesAndSources] =
     Builder.selectPredicatesAndSources(condition)
 
-  case class Context(values: T, asserted: Seq[Any], retracted: Seq[Fact[?]]) {
+  case class Context(values: T, asserted: Seq[Any], retracted: Seq[Fact[?]]) { self =>
 
     def addFact[Q](t: Q)(using ThisRule): F[(Context, Unit)] =
       F.pure(copy(asserted = asserted :+ t) -> ())
@@ -32,15 +33,15 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
     def remove[Q](x: Value[Q])(using ThisRule): F[(Context, Unit)] =
       F.pure(copy(retracted = retracted :+ x.fact) -> ())
 
-    def removeAll[Q](t: Value.Val[Q])(using ThisRule): F[(Context, Unit)] = t match {
-      case _: EmptyTuple                                            => F.pure(this -> ())
-      case (x: Value[?] @unchecked) *: (v: Value.Val[?] @unchecked) => remove(x) >> removeAll(v)
-      case x: Value[Q] @unchecked                                   => remove(x)
-    }
+    def removeAll[Q](t: Value.Val[Q])(using ThisRule): F[(Context, Unit)] = ??? /*t.asMatchable match {
+      case _: EmptyTuple                      => F.pure(self -> ())
+      case (x: Value[?]) *: (v: Value.Val[?]) => remove(x) >> removeAll(v)
+      case x: Value[Q]                        => remove(x)
+    }*/
 
   }
 
-  trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q]) {
+  trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q]) extends Matchable {
     val fact: Fact[Q]
 
     def value: ThisRule ?=> Action[Q]        = ???
@@ -49,9 +50,9 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
 
   object Value {
     type Val[Tp] = Tp match
-      case EmptyTuple => EmptyTuple
-      case Tuple      => Tuple.Map[Tp, Value]
-      case _          => Value[Tp]
+      case h *: t => Value[h] *: Val[t]
+      case _      => Value[Tp]
+
   }
 
 }
@@ -63,14 +64,14 @@ object Rule {
     val name: String,
     override val condition: Condition[T]
   ) extends Rule[F, T] {
-    def action: this.Value.Val[T] => this.Action[Unit]
+    def action(values: this.Value.Val[T]): this.Action[Unit]
   }
 
   class Builder[T: FactOps](name: String, condition: Condition[T]) {
 
     def withAction(using env: Environment)(actions: RuleAction[env.Effect, T]): env.Rule[T] = {
-      new RuleWithAction[env.Effect, T](name, condition) {
-        override lazy val action: this.Value.Val[T] => this.Action[Unit] = actions(using this)
+      new RuleWithAction[env.Effect, T](name, condition) { self =>
+        override def action(values: self.Value.Val[T]): self.Action[Unit] = actions(using self)(values)
       }
     }
   }

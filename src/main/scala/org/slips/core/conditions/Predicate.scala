@@ -1,4 +1,4 @@
-package org.slips.core.predicates
+package org.slips.core.conditions
 
 import cats.Monoid
 import org.slips.Environment
@@ -16,14 +16,14 @@ import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
 
-sealed trait Predicate extends WithSignature {
+sealed trait Predicate extends WithSignature { self =>
   // TODO: Have here TASTy of the method that tests the facts ???
-  override def signature: Signature = Signature.Manual(this.getClass.getSimpleName)
+  override def signature: Signature = Signature.Manual(self.getClass.getSimpleName)
   def facts: Set[Fact[?]]
 
-  def and(other: Predicate): Predicate = Predicate.And(this, other)
+  def and(other: Predicate): Predicate = Predicate.And(self, other)
 
-  def or(other: Predicate): Predicate = Predicate.Or(this, other)
+  def or(other: Predicate): Predicate = Predicate.Or(self, other)
 
   @targetName("and_op")
   def &&(other: Predicate): Predicate = and(other)
@@ -32,12 +32,12 @@ sealed trait Predicate extends WithSignature {
   def ||(other: Predicate): Predicate = or(other)
 
   @targetName("not_op")
-  def unary_! : Predicate = Predicate.Not(this)
+  def unary_! : Predicate = Predicate.Not(self)
 
   def toDNF: Predicate = {
     import Predicate.*
-    this match {
-      case Test(_, _, _)    => this
+    self match {
+      case Test(_, _, _)    => self
       case And(left, right) =>
         (left.toDNF, right.toDNF) match {
           case (Or(l1, r1), Or(l2, r2)) => ((l1 && l2) || (l1 && r2) || (r1 && l2) || (r1 && r2)).toDNF
@@ -49,7 +49,7 @@ sealed trait Predicate extends WithSignature {
         p.toDNF match {
           case And(left, right) => (Not(left) || Not(right)).toDNF
           case Or(left, right)  => (Not(left) && Not(right)).toDNF
-          case Test(_, _, _)    => this
+          case Test(_, _, _)    => self
           case Not(p1)          => p1.toDNF
         }
       case Or(left, right)  => left.toDNF || right.toDNF
@@ -91,6 +91,11 @@ object Predicate {
     override lazy val facts: Set[Fact[?]] = rep.facts
 
     def signed(signature: => String): Test[T] = copy(signature = Signature.Manual(signature))
+
+    def negate: Test[T] = copy(
+      signature = signature << "!",
+      test = x => !test(x)
+    )
   }
 
   final case class And(
@@ -122,10 +127,10 @@ object Predicate {
   )(using
     FactOps[(T1, T2)]
   ): Test[(T1, T2)] = ???
-
+/*
   inline def fromTuple[T <: NonEmptyTuple : FactOps](
     rep: Fact.TMap[T],
     inline test: T => Boolean
   ): Test[T] = ???
-
+*/
 }
