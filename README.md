@@ -1,6 +1,5 @@
 
- [![Compile](https://github.com/SuperIzya/slips/actions/workflows/compile.yml/badge.svg?branch=update/scalafmt-core-3.7.16)](https://github.com/SuperIzya/slips/actions/workflows/compile.yml) [![Test](https://github.com/SuperIzya/slips/actions/workflows/test.yml/badge.svg?branch=update/scalafmt-core-3.7.16)](https://github.com/SuperIzya/slips/actions/workflows/test.yml)
-
+[![Compile](https://github.com/SuperIzya/slips/actions/workflows/compile.yml/badge.svg?branch=update/zio-test-2.0.19)](https://github.com/SuperIzya/slips/actions/workflows/compile.yml) [![Test](https://github.com/SuperIzya/slips/actions/workflows/test.yml/badge.svg?branch=update/zio-test-2.0.19)](https://github.com/SuperIzya/slips/actions/workflows/test.yml)
 [![Scala Steward](https://github.com/SuperIzya/slips/actions/workflows/steward.yml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/steward.yml)
 [![Dependency Graph](https://github.com/SuperIzya/slips/actions/workflows/dependency-graph.yml/badge.svg)](https://github.com/SuperIzya/slips/actions/workflows/dependency-graph.yml)
 
