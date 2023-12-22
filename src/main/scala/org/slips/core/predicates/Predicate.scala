@@ -1,71 +1,30 @@
 package org.slips.core.predicates
 
 import cats.Monoid
+import cats.data.State
+import org.slips.NotTuple
+import org.slips.Signature
 import org.slips.core.*
 import org.slips.core.conditions.Condition
 import org.slips.core.conditions.Condition.Source
 import org.slips.core.conditions.ParseStep
-import org.slips.core.fact.Fact
-import org.slips.core.fact.FactOps
+import org.slips.core.fact.*
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import scala.util.NotGiven
 
-sealed trait Predicate extends Signed {
-  def facts: Set[Fact[_]]
+sealed trait Predicate extends Signed { self =>
   lazy val sourceFacts: Set[Fact.Source[_]] = facts.flatMap(_.sourceFacts)
-  def sources: Set[Condition.Source[_]]     = facts.flatMap(_.sources)
-  override val signature: String            = this.getClass.getSimpleName
+  override def signature: Signature         = Signature.Manual(self.getClass.getSimpleName)
 
-  def and(
-    other: Predicate
-  ): Predicate = Predicate.And(this, other)
+  def facts: Set[Fact[_]]
 
-  def or(
-    other: Predicate
-  ): Predicate = Predicate.Or(this, other)
-
-  def not: Predicate = Predicate.Not(this)
-
-  @targetName("and_op")
-  def &&(
-    other: Predicate
-  ): Predicate = and(other)
-
-  @targetName("or_op")
-  def ||(
-    other: Predicate
-  ): Predicate = or(other)
-
-  def toKNF: Predicate = {
-    import Predicate.*
-    this match {
-      case Test(_, _, _)    => this
-      case And(left, right) => left.toKNF && right.toKNF
-      case Not(p)           =>
-        p.toKNF match {
-          case And(left, right) => (Not(left) || Not(right)).toKNF
-          case Or(left, right)  => (Not(left) && Not(right)).toKNF
-          case Test(_, _, _)    => this
-          case Not(p1)          => p1.toKNF
-        }
-      case Or(left, right)  =>
-        (left.toKNF, right.toKNF) match {
-          case (And(l, r), p) => (l.toKNF || p.toKNF).toKNF && (r.toKNF || p.toKNF).toKNF
-          case (Or(l, r), p)  => (l.toKNF || r.toKNF || p.toKNF).toKNF
-          case (p, And(l, r)) => (p.toKNF || l.toKNF).toKNF && (p.toKNF || r.toKNF).toKNF
-          case (p, Or(l, r))  => (p.toKNF || l.toKNF || r.toKNF).toKNF
-          case (l, r)         => l || r
-        }
-    }
-  }
+  def sources: Set[Condition.Source[_]] = facts.flatMap(_.sources)
 }
 
 object Predicate {
 
-  def add(
-    p: Predicate
-  ): ParseStep[Unit] = p match {
+  def add(p: Predicate): ParseStep[Unit] = p match {
     case And(left, right) =>
       for {
         _ <- add(left)
@@ -74,91 +33,94 @@ object Predicate {
     case _                => ParseStep.modify(_.addPredicate(p))
   }
 
-  final case class Test[T](
-    override val signature: String,
-    test: T => Boolean,
-    rep: Fact[T]
-  ) extends Predicate:
-    override lazy val facts: Set[Fact[_]] = rep.predecessors + rep
-
-  final case class And(
-    left: Predicate,
-    right: Predicate
-  ) extends Predicate {
+  final case class And(left: Predicate, right: Predicate) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
-    override val signature: String        = s"${ left.signature } && ${ right.signature }"
+
+    override val signature: Signature = Signature.derivedBinary(left, right, (l, r) => s"$l && $r")
+
   }
 
-  final case class Or(
-    left: Predicate,
-    right: Predicate
-  ) extends Predicate {
+  final case class Or(left: Predicate, right: Predicate) extends Predicate {
     override lazy val facts: Set[Fact[_]] = left.facts ++ right.facts
-    override val signature: String        = s"${ left.signature } || ${ right.signature }"
+
+    override val signature: Signature = Signature.derivedBinary(left, right, (l, r) => s"$l || $r")
   }
 
-  final case class Not private (
-    p: Predicate
-  ) extends Predicate {
+  final case class NotExist[T : FactOps : ScalarFact](f: Fact[T]) extends Predicate {
+    override lazy val facts: Set[Fact[_]] = f.predecessors + f
+    override val signature: Signature     = Signature.derivedUnary(f, s => s"NotExist[$s]")
+
+    def not: Predicate = Exist(f)
+  }
+
+  final case class Exist[T : FactOps : ScalarFact](f: Fact[T]) extends Predicate {
+    override lazy val facts: Set[Fact[_]] = f.predecessors + f
+    override val signature: Signature     = Signature.derivedUnary(f, s => s"Exist[$s]")
+
+    def not: Predicate = NotExist(f)
+  }
+
+  final case class Not private (p: Predicate) extends Predicate {
     override lazy val facts: Set[Fact[_]] = p.facts
-    override val signature: String        = s"!${ p.signature }"
+    override val signature: Signature     = Signature.derivedUnary(p, s => s"!($s)")
+  }
+
+  object Not {
+    def apply(p: Predicate)(using DummyImplicit): Predicate =
+      p match
+        case Not(pp) => pp
+        case _       => new Not(p)
+  }
+
+  final case class Test[T](
+    override val signature: Signature,
+    test: T => Boolean,
+    rep: Fact.Val[T]
+  )(using T: FactOps[T]
+  ) extends Predicate {
+    override lazy val facts: Set[Fact[_]] = T.predecessors(rep)
+
+    def not: Test[T] = copy(
+      signature = Signature.derivedUnary(this, s => s"!($s)"),
+      test = (x: T) => !test(x)
+    )
   }
 
   object Test {
 
-    inline def fromFact[T](
+    private[slips] inline def fromFact[T : NotTuple : FactOps](
       rep: Fact[T],
       inline test: T => Boolean
+    )(using ev: ScalarFact[T]
     ): Test[T] =
-      create(rep, test, test)
+      createSigned(ev.flip(rep), test, test)
 
-    private inline def create[T](
-      rep: Fact[T],
-      test: T => Boolean,
-      inline sign: Any
-    ): Test[T] = Macros.createSigned[Test[T]](
-      s => Test(s"${ rep.signature } $s", test, rep),
-      sign
-    )
-
-    inline def apply[T1, T2](
+    private[slips] inline def apply[T1, T2](
       rep1: Fact[T1],
       rep2: Fact[T2],
-      inline test: (
-        T1,
-        T2
-      ) => Boolean
+      inline test: (T1, T2) => Boolean
     )(using
-      FactOps.TupleOps[
-        (
-          T1,
-          T2
-        )
-      ],
-      Fact[T1] =:= Fact.Val[T1],
-      Fact[T2] =:= Fact.Val[T2]
-    ): Test[
-      (
-        T1,
-        T2
-      )
-    ] = {
-      create(Fact.fromTuple(rep1 -> rep2), test.tupled, test)
-    }
+      M: TupleFact[(T1, T2)]
+    ): Test[(T1, T2)] =
+      createSigned(M.flip(rep1, rep2), test.tupled, test)
 
-    inline def fromTuple[T <: NonEmptyTuple : FactOps.TupleOps](
+    private[slips] inline def fromTuple[T <: NonEmptyTuple : FactOps.TupleOps](
       rep: Fact.TMap[T],
       inline test: T => Boolean
-    ): Test[T] = create(Fact.fromTuple[T](rep), test, test)
-  }
+    )(using
+      ev: TupleFact[T]
+    ): Test[T] =
+      createSigned(ev.flip(rep), test, test)
 
-  object Not {
-    def apply(
-      p: Predicate
-    )(using DummyImplicit
-    ): Predicate =
-      p match
-        case Not(pp) => pp
-        case _       => new Not(p)
+    private[slips] inline def createSigned[T](
+      rep: Fact.Val[T],
+      test: T => Boolean,
+      inline sign: Any
+    )(using T: FactOps[T]
+    ): Test[T] =
+      Macros.createSigned[Test[T]](
+        s => Test(Signature.derivedUnary(T.extract(rep).toSignature, r => s"$r $s"), test, rep),
+        sign
+      )
   }
 }

@@ -1,6 +1,7 @@
 package org.slips.core.build
 
 import cats.data.State
+import org.slips.Signature
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.network.AlphaNetwork
@@ -10,7 +11,7 @@ import org.slips.core.rule.Rule.RuleM
 import scala.annotation.tailrec
 
 case class BuildContext private[build] (
-  nodes: Map[String, Node] = Map.empty,
+  nodes: Map[Signature, Node] = Map.empty,
   sources: Set[Condition.Source[_]] = Set.empty,
   alphaPredicates: PredicateMap = Map.empty,
   betaPredicates: PredicateMap = Map.empty,
@@ -23,16 +24,9 @@ object BuildContext {
 
   val empty: BuildContext = BuildContext()
 
-  private def combine(
-    a: PredicateMap,
-    b: PredicateMap
-  ): PredicateMap = {
+  private def combine(a: PredicateMap, b: PredicateMap): PredicateMap = {
     @tailrec
-    def doCombine(
-      x: PredicateMap,
-      y: PredicateMap,
-      res: PredicateMap
-    ): PredicateMap = {
+    def doCombine(x: PredicateMap, y: PredicateMap, res: PredicateMap): PredicateMap = {
       if (x.isEmpty) res ++ y
       else if (y.isEmpty) res ++ x
       else {
@@ -43,27 +37,16 @@ object BuildContext {
     doCombine(a, b, Map.empty)
   }
 
-  extension (
-    ctx: BuildContext
-  ) {
-    def addNode(
-      node: Node
-    ): (
-      BuildContext,
-      Node
-    ) =
+  extension (ctx: BuildContext) {
+    def addNode(node: Node): (BuildContext, Node) =
       ctx.copy(nodes = ctx.nodes + (node.signature -> node)) -> node
 
-    def addSource[T](
-      source: Condition.Source[T]
-    ): BuildContext = {
+    def addSource[T](source: Condition.Source[T]): BuildContext = {
       if (ctx.sources.contains(source)) ctx
       else ctx.copy(sources = ctx.sources + source)
     }
 
-    def addParsingResult(
-      parseResult: ParseResult
-    ): BuildContext =
+    def addParsingResult(parseResult: ParseResult): BuildContext =
       ctx.copy(
         alphaPredicates = combine(ctx.alphaPredicates, parseResult.alphaPredicates),
         betaPredicates = combine(ctx.betaPredicates, parseResult.betaPredicates),
@@ -72,8 +55,6 @@ object BuildContext {
         rules = ctx.rules + parseResult.rule
       )
 
-    def addAlphaNetwork(
-      n: AlphaNetwork
-    ): BuildContext = ctx.copy(network = n)
+    def addAlphaNetwork(n: AlphaNetwork): BuildContext = ctx.copy(network = n)
   }
 }

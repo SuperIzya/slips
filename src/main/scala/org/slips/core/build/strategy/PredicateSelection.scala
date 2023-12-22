@@ -111,15 +111,15 @@ object PredicateSelection {
       queue: Queue[Predicate] = Queue.empty
     ): SelectedPredicatesAndSources = {
       p match {
-        case Predicate.Test(_, _, rep) if col.facts.intersect(rep.sourceFacts).nonEmpty   =>
+        case t: Predicate.Test[_] if col.facts.intersect(t.sourceFacts).nonEmpty          =>
           queue.deq(
             col.copy(
-              sources = col.sources ++ rep.sources,
-              predicates = col.addPredicate(p),
-              facts = col.facts ++ rep.sourceFacts
+              sources = col.sources ++ t.sources,
+              predicates = col.addPredicate(t),
+              facts = col.facts ++ t.sourceFacts
             )
           )
-        case Predicate.Test(_, _, _)                                                      =>
+        case _: Predicate.Test[_]                                                         =>
           queue.deq(col.withDiscard(p))
         case Predicate.Not(pred) if col.facts.intersect(pred.sourceFacts).nonEmpty        =>
           collectSources(col.withPredicate(p), pred, queue)
