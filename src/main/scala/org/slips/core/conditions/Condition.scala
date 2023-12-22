@@ -2,104 +2,65 @@ package org.slips.core.conditions
 
 import org.slips.Environment
 import org.slips.NotTuple
+import org.slips.Signature
 import org.slips.core.*
 import org.slips.core.build.*
 import org.slips.core.build.BuildStep
-import org.slips.core.fact.Fact
-import org.slips.core.fact.FactOps
+import org.slips.core.fact.*
+import org.slips.core.fact.Fact.Val
 import org.slips.core.network.AlphaNode
 import org.slips.core.network.Node
 import org.slips.core.predicates.Predicate
+import org.slips.syntax.*
 import scala.annotation.targetName
+import scala.util.NotGiven
 
-sealed trait Condition[T] extends Signed {
-  override val signature: String = ""
+sealed trait Condition[T] extends Signed { self =>
+
+  override val signature: Signature = Signature.Manual("")
   private[slips] val parse: ParseStep[T]
-
-  def flatMap[Q](
-    f: Fact.Val[T] => Condition[Q]
-  ): Condition[Q] =
-    Condition.FlatMap[T, Q](this, f)
-
-  def map[R, Q](
-    f: Fact.Val[T] => R
-  )(using
-    ev: Fact.ReverseVal[R] =:= Q,
-    ev2: R =:= Fact.Val[Q]
-  ): Condition[Q] =
-    Condition.map[T, Q](this, f.andThen(ev2(_)))
-
-  def withFilter(
-    f: Fact.Val[T] => Predicate
-  ): Condition[T] =
-    Condition.Filter(this, f)
-
-  @targetName("withFilterSingle")
-  def withFilter(
-    f: Fact.Val[T] => Boolean
-  ): Condition[T] =
-    Condition.ScalarFilter(this, f)
 }
 
 object Condition {
   type Res[x] = Environment ?=> Condition[x]
 
-  inline def all[T : FactOps : NotTuple]: All[T] = {
-    All[T](s"All[${ Macros.signType[T] }]")
+  inline def all[T : FactOps : ScalarFact]: All[T] =
+    All[T](Signature.Manual(s"All[${ Macros.signType[T] }]"))
+
+  sealed trait Source[T: FactOps](using ev: ScalarFact[T]) extends Condition[T] { self =>
+
+    override private[slips] val parse: ParseStep[T] = ParseStep
+      .modify(_.addSource(self))
+      .map[Fact.Val[T]](_ => ev.flip(fact))
+
+    private def fact: Fact.Source[T] = Fact.Source(self)
+
+    private[slips] def build: BuildStep[Node] = BuildStep.addNode(AlphaNode.Source(self))
   }
 
-  private def map[T, Q](
-    src: Condition[T],
-    f: Fact.Val[T] => Fact.Val[Q]
-  ): Map[T, Q] =
-    Map(src, f)
+  final case class All[T : FactOps : ScalarFact] private[Condition] (override val signature: Signature)
+      extends Source[T]
 
-  sealed trait Source[T : FactOps : NotTuple] extends Condition[T] {
-    private def fact: Fact.Source[T]                = Fact.Source(this)
-    override private[slips] val parse: ParseStep[T] = ParseStep.modify(_.addSource(this)).map(_ => fact.toVal)
-
-    private[slips] def build: BuildStep[Node] = BuildStep.addNode(AlphaNode.Source(this))
+  final case class Opaque[T](predicate: Predicate) extends Condition[Unit] {
+    override val signature: Signature                  = predicate.signature
+    override private[slips] val parse: ParseStep[Unit] = // TODO: Move that to build package
+      ParseStep.modify(_.addPredicate(predicate))
   }
 
-  final case class All[T : FactOps : NotTuple] private[Condition] (
-    override val signature: String
-  ) extends Source[T]
+  final case class Map[T, Q] private[slips] (src: Condition[T], f: Fact.Val[T] => Fact.Val[Q])
+      extends Condition[Q] { self =>
 
-  final case class OpaquePredicate private[slips] (
-    p: Predicate
-  ) extends Condition[Unit] {
-    override val signature: String = p.signature
-
-    override private[slips] val parse: ParseStep[Unit] = Predicate.add(p.toKNF)
-
-  }
-
-  final case class Map[T, Q] private[Condition] (
-    src: Condition[T],
-    f: Fact.Val[T] => Fact.Val[Q]
-  ) extends Condition[Q] {
-    override val signature: String = ""
+    override val signature: Signature = Signature.Manual("")
 
     override private[slips] val parse: ParseStep[Q] = src.parse.map(f)
+
   }
 
-  private[slips] final case class FlatMap[T, Q](
-    left: Condition[T],
-    f: Fact.Val[T] => Condition[Q]
-  ) extends Condition[Q] {
+  private[slips] final case class FlatMap[T, Q](left: Condition[T], f: Fact.Val[T] => Condition[Q])
+      extends Condition[Q] { self =>
     override private[slips] val parse: ParseStep[Q] =
       left.parse.flatMap(f(_).parse)
-  }
 
-  private[slips] final case class ScalarFilter[T](
-    src: Condition[T],
-    f: Fact.Val[T] => Boolean
-  ) extends Condition[T] {
-    override private[slips] val parse: ParseStep[T] = src
-      .parse
-      .map {
-        case x if f(x) => x
-      }
   }
 
   private[slips] final case class Filter[T](
