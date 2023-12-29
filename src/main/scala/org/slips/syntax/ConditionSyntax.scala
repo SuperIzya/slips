@@ -5,7 +5,6 @@ import org.slips.core.fact.*
 import org.slips.core.fact.Fact.Val
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule
-import scala.compiletime.erasedValue
 import scala.compiletime.summonInline
 
 trait ConditionSyntax {

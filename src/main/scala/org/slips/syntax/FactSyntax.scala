@@ -12,6 +12,8 @@ import scala.language.implicitConversions
 
 trait FactSyntax {
 
+  implicit def literal[T : CanBeLiteral : FactOps](v: T): Fact[T] = new Fact.Literal(v)
+
   extension [T](fact: Fact[T]) {
     inline def value[I: FactOps](inline f: T => I): Fact[I] =
       Macros.createSigned[Fact.Map[T, I]](
@@ -23,20 +25,25 @@ trait FactSyntax {
       Predicate.Test.fromFact(ev.flip(fact), f)
 
     @targetName("repNotEq")
-    inline def =!=(other: Fact[T])(using ScalarFact[T], FactOps[T]): Predicate = ???
-    // TODO: Predicate.Test[T](fact, other, _ != _)
+    inline def =!=(other: Fact[T])(using ScalarFact[T], FactOps[T]): Predicate =
+      Predicate.Test[T](fact, other, _ != _)
 
     @targetName("repEq")
-    inline def ===(other: Fact[T])(using ScalarFact[T], FactOps[T]): Predicate = ???
-    // TODO: Predicate.Test[T](fact, other, _ == _)
+    inline def ===(other: Fact[T])(using ScalarFact[T], FactOps[T]): Predicate =
+      Predicate.Test[T](fact, other, _ == _)
 
   }
 
-  implicit def toLiteralFact[T : CanBeLiteral : FactOps](t: T): Fact[T] = Fact.literal(t)
-
-  extension [T <: NonEmptyTuple](fact: Fact.Val[T]) {
-    inline def testMany(inline f: T => Boolean)(using T: TupleOps[T], ev: TupleFact[T]): Predicate =
-      Predicate.Test.fromTuple[T](fact, f) // TODO: Try REPL, (f -> h).testMany(_ => true)
+  extension [T <: NonEmptyTuple](fact: T) {
+    inline def testMany[Q <: NonEmptyTuple](
+      inline f: Fact.InverseVal[T] => Boolean
+    )(using
+      ev2: Fact.InverseVal[T] =:= Q,
+      Q: TupleOps[Q],
+      ev: TupleFact[Q],
+      ev3: T =:= Fact.Val[Q]
+    ): Predicate =
+      Predicate.Test.fromTuple[Q](ev3(fact), ev2.flip.andThen(f)) // TODO: Try REPL, (f -> h).testMany(_ => true)
 
   }
 }

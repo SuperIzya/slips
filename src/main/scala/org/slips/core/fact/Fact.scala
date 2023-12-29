@@ -31,19 +31,16 @@ object Fact {
   type TIsMapped   = [x <: NonEmptyTuple] =>> Tuple.IsMappedBy[Fact][x]
 
   type Val[X] = X match
-    case a *: EmptyTuple => Fact[a] *: EmptyTuple
-    case a *: t          => Fact[a] *: Val[t]
-    // case t <:< NonEmptyTuple => TMap[t]
-    case _               => Fact[X]
+    case a *: EmptyTuple.type => Fact[a] *: EmptyTuple
+    case a *: t               => Fact[a] *: Val[t]
+    case _                    => Fact[X]
 
   type InverseVal[X] = X match
-    case Fact[h] *: EmptyTuple => h *: EmptyTuple
-    case Fact[h] *: t          => h *: InverseVal[t]
-    case Fact[a]               => a
+    case Fact[h] *: EmptyTuple.type => h *: EmptyTuple
+    case Fact[h] *: t               => h *: InverseVal[t]
+    case Fact[a]                    => a
 
   val unit: Fact[Unit] = Literal.Unit
-
-  def literal[T : CanBeLiteral : FactOps](v: T): Fact[T] = new Literal(v)
 
   sealed trait CanBeLiteral[T]
 

@@ -4,12 +4,12 @@ import cats.data.State
 import org.slips.core.conditions.Condition
 import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
+import scala.language.implicitConversions
 
 trait PredicateSyntax {
 
-  given toCondition: Conversion[Predicate, Condition[Unit]] = (p: Predicate) => Condition.Opaque(p)
-  implicit def convertToCondition(p: Predicate)(using C: Conversion[Predicate, Condition[Unit]]): Condition[Unit] =
-    C(p)
+  implicit def convertToCondition(p: Predicate): Condition[Unit] =
+    Condition.Opaque(p)
 
   extension (p: Predicate) {
     def and(s: Predicate): Predicate = Predicate.And(p, s)

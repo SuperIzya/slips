@@ -2,34 +2,23 @@ package org.slips.core
 
 import cats.Eval
 import cats.data.State
-import org.slips.Env
-import org.slips.Environment as SEnv
 import org.slips.Signature
 import org.slips.SimpleEnvironment
-import org.slips.core.BuilderTest.vegie2Fruits
-import org.slips.core.Empty
-import org.slips.core.build.BuildContext
-import org.slips.core.build.Builder
-import org.slips.core.build.BuildStep
-import org.slips.core.build.SelectedPredicatesAndSources
-import org.slips.core.build.strategy.AlphaNodeStrategy
-import org.slips.core.build.strategy.PredicateSelection
+import org.slips.core.build.*
+import org.slips.core.build.strategy.*
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact
 import org.slips.core.network.AlphaNetwork
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
-import org.slips.syntax.toCondition
 import zio.*
 import zio.test.*
 import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
-  val notApple: Fact[Fruit] => Predicate                       = _.test(_.name != "apple")
-  private val testFruitAndVegie                                = (testFruitAndVegieF _).tupled
-  private val vegie2Fruits                                     = vegie2FruitsF.tupled
-  private val condition1: Condition[(Fruit, Fruit, Vegetable)] = for {
+  val notApple: Fact[Fruit] => Predicate              = _.test(_.name != "apple")
+  val condition1                                      = for {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry] if berry.test(_.origin != Origin.Field)
@@ -38,21 +27,25 @@ object BuilderTest extends ZIOSpecDefault {
     f1    <- all[Fruit] if f1.value(_.sugar) =!= 1
     f2    <- all[Fruit] if notApple(f2) || notApple(f1)
     v     <- all[Vegetable]
-    //_     <- (f1 -> v).testMany(testFruitAndVegie)
+    _     <- (f1 -> v).testMany(testFruitAndVegie)
     _     <- h.value(_.name) =!= f1.value(_.name)
-    //_     <- ((v, f1, f2)).testMany(vegie2Fruits)
-    // _5 = Fact.literal(5)
-  } yield (f1, f2, v)
-
+    _     <- (v, f1, f2).testMany(vegie2Fruits)
+    _5: Fact[Int] = 5
+    _ <- (v, f1).testMany(_ => true)
+  } yield (f1, f2, v, _5)
+  private val testFruitAndVegie                       = (testFruitAndVegieF _).tupled
+  private val vegie2Fruits                            = vegie2FruitsF.tupled
   private val rule1: SimpleEnvironment ?=> Rule.RuleM = (env: SimpleEnvironment) ?=>
     condition1
       .makeRule("Test rule 1")
-      .withAction { case (f1, f2, v) =>
+      .withAction { case (f1, f2, v, _5) =>
         for {
           x1 <- f1.value
         } yield ()
       }
-  private val predicates                              = suite("Predicates should have same signature")({
+
+  private val predicates = suite("Predicates should have same signature")({
+
     case class Asserts(seq: Seq[(String, TestResult)]) {
       def addStep(head: (String, TestResult), tail: (String, TestResult)*): Asserts =
         copy(seq = (seq :+ head) ++ tail.toSeq)
@@ -108,7 +101,7 @@ object BuilderTest extends ZIOSpecDefault {
       test(name)(check)
     }
   }: _*)
-  private val predicateSelectionStrategy              = suite(
+  private val predicateSelectionStrategy = suite(
     "Condition parser should find all predicates and sources with respect to Environment.predicateSelectionStrategy"
   )(
     test("PredicateSelection.Keep") {
@@ -195,13 +188,13 @@ object BuilderTest extends ZIOSpecDefault {
 
   case class Berry(name: String, origin: Origin)
 
+  enum Origin {
+    case Field, GreenHouse
+  }
+
   object Origin {
     given Empty[Origin] with {
       override def empty: Origin = Origin.GreenHouse
     }
-  }
-
-  enum Origin {
-    case Field, GreenHouse
   }
 }
