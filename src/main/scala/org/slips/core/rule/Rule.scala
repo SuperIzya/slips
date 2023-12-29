@@ -30,35 +30,11 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
     retracted: Seq[Fact[_]]
   ) {
 
-    def addFact[Q](
-      t: Q
-    )(using ThisRule
-    ): F[
-      (
-        Context,
-        Unit
-      )
-    ] = F.pure(copy(asserted = asserted :+ t) -> ())
+    def addFact[Q](t: Q)(using ThisRule): F[(Context, Unit)] = F.pure(copy(asserted = asserted :+ t) -> ())
 
-    def remove[Q](
-      x: Value[Q]
-    )(using ThisRule
-    ): F[
-      (
-        Context,
-        Unit
-      )
-    ] = F.pure(copy(retracted = retracted :+ x.fact) -> ())
+    def remove[Q](x: Value[Q])(using ThisRule): F[(Context, Unit)] = F.pure(copy(retracted = retracted :+ x.fact) -> ())
 
-    def removeAll[Q](
-      t: Value.Val[Q]
-    )(using ThisRule
-    ): F[
-      (
-        Context,
-        Unit
-      )
-    ] = t match {
+    def removeAll[Q](t: Value.Val[Q])(using ThisRule): F[(Context, Unit)] = t match {
       case _: EmptyTuple                                            => F.pure(this -> ())
       case (x: Value[_] @unchecked) *: (v: Value.Val[_] @unchecked) => remove(x) >> removeAll(v)
       case x: Value[Q] @unchecked                                   => remove(x)
@@ -66,11 +42,11 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
 
   }
 
-  trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q]) {
+  trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q]) { self =>
     val fact: Fact[Q]
 
     def value: ThisRule ?=> Action[Q]        = ???
-    def remove(using ThisRule): Action[Unit] = StateT(_.remove(this))
+    def remove(using ThisRule): Action[Unit] = StateT(_.remove(self))
   }
 
   object Value {
@@ -83,34 +59,26 @@ sealed trait Rule[F[_], T: FactOps](using F: Monad[F]) extends Rule.RuleM {
 }
 
 object Rule {
-  type RuleAction[F[_], T] = (
-    r: Rule[F, T]
-  ) ?=> (
-    r.Value.Val[T] => r.Action[Unit]
-  )
+  type RuleAction[F[_], T] = (r: Rule[F, T]) ?=> (r.Value.Val[T] => r.Action[Unit])
 
-  private[slips] trait RuleWithAction[F[_]: Monad, T: FactOps](
+  private[slips] sealed trait RuleWithAction[F[_]: Monad, T: FactOps](
     val name: String,
     override val condition: Condition[T]
-  ) extends Rule[F, T] {
-    def action: this.Value.Val[T] => this.Action[Unit]
+  ) extends Rule[F, T] { self =>
+    def action: self.Value.Val[T] => self.Action[Unit]
   }
 
-  class Builder[T: FactOps](
+  def apply[T](
+    using env: Environment,
+    ev: FactOps[T]
+  )(
     name: String,
-    condition: Condition[T]
-  ) {
-
-    def withAction(
-      using env: Environment
-    )(
-      actions: RuleAction[env.Effect, T]
-    ): env.Rule[T] = {
-      new RuleWithAction[env.Effect, T](name, condition) {
-        override lazy val action: this.Value.Val[T] => this.Action[Unit] = actions(using this)
-      }
+    condition: Condition[T],
+    actions: RuleAction[env.Effect, T]
+  ): env.Rule[T] =
+    new RuleWithAction[env.Effect, T](name, condition) { self =>
+      override def action: self.Value.Val[T] => self.Action[Unit] = actions(using self)
     }
-  }
 
   trait RuleM {
     private[slips] def sourcesAndPredicates: Env[SelectedPredicatesAndSources]

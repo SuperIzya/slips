@@ -36,13 +36,11 @@ object BuilderTest extends ZIOSpecDefault {
   private val testFruitAndVegie                       = (testFruitAndVegieF _).tupled
   private val vegie2Fruits                            = vegie2FruitsF.tupled
   private val rule1: SimpleEnvironment ?=> Rule.RuleM = (env: SimpleEnvironment) ?=>
-    condition1
-      .makeRule("Test rule 1")
-      .withAction { case (f1, f2, v, _5) =>
-        for {
-          x1 <- f1.value
-        } yield ()
-      }
+    condition1.makeRule("Test rule 1") { case (f1, f2, v, _5) =>
+      for {
+        x1 <- f1.value
+      } yield ()
+    }
 
   private val predicates = suite("Predicates should have same signature")({
 
