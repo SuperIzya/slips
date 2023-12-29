@@ -95,17 +95,16 @@ object Predicate {
     ): Test[T] =
       createSigned(ev.flip(rep), test, test)
 
-    private[slips] inline def apply[T1, T2](
-      rep1: Fact[T1],
-      rep2: Fact[T2],
-      inline test: (T1, T2) => Boolean
-    )(using
-      M: TupleFact[(T1, T2)]
-    ): Test[(T1, T2)] =
-      createSigned(M.flip(rep1, rep2), test.tupled, test)
+    private[slips] inline def apply[T : ScalarFact : FactOps](
+      rep1: Fact[T],
+      rep2: Fact[T],
+      inline test: (T, T) => Boolean
+    )(using M: TupleFact[(T, T)]
+    ): Test[(T, T)] =
+      createSigned[(T, T)](M.flip(rep1 -> rep2), test.tupled, test)
 
     private[slips] inline def fromTuple[T <: NonEmptyTuple : FactOps.TupleOps](
-      rep: Fact.TMap[T],
+      rep: Fact.Val[T],
       inline test: T => Boolean
     )(using
       ev: TupleFact[T]

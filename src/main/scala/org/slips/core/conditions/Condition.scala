@@ -38,13 +38,14 @@ object Condition {
     private[slips] def build: BuildStep[Node] = BuildStep.addNode(AlphaNode.Source(self))
   }
 
-  sealed trait Mappable[A] {
-    type Out <: Condition[_]
-    def map[T](condition: Condition[T], f: Fact.Val[T] => A): Out
-  }
-
   final case class All[T : FactOps : ScalarFact] private[Condition] (override val signature: Signature)
       extends Source[T]
+
+  final case class Opaque[T](predicate: Predicate) extends Condition[Unit] {
+    override val signature: Signature                  = predicate.signature
+    override private[slips] val parse: ParseStep[Unit] = // TODO: Move that to build package
+      ParseStep.modify(_.addPredicate(predicate))
+  }
 
   final case class Map[T, Q] private[slips] (src: Condition[T], f: Fact.Val[T] => Fact.Val[Q])
       extends Condition[Q] { self =>
@@ -73,15 +74,4 @@ object Condition {
     } yield t
   }
 
-  object Mappable {
-
-    given step[H, L <: NonEmptyTuple](using evH: ScalarFact[H], prev: Mappable[Fact.Val[L]]): Mappable[Fact.Val[H *: L]]
-    with {
-      override type Out = Condition[H *: L]
-
-      override def map[T](condition: Condition[T], f: Val[T] => Fact.Val[H *: L]): Out =
-        Map(condition, f)
-    }
-
-  }
 }

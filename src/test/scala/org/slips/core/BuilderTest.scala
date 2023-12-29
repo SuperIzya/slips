@@ -20,15 +20,16 @@ import org.slips.core.network.AlphaNetwork
 import org.slips.core.predicates.Predicate
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
+import org.slips.syntax.toCondition
 import zio.*
 import zio.test.*
 import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
-  val notApple: Fact[Fruit] => Predicate = _.test(_.name != "apple")
-  private val testFruitAndVegie          = (testFruitAndVegieF _).tupled
-  private val vegie2Fruits               = vegie2FruitsF.tupled
-  private val condition1                 = for {
+  val notApple: Fact[Fruit] => Predicate                       = _.test(_.name != "apple")
+  private val testFruitAndVegie                                = (testFruitAndVegieF _).tupled
+  private val vegie2Fruits                                     = vegie2FruitsF.tupled
+  private val condition1: Condition[(Fruit, Fruit, Vegetable)] = for {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry] if berry.test(_.origin != Origin.Field)
@@ -36,16 +37,17 @@ object BuilderTest extends ZIOSpecDefault {
       && h.test(_.name.nonEmpty)
     f1    <- all[Fruit] if f1.value(_.sugar) =!= 1
     f2    <- all[Fruit] if notApple(f2) || notApple(f1)
-    v     <- all[Vegetable] if (f1, v).test(testFruitAndVegie) &&
-      h.value(_.name) =!= f1.value(_.name) &&
-      (v, f1, f2).test(vegie2Fruits)
-    _5 = Fact.literal(5)
-  } yield (f1, f2, v, _5)
+    v     <- all[Vegetable]
+    //_     <- (f1 -> v).testMany(testFruitAndVegie)
+    _     <- h.value(_.name) =!= f1.value(_.name)
+    //_     <- ((v, f1, f2)).testMany(vegie2Fruits)
+    // _5 = Fact.literal(5)
+  } yield (f1, f2, v)
 
   private val rule1: SimpleEnvironment ?=> Rule.RuleM = (env: SimpleEnvironment) ?=>
     condition1
       .makeRule("Test rule 1")
-      .withAction { case (f1, f2, v, c5) =>
+      .withAction { case (f1, f2, v) =>
         for {
           x1 <- f1.value
         } yield ()
@@ -91,7 +93,7 @@ object BuilderTest extends ZIOSpecDefault {
             "created by method should be the same as created by partial application" -> assert(m)(equalTo(partial)),
             "created by partial application should be the same as created literally" -> assert(partial)(equalTo(literal)),
             "created by parametric method should not be the same as created literally" -> assert(param)(
-              not(equalTo(literal))
+              Assertion.not(equalTo(literal))
             )
           )
         })

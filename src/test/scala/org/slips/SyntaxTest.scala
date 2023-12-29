@@ -6,21 +6,21 @@ import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
+import org.slips.syntax.given
 import scala.annotation.targetName
 
 object SyntaxTest {
-  lazy val rules             = (env: SEnv) ?=> Set(markWord, markText)
-  val confidenceDrop: Double = 0.99
-  private val shouldMarkText = all[Word].flatMap { w =>
-    all[Text]
-      .withFilter { t =>
-        t.test(_.categoryM.isEmpty) &&
-        ((t.value(_.word1) === w.value(_.word)) || (t.value(_.word2) === w.value(_.word)))
-      }
-      .map(t => (w.value(_.category), t))
+  lazy val rules                                          = (env: SEnv) ?=> Set(markWord, markText)
+  val confidenceDrop: Double                              = 0.99
+  private val shouldMarkText: Condition[(Category, Text)] = all[Word].flatMap { w =>
+    val tt: Condition[Text] = all[Text].withFilter { t =>
+      t.test(_.categoryM.isEmpty) &&
+      ((t.value(_.word1) === w.value(_.word)) || (t.value(_.word2) === w.value(_.word)))
+    }
+    tt.map { t => w.value(_.category) -> t }
   }
 
-  private val markText       = (env: Environment) ?=>
+  private val markText                                                                = (env: Environment) ?=>
     shouldMarkText
       .makeRule("mark text")
       .withAction { case (category, text) =>
@@ -31,14 +31,15 @@ object SyntaxTest {
           _   <- addFact(txt.copy(categoryM = Some(cat)))
         } yield ()
       }
-  private val shouldMarkWord = for {
+  private val shouldMarkWord: Condition[(String, Option[Category], Option[Category])] = for {
     t1 <- all[Text] if t1.test(_.categoryM.isDefined)
-    t2 <- all[Text] if t2.test(_.categoryM.isDefined) &&
-      t1.value(_.word1) === t2.value(_.word1) &&
-      t1.value(_.categoryM.map(_.theme)) === t2.value(_.categoryM.map(_.theme))
-    w  <- notExists[Word] if w.value(_.word) === t1.value(_.word1)
+    t2 <- all[Text] if t2.test(_.categoryM.isDefined)
+    _  <- t1.value(_.word1) === t2.value(_.word1)
+    _  <- t1.value(_.categoryM.map(_.theme)) === t2.value(_.categoryM.map(_.theme))
 
+    w <- notExists[Word] if w.value(_.word) === t1.value(_.word1)
   } yield (t1.value(_.word1), t1.value(_.categoryM), t2.value(_.categoryM))
+
   private val markWord = (env: Environment) ?=>
     shouldMarkWord
       .makeRule("mark word")

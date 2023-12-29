@@ -1,10 +1,15 @@
 package org.slips.syntax
 
 import cats.data.State
+import org.slips.core.conditions.Condition
 import org.slips.core.predicates.Predicate
 import scala.annotation.targetName
 
 trait PredicateSyntax {
+
+  given toCondition: Conversion[Predicate, Condition[Unit]] = (p: Predicate) => Condition.Opaque(p)
+  implicit def convertToCondition(p: Predicate)(using C: Conversion[Predicate, Condition[Unit]]): Condition[Unit] =
+    C(p)
 
   extension (p: Predicate) {
     def and(s: Predicate): Predicate = Predicate.And(p, s)
@@ -12,12 +17,12 @@ trait PredicateSyntax {
     def not: Predicate               = Predicate.Not(p)
 
     @targetName("and")
-    def &&(s: Predicate): Predicate = and(s)
+    inline def &&(s: Predicate): Predicate = and(s)
     @targetName("or")
-    def ||(s: Predicate): Predicate = or(s)
+    inline def ||(s: Predicate): Predicate = or(s)
 
     @targetName("not")
-    def unary_! : Predicate = not
+    inline def unary_! : Predicate = not
 
     private[slips] def toKNF: Predicate = PredicateSyntax.toKNF(p).runA(PredicateSyntax.Stack.empty).value
   }
