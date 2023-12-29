@@ -13,15 +13,16 @@ lazy val Version = new {
 lazy val root = (project in file(".")).settings(
   name := "slips",
   scalacOptions ++= Seq(
-    "-explain",
 //    "-Xprint-suspension",
+    "-Vprofile",
+    // "-Vprofile-details 5",
+    "-explain",
+    "-Xprint-suspension",
     "-Yprint-debug",
     "-print-lines",
     "-Xcheck-macros",
     "-deprecation",
     "-source:future"
-    /*"-Vprofile",
-    "-Vprofile-details 5"*/
     //   "-Yshow-suppressed-errors"
   ),
   libraryDependencies ++= Seq(

@@ -77,8 +77,7 @@ val ingridients = for {
 } yield (z, a)
 
 val pancakes = (env: Environment) ?=> ingridients
-  .makeRule("pancakes")
-  .withAction {
+  .makeRule("pancakes") {
   case (fZucchini, fApple) =>
     for {
       zucchini <- fZucchini.value

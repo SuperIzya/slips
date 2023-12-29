@@ -6,6 +6,8 @@ import scala.quoted.*
 import scala.util.matching.Regex
 
 object Macros {
+  inline def createSigned[R](res: String => R, inline toSign: Any): R =
+    ${ createSignedImp('res, 'toSign) }
   inline def createSigned[R](res: Signature => R, inline toSign: Any): R = ${ createSignedImp('res, 'toSign) }
   inline def sign(inline toSign: Any): String                            = ${ signAnyImpl('toSign) }
   inline def signType[T]: String                                         = ${ signTypeImpl[T] }
