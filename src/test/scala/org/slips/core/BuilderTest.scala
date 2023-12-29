@@ -81,10 +81,14 @@ object BuilderTest extends ZIOSpecDefault {
         }
         _       <- State.modify[Asserts](_.addSteps {
           Seq(
-            "created by method should be the same as created by partial application" -> assert(m)(equalTo(partial)),
-            "created by partial application should be the same as created literally" -> assert(partial)(equalTo(literal)),
-            "created by parametric method should not be the same as created literally" -> assert(param)(
-              Assertion.not(equalTo(literal))
+            "created by method should be the same as created by partial application"   -> assertTrue(
+              Signature.compute(m.get) == Signature.compute(partial.get)
+            ),
+            "created by partial application should be the same as created literally"   -> assertTrue(
+              partial.map(Signature.compute) == literal.map(Signature.compute)
+            ),
+            "created by parametric method should not be the same as created literally" -> assertTrue(
+              param.map(Signature.compute) != literal.map(Signature.compute)
             )
           )
         })
