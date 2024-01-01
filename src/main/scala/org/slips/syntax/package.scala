@@ -1,11 +1,11 @@
 package org.slips
 
 import cats.data.StateT
-import org.slips.core.Macros
+import org.slips.core.macros.Macros
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.fact.FactOps.TupleOps
-import org.slips.core.predicates.Predicate
+import org.slips.core.conditions.Predicate
 import org.slips.core.rule.Rule
 
 package object syntax

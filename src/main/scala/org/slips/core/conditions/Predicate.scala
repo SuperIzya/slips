@@ -37,7 +37,6 @@ sealed trait Predicate extends WithSignature { self =>
   def toDNF: Predicate = {
     import Predicate.*
     self match {
-      case Test(_, _, _)    => self
       case And(left, right) =>
         (left.toDNF, right.toDNF) match {
           case (Or(l1, r1), Or(l2, r2)) => ((l1 && l2) || (l1 && r2) || (r1 && l2) || (r1 && r2)).toDNF
@@ -47,12 +46,15 @@ sealed trait Predicate extends WithSignature { self =>
         }
       case Not(p)           =>
         p.toDNF match {
-          case And(left, right) => (Not(left) || Not(right)).toDNF
+          case And(left, right) => Not(left).toDNF || Not(right).toDNF
           case Or(left, right)  => (Not(left) && Not(right)).toDNF
-          case Test(_, _, _)    => self
-          case Not(p1)          => p1.toDNF
+          case Not(p1)          => p1
+          case e: Exist[?]      => e.not
+          case n: NotExist[?]   => n.not
+          case t: Test[?]       => t.not
         }
       case Or(left, right)  => left.toDNF || right.toDNF
+      case _                => self
     }
   }
 }
@@ -60,7 +62,7 @@ sealed trait Predicate extends WithSignature { self =>
 object Predicate {
 
   object IsAlpha {
-    def unapply(p: Predicate): Option[(Predicate, Fact.Source)] = Option.when {
+    def unapply(p: Predicate): Option[(Predicate, Fact.Alpha[?])] = Option.when {
       val sources = p.facts.flatMap(_.alphaSources)
       sources.size == 1 && p.facts.forall(_.isAlpha)
     } {
@@ -83,18 +85,15 @@ object Predicate {
     case _ => ParseStep.modify(_.addPredicate(p))
   }
 
-  final case class Test[T](
+  final case class Test[T: FactOps](
     override val signature: Signature,
     test: T => Boolean,
     rep: Fact.Val[T]
-  )(using ops: FactOps[T]) extends Predicate {
-    override lazy val facts: Set[Fact[?]] = rep.facts
-
-    def signed(signature: => String): Test[T] = copy(signature = Signature.Manual(signature))
-
-    def negate: Test[T] = copy(
-      signature = signature << "!",
-      test = x => !test(x)
+  ) extends Predicate { self =>
+    override val facts: Set[Fact[?]] = rep.facts.toSet
+    def not: Predicate               = copy(
+      signature = Signature.DerivedUnary(signature, "!" + _),
+      test = (t: T) => !self.test(t)
     )
   }
 
@@ -115,22 +114,31 @@ object Predicate {
     override val signature: Signature = Signature.DerivedBinary(left.signature, right.signature, (l, r) => s"$l || $r")
   }
 
-  case class Not(p: Predicate) extends Predicate {
-    override lazy val facts: Set[Fact[?]] = p.facts
-    override val signature: Signature     = Signature.DerivedUnary(p.signature, p => s"!$p")
+  case class Not private (p: Predicate) extends Predicate {
+    override val facts: Set[Fact[?]]  = p.facts
+    override val signature: Signature = Signature.DerivedUnary(p.signature, p => s"!$p")
   }
 
-  inline def apply[T1, T2](
-    rep1: Fact[T1],
-    rep2: Fact[T2],
-    inline test: (T1, T2) => Boolean
-  )(using
-    FactOps[(T1, T2)]
-  ): Test[(T1, T2)] = ???
-/*
-  inline def fromTuple[T <: NonEmptyTuple : FactOps](
-    rep: Fact.TMap[T],
-    inline test: T => Boolean
-  ): Test[T] = ???
-*/
+  object Not {
+    def apply(p: Predicate)(using DummyImplicit): Predicate =
+      p match
+        case Not(pp)        => pp
+        case e: Exist[?]    => e.not
+        case n: NotExist[?] => n.not
+        case _              => new Not(p)
+  }
+
+  final case class NotExist[T : FactOps : ScalarFact](f: Fact[T]) extends Predicate {
+    override lazy val facts: Set[Fact[?]] = f.predecessors.toSet + f
+    override val signature: Signature     = f.signature.andThen(s => s"NotExist[$s]")
+
+    private[slips] def not: Predicate = Exist(f)
+  }
+
+  final case class Exist[T : FactOps : ScalarFact](f: Fact[T]) extends Predicate {
+    override lazy val facts: Set[Fact[?]] = f.predecessors.toSet + f
+    override val signature: Signature     = f.signature.andThen(s => s"Exist[$s]")
+
+    private[slips] def not: Predicate = NotExist(f)
+  }
 }

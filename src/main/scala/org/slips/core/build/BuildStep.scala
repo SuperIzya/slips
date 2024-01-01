@@ -13,11 +13,11 @@ object BuildStep {
 
   def update(f: BuildContext => BuildContext): BuildStep[Unit] = State(f.andThen(_ -> ()))
   def set(f: => BuildContext): BuildStep[Unit]                 = State.set(f)
-
+  /*
   def getSourceNode[T](src: Condition.Source[T]): Env[BuildStep[AlphaNode.Source[T]]] = env ?=> {
     val signature = env.signatureStrategy(src.signature)
-    BuildStep(_.addSourceNode(signature, AlphaNode.Source(signature)))
-  }
+    BuildStep(_.addSourceNode(signature, AlphaNode.Source(src.signature)))
+  }*/
 
   val get: BuildStep[BuildContext] = State.get[BuildContext]
 

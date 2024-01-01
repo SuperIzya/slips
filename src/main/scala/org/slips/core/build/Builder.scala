@@ -7,6 +7,7 @@ import org.slips.Env
 import org.slips.Environment
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
+import org.slips.core.conditions.Parser.Context
 import org.slips.core.fact.Fact
 import org.slips.core.fact.FactOps
 import org.slips.core.network.alpha.AlphaNetwork
@@ -30,9 +31,9 @@ object Builder {
   }
 
   def selectPredicatesAndSources[T: FactOps](condition: Condition[T]): Env[SelectedPredicatesAndSources] = {
-    val (predicates, result) = Parser(condition)
-
-    PredicateSelection.select(
+    val (Context(predicates, _), result) = Parser(condition)
+    
+    PredicateSelection.select[T](
       result,
       predicates.flatMap(p => p.facts.map(_ -> p)).groupBy(_._1).view.mapValues(_.map(_._2).toSet).toMap
     )

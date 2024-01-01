@@ -1,14 +1,16 @@
 package org.slips.syntax
 
 import cats.data.State
-import org.slips.core.conditions.Condition
-import org.slips.core.predicates.Predicate
+import org.slips.Signature
+import org.slips.core.conditions.*
+import org.slips.core.fact.Fact
+import org.slips.core.fact.FactOps
 import scala.annotation.targetName
 import scala.language.implicitConversions
 
 trait PredicateSyntax {
 
-  implicit def convertToCondition(p: Predicate): Condition[Unit] =
+  implicit inline def convertToCondition(p: Predicate): Condition[Unit] =
     Condition.Opaque(p)
 
   extension (p: Predicate) {
@@ -25,14 +27,30 @@ trait PredicateSyntax {
     inline def unary_! : Predicate = not
 
     private[slips] def toKNF: Predicate = PredicateSyntax.toKNF(p).runA(PredicateSyntax.Stack.empty).value
+
+    private[slips] def alphaSources: Set[Fact.Source] = p.facts.flatMap(_.alphaSources)
+  }
+
+  extension [T](t: Predicate.Test[T]) {
+
+    def signed(signature: => String)(using T: FactOps[T]): Test[T] =
+      signed(Signature.Manual(signature))
+
+    def signed(signature: Signature)(using T: FactOps[T]): Test[T] =
+      t.copy(signature = signature)
+
+    def negate(using T: FactOps[T]): Test[T] = t.copy(
+      signature = t.signature.prepend("!"),
+      test = x => !t.test(x)
+    )
   }
 
 }
 
 object PredicateSyntax {
-  private type Test     = Predicate.Test[_]
-  private type Exist    = Predicate.Exist[_]
-  private type NotExist = Predicate.NotExist[_]
+  private type Test     = Predicate.Test[?]
+  private type Exist    = Predicate.Exist[?]
+  private type NotExist = Predicate.NotExist[?]
 
   type Stack   = List[Operation]
   type Step[T] = State[Stack, T]

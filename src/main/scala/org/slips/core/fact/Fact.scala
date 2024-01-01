@@ -3,28 +3,29 @@ package org.slips.core.fact
 import org.slips.NotTuple
 import org.slips.Signature
 import org.slips.core
-import org.slips.core.Macros
-import org.slips.core.Signed
+import org.slips.core.WithSignature
+import org.slips.core.macros.Macros
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
 import scala.util.NotGiven
 
-sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T]) extends Signed { self =>
-
-  lazy val sourceFacts: Set[Fact.Source[_]] = predecessors.collect { case x: Fact.Source[_] => x }
+sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T]) extends WithSignature { self =>
   val sample: T
+  
+  val predecessors: List[Fact[?]]
 
-  override def signature: Signature =
-    Signature.Manual(s"${ Macros.signType[self.type] }[${ Macros.signType[T] }]($sample)")
+  val sources: Set[Condition.Source[?]]
 
-  def predecessors: Set[Fact[_]]
+  def alphaSources: Set[Fact.Source] = predecessors.collect { case x: Fact.Source => x }.toSet
 
-  def sources: Set[Condition.Source[_]]
+  val isAlpha: Boolean = false
 
 }
 
 object Fact {
+
+  type Source = Fact.Alpha.Source[?]
 
   type TMap        = [x <: NonEmptyTuple] =>> Tuple.Map[x, Fact]
   type TInverseMap = [x <: NonEmptyTuple] =>> Tuple.InverseMap[x, Fact]
@@ -48,37 +49,49 @@ object Fact {
     override val signature: Signature,
     f: T => Q,
     rep: Fact[T]
-  ) extends Fact[Q] {
-    override val sample: Q                  = f(rep.sample)
-    override def predecessors: Set[Fact[_]] = rep.predecessors + this
+  ) extends Fact[Q] { self =>
+    override val sample: Q                   = f(rep.sample)
+    override val predecessors: List[Fact[?]] = self +: rep.predecessors
 
-    override def sources: Set[Condition.Source[_]] = rep.sources
+    override val sources: Set[Condition.Source[?]] = rep.sources
+
+    override val alphaSources: Set[Fact.Source] = rep.alphaSources
   }
 
   sealed class Literal[I: FactOps] private[slips] (
     val sample: I
   ) extends Fact[I] {
-    override lazy val signature: Signature = Signature.Manual(sample.toString)
+    override val signature: Signature = Signature.Manual(sample.toString)
 
-    override def predecessors: Set[Fact[_]]        = Set.empty
-    override def sources: Set[Condition.Source[_]] = Set.empty
+    override val predecessors: List[Fact[?]]       = List.empty
+    override val sources: Set[Condition.Source[?]] = Set.empty
+
+    override val alphaSources: Set[Fact.Source] = Set.empty
   }
   object Literal {
     case object Unit extends Literal[Unit](())
   }
-
+  /*
   final case class Dummy[T: FactOps] private[slips] (
     src: Condition[T],
     sample: T
   ) extends Fact[T] {
     override val signature: Signature = Signature.derivedUnary(src, s => s"$s -> Fact[${ Macros.signType[T] }]")
 
-    override def predecessors: Set[Fact[_]] = Set.empty
+    override def predecessors: List[Fact[?]] = List.empty
 
-    override def sources: Set[Condition.Source[_]] = Set.empty
+    override def sources: Set[Condition.Source[?]] = Set.empty
+
+    override val alphaSources: Set[Source] = Set.empty
   }
+   */
+  sealed trait Alpha[T] extends Fact[T] {
+    val sourceFact: Fact.Source
+    override val isAlpha: Boolean = true
 
-  object Alpha {
+    override val predecessors: List[Fact.Alpha[?]]
+  }
+  object Alpha   {
     /*
     final case class Multiply[T, Q <: NonEmptyTuple](
       override val signature: Signature,
@@ -92,29 +105,31 @@ object Fact {
       override def predecessors: List[Fact.Alpha[?]] = fact +: fact.predecessors
     }
      */
-    final case class Map[T, Q](pred: Fact.Alpha[T], map: T => Q, mapSign: Signature) extends Alpha[Q] {
-      override val sourceFact: Fact.Source           = pred.sourceFact
-      override val source: Signature                 = sourceFact.source
-      override def predecessors: List[Fact.Alpha[?]] = pred +: pred.predecessors
+    final case class Map[T, Q: FactOps](pred: Fact.Alpha[T], map: T => Q, mapSign: Signature) extends Alpha[Q] {
+      override val sourceFact: Fact.Source = pred.sourceFact
 
-      override def signature: Signature = Signature.DerivedBinary(pred.signature, mapSign, (s1, s2) => s"$s1 -> $s2")
+      override val predecessors: List[Fact.Alpha[?]] = pred +: pred.predecessors
 
-      def signed(signature: Signature): Map[T, Q] = copy(mapSign = signature)
+      override val signature: Signature = Signature.DerivedBinary(pred.signature, mapSign, (s1, s2) => s"$s1 -> $s2")
+      override val sample: Q            = map(pred.sample)
+      override val sources: Set[Condition.Source[?]] = sourceFact.sources
     }
 
-  final class Source[T : FactOps : NotTuple] private (
-    signature: Signature,
-    override val sample: T,
-    override val sources: Set[Condition.Source[_]]
-  ) extends Fact[T] {
+    final class Source[T : FactOps : NotTuple] private (
+      override val signature: Signature,
+      override val sample: T,
+      override val sources: Set[Condition.Source[?]]
+    ) extends Alpha[T] { self =>
+      override val sourceFact: Source[T] = self
 
-    override lazy val sourceFacts: Set[Source[_]] = Set(this)
-    override val predecessors: Set[Fact[_]]       = Set(this)
-  }
-  object Source  {
-    def apply[T](source: Condition.Source[T])(using T: FactOps[T]): Source[T] =
-      new Source(source.signature, T.empty, Set(source))
-  }
+      override val alphaSources: Set[Source[?]]      = Set(self)
+      override val predecessors: List[Fact.Alpha[?]] = List(self)
+    }
+
+    object Source {
+      def apply[T](source: Condition.Source[T])(using T: FactOps[T]): Source[T] =
+        new Source(source.signature, T.empty, Set(source))
+    }
   }
 
   object CanBeLiteral {
@@ -125,4 +140,11 @@ object Fact {
       new CanBeLiteral[T] {}
   }
 
+  extension [T](f: Fact.Val[T]) {
+    private[slips] def sources(using T: FactOps[T]): Set[Condition.Source[?]] = T.sources(f)
+    private[slips] def signature(using T: FactOps[T]): Signature              = T.extract(f)
+    private[slips] def alphaSources(using T: FactOps[T]): Set[Fact.Source]    = T.alphaSources(f)
+    private[slips] def facts(using T: FactOps[T]): List[Fact[?]]              = T.facts(f)
+    private[slips] def predecessors(using T: FactOps[T]): List[Fact[?]]       = T.predecessors(f)
+  }
 }

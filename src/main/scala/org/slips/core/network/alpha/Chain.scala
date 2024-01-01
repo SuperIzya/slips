@@ -28,8 +28,8 @@ private[network] object Chain {
         predicates = predicates,
         tail = newTail,
         facts = tailM.map(_.facts).fold(facts)(facts -- _),
-        allPredicates = newTail.fold(predicates.map(_.predicate.signature).map(env.signatureStrategy.apply))(
-          _.allPredicates ++ predicates.map(_.predicate.signature).map(env.signatureStrategy.apply)
+        allPredicates = newTail.fold(predicates.map(_.predicate.signature).map(_.compute))(
+          _.allPredicates ++ predicates.map(_.predicate.signature).map(_.compute)
         )
       )
 
@@ -56,7 +56,7 @@ private[network] object Chain {
       chain.copy(
         predicates = chain.predicates + predicate,
         facts = chain.facts ++ facts,
-        allPredicates = chain.allPredicates + env.signatureStrategy(predicate.predicate.signature)
+        allPredicates = chain.allPredicates + predicate.predicate.signature.compute
       )
     }
   }
@@ -74,7 +74,7 @@ private[network] object Chain {
       Set(predicate),
       tail,
       facts,
-      tail.view.toSet.flatMap(_.allPredicates) + env.signatureStrategy(predicate.predicate.signature)
+      tail.view.toSet.flatMap(_.allPredicates) + predicate.predicate.signature.compute
     )
   }
 

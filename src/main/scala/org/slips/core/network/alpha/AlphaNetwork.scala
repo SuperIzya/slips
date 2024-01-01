@@ -149,7 +149,7 @@ object AlphaNetwork {
       predicates
         .values
         .flatMap(ap => ap.facts.map(_ -> ap.predicate.signature))
-        .foldLeft[FactToSuccessor](Map.empty) { case (succ, f -> p) =>
+        .foldLeft[FactToSuccessor](Map.empty) { case (succ, f -> _) =>
           f.predecessors.foldLeft(succ)((s, p) => s + (p -> (s.getOrElse(p, Set.empty) + f)))
         }
 
@@ -157,7 +157,7 @@ object AlphaNetwork {
       .values
       .map { ap =>
         ap -> PredicateSignature(
-          env.signatureStrategy(ap.predicate.signature),
+          ap.predicate.signature.compute,
           ap.facts.flatMap(f => successors.get(f).toSet.flatten + f)
         )
       }

@@ -29,8 +29,8 @@ object SelectedPredicatesAndSources {
 
   def apply[T: FactOps](start: Fact.Val[T]): SelectedPredicatesAndSources = {
     new SelectedPredicatesAndSources(
-      sources = start.sources,
-      facts = start.facts ++ start.predecessors
+      sources = start.alphaSources.map(_.signature),
+      facts = (start.facts ++ start.predecessors).toSet
     )
   }
 }

@@ -20,10 +20,10 @@ trait PredicateSelection {
 
 object PredicateSelection {
 
-  def select[T: FactOps](
+  def select[T](
     initial: Fact.Val[T],
     allFacts: AllFacts
-  ): Env[SelectedPredicatesAndSources] =
+  )(using T: FactOps[T]): Env[SelectedPredicatesAndSources] =
     env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, allFacts)
 
   /** Keep all predicates */
@@ -94,7 +94,7 @@ object PredicateSelection {
           .empty
           .copy(
             facts = initial.predecessors.toSet,
-            sources = initial.sources
+            sources = initial.alphaSources.map(_.signature)
           )
       )
 

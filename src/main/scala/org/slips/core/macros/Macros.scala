@@ -1,16 +1,11 @@
-package org.slips.core
+package org.slips.core.macros
 
-import cats.data.State
-import org.slips.Signature
 import scala.quoted.*
 import scala.util.matching.Regex
 
 object Macros {
-  inline def createSigned[R](res: String => R, inline toSign: Any): R =
-    ${ createSignedImp('res, 'toSign) }
-  inline def createSigned[R](res: Signature => R, inline toSign: Any): R = ${ createSignedImp('res, 'toSign) }
-  inline def sign(inline toSign: Any): String                            = ${ signAnyImpl('toSign) }
-  inline def signType[T]: String                                         = ${ signTypeImpl[T] }
+  inline def sign(inline toSign: Any): String = ${ signAnyImpl('toSign) }
+  inline def signType[T]: String              = ${ signTypeImpl[T] }
 
   private def signAnyImpl(toSign: Expr[Any])(using Quotes): Expr[String] = {
     Expr(signAny(toSign))
@@ -50,19 +45,8 @@ object Macros {
 
     val signs: String = toSign
       .asTerm
-      .show(using
-        Printer.TreeCode
-      )
+      .show(using Printer.TreeCode)
     cleanupSignature(signs)
-  }
-
-  private def createSignedImp[R: Type](res: Expr[Signature => R], toSign: Expr[Any])(using Quotes): Expr[R] = {
-
-    val signature = {
-      val sign = s"${ Type.show[R] }{${ signAny(toSign) }}"
-      Expr(sign)
-    }
-    '{ $res(Signature.Manual($signature)) }
   }
 
   private def signTypeImpl[T: Type](using Quotes): Expr[String] = {

@@ -7,6 +7,8 @@ import cats.implicits.*
 import org.slips.Env
 import org.slips.core.conditions.Predicate
 import org.slips.core.fact.Fact
+import org.slips.core.network.Node
+import org.slips.core.network.alpha.AlphaNode
 import org.slips.core.rule.Rule.RuleM
 
 package object build {
@@ -39,6 +41,13 @@ package object build {
       a <- fa
       f <- ff
     } yield f(a)
+  }
+
+  extension (b: BuildStep.type) {
+    private[slips] def addNode[N <: Node](n: N): Env[BuildStep[Node]] = n match {
+      case a: AlphaNode.Source[?] => b(_.addSourceNode(a.signature, a))
+      case _                      => b(_.addNode(n))
+    }
   }
 
 }

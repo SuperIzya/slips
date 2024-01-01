@@ -16,7 +16,7 @@ case class AlphaPredicate private[slips] (
 
 object AlphaPredicate {
   def apply(p: Predicate): Env[Option[AlphaPredicate]] = env ?=> {
-    val signature = env.signatureStrategy(p.signature)
+    val signature = p.signature.compute
     Predicate
       .IsAlpha
       .unapply(p)

@@ -30,29 +30,27 @@ object BuilderTest extends ZIOSpecDefault {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry]
-    _     = berry.test(_.origin != Origin.Field)
-    _     = (b.value(_.origin) =!= Origin.GreenHouse) && b.test(_.name.nonEmpty)
-    _     = h.test(_.name.nonEmpty)
-    f1 <- all[Fruit]
-    _  = f1.value(_.sugar) =!= 1.0
-    f2 <- all[Fruit]
-    _  = notApple(f2) || notApple(f1)
-    v  <- all[Vegetable]
-    _  = (f1, v).test(testFruitAndVegie)
-    _  = h.value(_.name) =!= f1.value(_.name)
-    _5 = Fact.literal(5)
-    _ = (v, f1, f2).test(vegie2Fruits)
+    _     <- berry.test(_.origin != Origin.Field)
+    _     <- (b.value(_.origin) =!= Origin.GreenHouse) && b.test(_.name.nonEmpty)
+    _     <- h.test(_.name.nonEmpty)
+    f1    <- all[Fruit]
+    _     <- f1.value(_.sugar) =!= 1.0
+    f2    <- all[Fruit]
+    _     <- notApple(f2) || notApple(f1)
+    v     <- all[Vegetable]
+    _     <- (f1, v).testMany(testFruitAndVegie)
+    _     <- h.value(_.name) =!= f1.value(_.name)    
+    _5 = literal(5)
+    //_ <- (v, f1, f2).testMany(vegie2Fruits)
   } yield (f1, f2, v, _5)
 
-  private val rule1: SimpleEnvironment ?=> Rule.RuleM =
-    condition1
-      .makeRule("Test rule 1")
-      .withAction { case (f1, f2, v, c5) =>
-        for {
-          x1 <- f1.value
-          vv <- v.value
-        } yield ()
-      }
+  private def rule1(using env: SimpleEnvironment) =
+    condition1.makeRule("Test rule 1") { case (f1, f2, v, c5) =>
+      for {
+        x1 <- f1.value
+        vv <- v.value
+      } yield ()
+    }
 
   private val predicates = suite("Predicates should have same signature")({
     case class Asserts(seq: Seq[(String, TestResult)]) {
@@ -72,7 +70,7 @@ object BuilderTest extends ZIOSpecDefault {
 
         asserts.addStep {
           s"condition created by $name should have only one predicate" -> assert(set)(hasSize(equalTo(1)))
-        } -> set.headOption.map(_.signature).map(env.signatureStrategy(_))
+        } -> set.headOption.map(_.signature).map(_.compute)
 
       }
 
@@ -142,7 +140,7 @@ object BuilderTest extends ZIOSpecDefault {
     }
   )
 
-  given signatureStrategy: SignatureStrategy = SignatureStrategy.Content
+  given signatureStrategy: Signature.Strategy = Signature.Strategy.Content
 
   def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
 

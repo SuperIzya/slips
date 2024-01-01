@@ -12,7 +12,7 @@ object SyntaxTest {
   lazy val rules             = (env: SEnv) ?=> Set(markWord, markText)
   val confidenceDrop: Double = 0.99
 
-  private val shouldMarkText: Condition[(Category, Text)] = for {
+  private val shouldMarkText = for {
     w <- all[Word]
     t <- all[Text] if t.test(_.categoryM.isEmpty)
     _ <- (t.value(_.word1) === w.value(_.word)) || (t.value(_.word2) === w.value(_.word))

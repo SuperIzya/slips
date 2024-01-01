@@ -4,6 +4,7 @@ import cats.data.State
 import cats.implicits.*
 import cats.syntax.*
 import org.slips.Env
+import org.slips.Environment
 import org.slips.Signature
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
@@ -30,25 +31,20 @@ object BuildContext {
   val empty: BuildContext = BuildContext()
 
   extension (ctx: BuildContext) {
-    def addNode(node: Node): (BuildContext, Node) = {
+    def addNode(node: Node)(using env: Environment): (BuildContext, Node) = {
       val signature = node.signature
-      ctx.copy(nodes = ctx.nodes + (signature -> node)) -> node
-    }
-
-    def addSource[T](source: Condition.Source[T]): Env[BuildContext] = env ?=> {
-      val signature = env.signatureStrategy(source.signature)
-      if (ctx.sources.contains(signature)) ctx
-      else ctx.copy(sources = ctx.sources + signature)
+      ctx.copy(nodes = ctx.nodes + (signature.compute -> node)) -> node
     }
 
     def addSourceNode[T](
-      signature: String,
+      signature: Signature,
       node: => AlphaNode.Source[T]
-    ): (BuildContext, AlphaNode.Source[T]) = {
-      val nextNode = ctx.sourceNodes.getOrElse(signature, node)
+    )(using env: Environment): (BuildContext, AlphaNode.Source[T]) = {
+      val sign     = signature.compute
+      val nextNode = ctx.sourceNodes.getOrElse(sign, node)
       ctx.copy(
-        sources = ctx.sources + signature,
-        sourceNodes = ctx.sourceNodes + (signature -> nextNode)
+        sources = ctx.sources + sign,
+        sourceNodes = ctx.sourceNodes + (sign -> nextNode)
       ) -> nextNode.asInstanceOf[AlphaNode.Source[T]]
     }
 

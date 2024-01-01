@@ -50,7 +50,7 @@ private[slips] object ParseResult {
           rule = ruleM,
           alphaPredicates = collector.alphaPredicates,
           betaPredicates = collector.betaPredicates,
-          sources = ps.sources.map(env.signatureStrategy(_)),
+          sources = ps.sources.map(_.compute),
           predicatesAndSources = ps
         )
       }

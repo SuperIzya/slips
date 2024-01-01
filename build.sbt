@@ -13,9 +13,7 @@ lazy val Version = new {
 lazy val root = (project in file(".")).settings(
   name := "slips",
   scalacOptions ++= Seq(
-//    "-Xprint-suspension",
-    "-Vprofile",
-    // "-Vprofile-details 5",
+//    "-Vprofile",
     "-explain",
     "-Xprint-suspension",
     "-Yprint-debug",

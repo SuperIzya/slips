@@ -9,14 +9,14 @@ import org.slips.core.network.materialized.Publisher
 
 private[slips] sealed trait AlphaNode extends Node {
 
-  def sourceNode: AlphaNode.Source[?]
+  val sourceNode: AlphaNode.Source[?]
 }
 
 private[slips] object AlphaNode {
 
   /** Source node, producing values of type T */
-  case class Source[T](override val signature: String) extends AlphaNode {
-    override def sourceNode: Source[?] = this
+  case class Source[T](override val signature: Signature) extends AlphaNode { self =>
+    override val sourceNode: Source[?] = self
   }
 
   /**
@@ -27,9 +27,9 @@ private[slips] object AlphaNode {
     p: TestPredicate,
     prev: AlphaNode
   ) extends AlphaNode {
-    override def signature: String = s"${ prev.signature } -> ${ p.signature }"
+    override val signature: Signature = prev.signature.unite(p)(_ + " -> " + _)
 
-    override def sourceNode: Source[?] = prev.sourceNode
+    override val sourceNode: Source[?] = prev.sourceNode
   }
 
   /**
@@ -40,8 +40,8 @@ private[slips] object AlphaNode {
     left: AlphaNode,
     right: AlphaNode
   ) extends AlphaNode {
-    override def signature: String = s"(${ left.signature }) && (${ right.signature })"
+    override val signature: Signature = left.signature.unite(right)(_ + " && " + _)
 
-    override def sourceNode: Source[?] = left.sourceNode
+    override val sourceNode: Source[?] = left.sourceNode
   }
 }

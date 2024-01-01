@@ -2,7 +2,6 @@ package org.slips
 
 import cats.Id
 import cats.Monad
-import org.slips.core.SignatureStrategy
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.fact.Fact
 import scala.annotation.tailrec
@@ -11,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 trait SimpleEnvironment extends Environment {
   override type Effect[x] = cats.Id[x]
   override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
-  override val signatureStrategy: SignatureStrategy           = SignatureStrategy.Content
+  override val signatureStrategy: Signature.Strategy           = Signature.Strategy.Content
 
   override given effectMonad: Monad[Id] = new Monad[Id] {
     override def pure[T](

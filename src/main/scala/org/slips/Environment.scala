@@ -48,7 +48,7 @@ trait Environment {
 
   val bufferFactory: BufferFactory
   val predicateSelectionStrategy: PredicateSelection
-  val signatureStrategy: SignatureStrategy
+  val signatureStrategy: Signature.Strategy
 
   trait ContextBuilder
 

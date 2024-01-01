@@ -1,10 +1,12 @@
 package org.slips.core
 
 import org.scalatest.funsuite.AnyFunSuiteLike
+import org.slips.NotTuple
 import org.slips.core.conditions.Condition
-import org.slips.core.fact.{Fact, FactOps}
+import org.slips.core.fact.Fact
+import org.slips.core.fact.FactOps
+import org.slips.core.fact.ScalarFact
 import org.slips.syntax.*
-
 import scala.annotation.tailrec
 import scala.util.NotGiven
 
@@ -30,8 +32,8 @@ class ConditionTest extends AnyFunSuiteLike {
     inline def flatMap[T](
       count: Int
     )(using
-      NotGiven[T <:< Tuple],
-      Fact[T] =:= Fact.Val[T],
+      NotTuple[T],
+      ScalarFact[T],
       FactOps[T]
     ): Condition[T] = {
       @tailrec
