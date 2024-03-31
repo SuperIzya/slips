@@ -15,15 +15,20 @@ permissions:
   contents: write
 
 jobs:
-  readme:
+  checkOut:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
-        fetch-depth: 0    
-    - name: Run npm
-      run: npm i @actions/core
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
+          fetch-depth: 0
+      - name: Run npm
+        run: npm i @actions/core
+
+  readme:
+    needs: checkOut
+    runs-on: ubuntu-latest
+    steps:
     - name: Building README.md
       uses: ./.github/action-badges
       with:
@@ -39,20 +44,21 @@ jobs:
     - name: Push README.md
       if: ${{ steps.commit.outcome == 'success' }}
       uses: ad-m/github-push-action@master
-      with:        
+      continue-on-error: true
+      with:
         github_token: ${{ secrets.README_COMMIT_TOKEN }}
         branch: ${{ github.ref }}
-        
-        
+
+
   build:
-    needs: readme
+    needs: checkOut
     strategy:
-      matrix: 
+      matrix:
         version: [ 11, 17, 19 ]
 
     runs-on: ubuntu-latest
 
-    steps:        
+    steps:
     - uses: actions/checkout@v4
     - name: Set up JDK ${{ matrix.version }}
       uses: actions/setup-java@v3
