@@ -12,10 +12,11 @@ object SyntaxTest {
   lazy val rules             = (env: SEnv) ?=> Set(markWord, markText)
   val confidenceDrop: Double = 0.99
 
-  private val shouldMarkText = for {
+  private val shouldMarkText: Condition[(Category, Text)] = for {
     w <- all[Word]
     t <- all[Text] if t.test(_.categoryM.isEmpty)
-    _ <- (t.value(_.word1) === w.value(_.word)) || (t.value(_.word2) === w.value(_.word))
+    ww = w.value(_.word)
+    _ <- (t.value(_.word1), ww).testMany(_ == _) || (t.value(_.word2), ww).testMany(_ == _)
   } yield (w.value(_.category), t)
 
   private val markText = (env: Environment) ?=>
@@ -31,10 +32,10 @@ object SyntaxTest {
   private val shouldMarkWord: Condition[(String, Option[Category], Option[Category])] = for {
     t1 <- all[Text] if t1.test(_.categoryM.isDefined)
     t2 <- all[Text] if t2.test(_.categoryM.isDefined)
-    _  <- t1.value(_.word1) === t2.value(_.word1)
-    _  <- t1.value(_.categoryM.map(_.theme)) === t2.value(_.categoryM.map(_.theme))
+    _  <- (t1.value(_.word1), t2.value(_.word1)).testMany(_ == _)
+    _  <- (t1.value(_.categoryM.map(_.theme)), t2.value(_.categoryM.map(_.theme))).testMany(_ == _)
 
-    w <- notExists[Word] if w.value(_.word) === t1.value(_.word1)
+    w <- notExists[Word] if (w.value(_.word), t1.value(_.word1)).testMany(_ == _)
   } yield (t1.value(_.word1), t1.value(_.categoryM), t2.value(_.categoryM))
 
   private val markWord = (env: Environment) ?=>

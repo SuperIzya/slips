@@ -22,7 +22,9 @@ trait FactSyntax {
   }
 
   extension [T : FactOps : ScalarFact](fact: Fact[T]) {
-    inline def value[I : FactOps : ScalarFact](inline f: T => I): Fact[I] =
+    inline def value[I : FactOps : ScalarFact](inline f: T => I): Fact[I] = if fact.isAlpha then
+      Fact.Alpha.Map(fact.asInstanceOf[Fact.Alpha[T]], f, Signature.auto(f).unite(fact)((s, f) => s"$f => $s"))
+    else
       Fact.Map(
         signature = Signature.auto(f).unite(fact)((s, f) => s"$f => $s"),
         f = f,
@@ -35,22 +37,22 @@ trait FactSyntax {
         test = f,
         rep = summonInline[ScalarFact[T]].flip(fact)
       )
-
+    /*
     @targetName("repNotEq")
     def =!=(other: Fact[T]): Predicate =
       testTwo(fact, other, _ != _)
 
     @targetName("repEq")
     def ===(other: Fact[T]): Predicate =
-      testTwo(fact, other, _ == _)
+      testTwo(fact, other)(_ == _)
 
-    private inline def testTwo(left: Fact[T], right: Fact[T], inline f: (T, T) => Boolean): Predicate =
+    private inline def testTwo(left: Fact[T], right: Fact[T])(inline f: (T, T) => Boolean): Predicate =
       Predicate.Test[(T, T)](
         signature = left.signature * Signature.auto(f) * right,
         test = f.tupled,
         rep = (left, right)
       )
-
+     */
   }
 
   extension [T <: NonEmptyTuple](fact: T) {

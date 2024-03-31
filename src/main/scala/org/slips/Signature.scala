@@ -13,31 +13,24 @@ sealed trait Signature { self =>
 }
 
 object Signature {
+  type TupleSign = NonEmptyList[Signature]
+  object TupleSign {
+    def first(sign: Signature): TupleSign = NonEmptyList.one(sign)
+  }
+
   case class Automatic private[Signature] (hash: String, content: String) extends Signature
   case class Manual(signature: String)                extends Signature
 
   case class DerivedUnary(orig: Signature, derive: String => String)                              extends Signature
   case class DerivedBinary(left: Signature, right: Signature, derive: (String, String) => String) extends Signature
 
-  case class SignatureTuple(signature: NonEmptyList[Signature]) extends Signature
+  case class SignatureTuple(signature: TupleSign) extends Signature
   object SignatureTuple {
-    def apply(s: Signature): SignatureTuple = SignatureTuple(NonEmptyList.one(s))
+    def apply(s: Signature): SignatureTuple = SignatureTuple(TupleSign.first(s))
 
   }
 
-  sealed trait Typed[T] {
-    val signature: String
-  }
-  object Typed {
-    extension [T](t: Typed[T]) {
-      def toSignature: Signature = Signature.Manual(t.signature)
-    }
-    inline given [T]: Typed[T] with {
-      override val signature: String = Macros.signType[T]
-    }
-  }
-
-  inline def auto(toSign: => Any): Signature =
+  inline def auto(inline toSign: => Any): Signature =
     Signature.Automatic(content = Macros.sign(toSign), hash = toSign.hashCode().toHexString)
 
   extension (s: Signature) {
@@ -82,13 +75,13 @@ object Signature {
     case HashCode extends Strategy(_.hash)
   }
 
-  sealed trait SignType[T] extends Signed
+  sealed trait SignType[T] extends WithSignature
   object SignType {
     case class TypeSignature[T](single: Signature) extends SignType[T] {
       override def signature: Signature = single
     }
-    case class TupleSignature[T](tuple: SignatureTuple) extends SignType[T] {
-      override def signature: Signature = tuple.toSignature
+    case class TupleSignature[T](tuple: TupleSign) extends SignType[T] {
+      override def signature: Signature = Signature.SignatureTuple(tuple)
     }
 
     inline given nonTuple[T: NotTuple]: SignType.TypeSignature[T] = SignType.TypeSignature(Manual(Macros.signType[T]))
@@ -97,7 +90,7 @@ object Signature {
       TupleSignature(T.tuple.prepend(H.single))
 
     given firstTuple[H: NotTuple](using H: TypeSignature[H]): TupleSignature[H *: EmptyTuple] =
-      TupleSignature(SignatureTuple.first(H.single))
+      TupleSignature(TupleSign.first(H.single))
 
   }
 }

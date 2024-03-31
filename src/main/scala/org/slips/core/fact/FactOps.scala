@@ -29,8 +29,6 @@ object FactOps {
   sealed trait TupleOps[T <: NonEmptyTuple]
       extends FactOps[T] {
 
-    override def signature: SignatureTuple
-
     override def size: Int = index
     def index: Int
     def indexes(f: Fact.Val[T], size: Int): Map[Fact[?], Int]
@@ -39,14 +37,11 @@ object FactOps {
   object TupleOps {
     given genTupleOpsStart[H](using
       H: FactOps[H],
-      S: Signature.Typed[H],
       ev: ScalarFact[H],
       tupleSig: Signature.SignType.TupleSignature[H *: EmptyTuple],
       tuple: Fact.Val[H *: EmptyTuple] =:= Fact[H] *: EmptyTuple
     ): TupleOps[H *: EmptyTuple] with {
       override def index: Int = 1
-
-      override def signature: SignatureTuple = SignatureTuple(S.toSignature)
 
       override def signature: Signature = tupleSig.signature
 

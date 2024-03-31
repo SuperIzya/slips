@@ -125,7 +125,7 @@ object PredicateSelection {
       queue: Queue[Predicate] = Queue.empty
     ): SelectedPredicatesAndSources = {
       p match {
-        case _: Predicate if col.facts.intersect(p.facts.allPredecessors).isEmpty                   =>
+        case _ if col.facts.intersect(p.facts.allPredecessors).isEmpty                   =>
           queue.deq(col.withDiscard(p))
         case Predicate.Test(_, _, _)                                                                =>
           queue.deq(col.withPredicate(p))
@@ -140,20 +140,14 @@ object PredicateSelection {
       }
     }
 
-    private def selectPredicates(
-      toCheck: List[Predicate],
-      collected: SelectedPredicatesAndSources
-    ): SelectedPredicatesAndSources =
-      toCheck.foldLeft(collected)(collectSources(_, _))
-
     @tailrec
     private def processPredicates(
       toCheck: List[Predicate],
       collected: SelectedPredicatesAndSources
     ): SelectedPredicatesAndSources = {
-      val result = selectPredicates(toCheck, collected)
+      val result = toCheck.foldLeft(collected)(collectSources(_, _))
       if (result.discarded == collected.discarded) result
-      else processPredicates(result.discarded.toList, result.copy(discarded = Set.empty))
+      else processPredicates(result.discarded.toList, result)
     }
   }
 }

@@ -17,7 +17,7 @@ sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T], F: Signature.SignTyp
 
   val sources: Set[Condition.Source[?]]
   override def signature: Signature =
-    Signature.derivedBinary(F, T, (f, t) => s"$f[$t]($sample)")
+    F.signature.unite(T.signature)((f, t) => s"$f[$t]($sample)")
 
   def alphaSources: Set[Fact.Source] = predecessors.collect { case x: Fact.Source => x }.toSet
 

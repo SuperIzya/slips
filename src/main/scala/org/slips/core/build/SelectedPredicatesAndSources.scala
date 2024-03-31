@@ -17,7 +17,9 @@ case class SelectedPredicatesAndSources(
   def withPredicate(p: Predicate): SelectedPredicatesAndSources = {
     copy(
       predicates = predicates + (p -> p.facts),
-      facts = facts ++ p.facts
+      facts = facts ++ p.facts,
+      alphaSources = alphaSources ++ p.facts.flatMap(_.alphaSources),
+      sources = sources ++ p.facts.flatMap(_.sources.map(_.signature))
     )
   }
 
@@ -30,7 +32,8 @@ object SelectedPredicatesAndSources {
   def apply[T: FactOps](start: Fact.Val[T]): SelectedPredicatesAndSources = {
     new SelectedPredicatesAndSources(
       sources = start.alphaSources.map(_.signature),
-      facts = (start.facts ++ start.predecessors).toSet
+      facts = (start.facts ++ start.predecessors).toSet,
+      alphaSources = start.alphaSources
     )
   }
 }

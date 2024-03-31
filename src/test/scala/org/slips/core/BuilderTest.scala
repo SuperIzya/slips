@@ -3,9 +3,7 @@ package org.slips.core
 import cats.Eq
 import cats.Eval
 import cats.data.State
-import org.slips.Env
-import org.slips.Environment as SEnv
-import org.slips.SimpleEnvironment
+import org.slips.{Env, Signature, SimpleEnvironment, Environment as SEnv}
 import org.slips.core.Empty
 import org.slips.core.build.BuildContext
 import org.slips.core.build.Builder
@@ -26,22 +24,24 @@ object BuilderTest extends ZIOSpecDefault {
   val notApple: Fact[Fruit] => Predicate = _.test(_.name != "apple")
   private val testFruitAndVegie          = testFruitAndVegieF.tupled
   private val vegie2Fruits               = vegie2FruitsF.tupled
-  private val condition1                 = for {
+  private val condition1: Condition[(Fruit, Fruit, Vegetable, Int)] = for {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry]
     _     <- berry.test(_.origin != Origin.Field)
-    _     <- (b.value(_.origin) =!= Origin.GreenHouse) && b.test(_.name.nonEmpty)
+    _     <- b.test(_.origin != Origin.GreenHouse) && b.test(_.name.nonEmpty)
     _     <- h.test(_.name.nonEmpty)
     f1    <- all[Fruit]
-    _     <- f1.value(_.sugar) =!= 1.0
+    _     <- f1.test(_.sugar != 1.0)
     f2    <- all[Fruit]
     _     <- notApple(f2) || notApple(f1)
     v     <- all[Vegetable]
     _     <- (f1, v).testMany(testFruitAndVegie)
-    _     <- h.value(_.name) =!= f1.value(_.name)    
+    hname = h.value(_.name)
+    fname = f1.value(_.name)
+    _     <- (hname, fname).testMany(_ != _)
     _5 = literal(5)
-    //_ <- (v, f1, f2).testMany(vegie2Fruits)
+    _ <- (v, f1, f2).testMany(vegie2Fruits)
   } yield (f1, f2, v, _5)
 
   private def rule1(using env: SimpleEnvironment) =
@@ -61,7 +61,7 @@ object BuilderTest extends ZIOSpecDefault {
     def method(f: Fact[Fruit]): Predicate                    = f.test(_.name != "apple")
     def paramMethod(name: String)(f: Fact[Fruit]): Predicate = f.test(_.name != name)
 
-    val notAppleF: Fact[Fruit] => Predicate = method(_)
+    val notAppleF: Fact[Fruit] => Predicate = method
 
     val testSeq = SimpleEnvironment { env ?=>
       type Step[T] = State[Asserts, T]
@@ -74,6 +74,9 @@ object BuilderTest extends ZIOSpecDefault {
 
       }
 
+      transparent inline def ass(a: WithSignature, b: WithSignature, inline f: (String, String) => Boolean) =
+        assertTrue(f(a.signature.compute, b.signature.compute))
+
       for {
         m       <- predicate("pure method") { all[Fruit].withFilter(method) }
         param   <- predicate("parametric method") { all[Fruit].withFilter(paramMethod("apple")) }
@@ -81,9 +84,9 @@ object BuilderTest extends ZIOSpecDefault {
         literal <- predicate("inplace typing") { all[Fruit].withFilter(_.test(_.name != "apple")) }
         _       <- State.modify[Asserts](_.addSteps {
           Seq(
-            "created by method should be the same as created by partial application" -> assertTrue(m == partial),
-            "created by partial application should be the same as created literally" -> assertTrue(partial == literal),
-            "created by parametric method should not be the same as created literally" -> assertTrue(param != literal)
+            "created by method should be the same as created by partial application" -> ass(m, partial, _ == _),
+            "created by partial application should be the same as created literally" -> ass(partial, literal, _ == _),
+            "created by parametric method should not be the same as created literally" -> ass(param, literal, _ != _)
           )
         })
         asserts <- State.get[Asserts]
@@ -109,7 +112,7 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       assert(res.sources)(hasSize(equalTo(4))) &&
-      assert(res.facts.filter(_.isAlpha))(hasSize(equalTo(9)))
+      assert(res.facts.toSeq.filter(_.isAlpha))(hasSize(equalTo(8)))
     },
     test("PredicateSelection.Clean") {
       object SEClean extends SimpleEnvironment {
@@ -120,7 +123,7 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       assert(res.sources)(hasSize(equalTo(3))) &&
-      assert(res.facts.filter(_.isAlpha))(hasSize(equalTo(6)))
+      assert(res.facts.filter(_.isAlpha))(hasSize(equalTo(5)))
     }
   )
   private val alphaNetwork               = suite("Alpha network")(
