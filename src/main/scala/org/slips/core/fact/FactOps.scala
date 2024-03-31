@@ -41,11 +41,14 @@ object FactOps {
       H: FactOps[H],
       S: Signature.Typed[H],
       ev: ScalarFact[H],
+      tupleSig: Signature.SignType.TupleSignature[H *: EmptyTuple],
       tuple: Fact.Val[H *: EmptyTuple] =:= Fact[H] *: EmptyTuple
     ): TupleOps[H *: EmptyTuple] with {
       override def index: Int = 1
 
       override def signature: SignatureTuple = SignatureTuple(S.toSignature)
+
+      override def signature: Signature = tupleSig.signature
 
       override def empty: H *: EmptyTuple = H.empty *: EmptyTuple
 
@@ -68,15 +71,15 @@ object FactOps {
 
     given genTupleOpsStep[H, T <: NonEmptyTuple](using
       H: FactOps[H],
-                                                 Sh: Signature.Typed[H],
       evH: ScalarFact[H],
       T: TupleOps[T],
       evT: Fact.Val[T] =:= Fact.TMap[T],
-      evF: Fact.Val[H *: T] =:= Fact.TMap[H *: T]
+      evF: Fact.Val[H *: T] =:= Fact.TMap[H *: T],
+      tupleSig: Signature.SignType.TupleSignature[H *: T],
     ): TupleOps[H *: T] with {
       override def index: Int = T.index + 1
 
-      override def signature: SignatureTuple = Sh.toSignature +: T.signature
+      override def signature: Signature = tupleSig.signature
 
       override def empty: H *: T = H.empty *: T.empty
 
@@ -113,15 +116,15 @@ object FactOps {
     }
   }
 
-  given genFactOpsSingle[T](using ev: ScalarFact[T], T: Empty[T], S: Signature.Typed[T]): FactOps[T] with {
+  given genFactOpsSingle[T](using ev: ScalarFact[T], T: Empty[T], sign: Signature.SignType.TypeSignature[T]): FactOps[T] with {
+
+    override def signature: Signature = sign.signature
 
     override def size: Int = 1
 
     override def empty: T = T.empty
 
     override def alphaSources(f: Fact.Val[T]): Set[Fact.Source] = ev(f).alphaSources
-
-    override val signature: Signature = S.toSignature
 
     override def extract(r: Fact.Val[T]): SignatureTuple  = SignatureTuple(ev(r).signature)
     def predecessors(f: Fact.Val[T]): List[Fact[?]]       = ev(f).predecessors

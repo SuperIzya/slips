@@ -10,12 +10,14 @@ import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
 import scala.util.NotGiven
 
-sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T]) extends WithSignature { self =>
+sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T], F: Signature.SignType[Fact[T]]) extends WithSignature { self =>
   val sample: T
-  
+
   val predecessors: List[Fact[?]]
 
   val sources: Set[Condition.Source[?]]
+  override def signature: Signature =
+    Signature.derivedBinary(F, T, (f, t) => s"$f[$t]($sample)")
 
   def alphaSources: Set[Fact.Source] = predecessors.collect { case x: Fact.Source => x }.toSet
 

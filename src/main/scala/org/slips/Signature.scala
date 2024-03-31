@@ -4,6 +4,8 @@ import cats.data.NonEmptyList
 import org.slips.core.WithSignature
 import org.slips.core.macros.Macros
 import scala.annotation.targetName
+import cats.data.NonEmptySet
+import cats.kernel.Order
 
 sealed trait Signature { self =>
   def append(postfix: String): Signature = Signature.DerivedUnary(self, _ + postfix)
@@ -22,7 +24,7 @@ object Signature {
     def apply(s: Signature): SignatureTuple = SignatureTuple(NonEmptyList.one(s))
 
   }
-  
+
   sealed trait Typed[T] {
     val signature: String
   }
@@ -78,5 +80,24 @@ object Signature {
      * Uses hash code of a function to generate a signature
      */
     case HashCode extends Strategy(_.hash)
+  }
+
+  sealed trait SignType[T] extends Signed
+  object SignType {
+    case class TypeSignature[T](single: Signature) extends SignType[T] {
+      override def signature: Signature = single
+    }
+    case class TupleSignature[T](tuple: SignatureTuple) extends SignType[T] {
+      override def signature: Signature = tuple.toSignature
+    }
+
+    inline given nonTuple[T: NotTuple]: SignType.TypeSignature[T] = SignType.TypeSignature(Manual(Macros.signType[T]))
+
+    given tuple[H: NotTuple, T <: NonEmptyTuple](using H: TypeSignature[H], T: TupleSignature[T]): TupleSignature[H *: T] =
+      TupleSignature(T.tuple.prepend(H.single))
+
+    given firstTuple[H: NotTuple](using H: TypeSignature[H]): TupleSignature[H *: EmptyTuple] =
+      TupleSignature(SignatureTuple.first(H.single))
+
   }
 }
