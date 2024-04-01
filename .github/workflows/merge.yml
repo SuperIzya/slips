@@ -26,5 +26,5 @@ jobs:
       with:
         MERGE_METHOD: squash
         ALLOWED_UPDATE: minor
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.MERGE_TOKEN }}
 

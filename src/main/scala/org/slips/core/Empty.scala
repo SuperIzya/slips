@@ -10,7 +10,6 @@ trait Empty[T]:
   def empty: T
 
 object Empty extends AutoDerivation[Empty] {
-
   given Empty[Unit] with   { override def empty: Unit = ()   }
   given Empty[Char] with   { override def empty: Char = 0    }
   given Empty[Byte] with   { override def empty: Byte = 0    }
