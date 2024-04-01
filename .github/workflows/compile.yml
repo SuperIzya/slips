@@ -4,7 +4,9 @@
 # documentation.
 
 on:
-  workflow_call:
+  push:
+    branches-ignore:
+      - 'update/*'
 
 name: Compile & Test
 
