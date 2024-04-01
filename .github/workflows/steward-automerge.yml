@@ -5,6 +5,11 @@ on:
   pull_request:
     types:
     - opened
+    - reopened
+    - edited
+  pull_request_target:
+    types:
+    - edited
 
 name: Steward automerge
 

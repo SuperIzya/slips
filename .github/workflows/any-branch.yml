@@ -1,7 +1,5 @@
 on:
   push:
-    branches:
-    - '**'
     branches-ignore:
     - 'update/*'
 
