@@ -4,13 +4,14 @@ import org.slips.NotTuple
 import org.slips.Signature
 import org.slips.core
 import org.slips.core.WithSignature
-import org.slips.core.macros.Macros
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
+import org.slips.core.macros.Macros
 import scala.util.NotGiven
 
-sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T], F: Signature.SignType[Fact[T]]) extends WithSignature { self =>
+sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T], F: Signature.SignType[Fact[T]]) extends WithSignature {
+  self =>
   val sample: T
 
   val predecessors: List[Fact[?]]

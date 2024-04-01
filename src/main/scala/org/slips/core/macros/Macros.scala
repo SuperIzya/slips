@@ -43,9 +43,7 @@ object Macros {
     import q.*
     import reflect.*
 
-    val signs: String = toSign
-      .asTerm
-      .show(using Printer.TreeCode)
+    val signs: String = toSign.asTerm.show(using Printer.TreeCode)
     cleanupSignature(signs)
   }
 

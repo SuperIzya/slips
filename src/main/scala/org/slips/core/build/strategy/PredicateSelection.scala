@@ -125,7 +125,7 @@ object PredicateSelection {
       queue: Queue[Predicate] = Queue.empty
     ): SelectedPredicatesAndSources = {
       p match {
-        case _ if col.facts.intersect(p.facts.allPredecessors).isEmpty                   =>
+        case _ if col.facts.intersect(p.facts.allPredecessors).isEmpty                              =>
           queue.deq(col.withDiscard(p))
         case Predicate.Test(_, _, _)                                                                =>
           queue.deq(col.withPredicate(p))
