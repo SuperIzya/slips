@@ -4,8 +4,7 @@
 # documentation.
 
 on:
-  push:
-    branches: [ '**' ]
+  workflow_call:
 
 name: Compile & Test
 
@@ -40,18 +39,3 @@ jobs:
         cache: 'sbt'
     - name: Compile the whole project
       run: sbt "Test/compile"
-
-  merge:
-    needs:
-    - build
-    - test
-    runs-on: ubuntu-latest
-    name: Merge dependency update
-    if: contains(github.ref, 'update')
-    steps:
-    - name: merge PR
-      uses: desbo/merge-pr-action@v0
-      with:
-        GITHUB_TOKEN: ${{ secrets.COMMIT_TOKEN }}
-        ALLOWED_UPDATE: minor
-        MERGE_METHOD: squash

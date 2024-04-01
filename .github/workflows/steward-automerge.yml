@@ -1,0 +1,24 @@
+on:
+  push:
+    branches:
+    - 'update/*'
+  pull_request:
+    types:
+    - opened
+
+name: Steward automerge
+
+jobs:
+  build:
+    uses: ./.github/workflows/compile.yml
+
+  merge:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: merge PR
+      uses: desbo/merge-pr-action@v0.3.2
+      with:
+        GITHUB_TOKEN: ${{ secrets.COMMIT_TOKEN }}
+        ALLOWED_UPDATE: minor
+        MERGE_METHOD: squash

@@ -1,0 +1,13 @@
+on:
+  push:
+    branches:
+    - '**'
+    branches-ignore:
+    - 'update/*'
+
+name: Test & compile any branch
+
+jobs:
+  main:
+    uses: ./.github/workflows/compile.yml
+
