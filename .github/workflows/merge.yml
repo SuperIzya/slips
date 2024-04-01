@@ -1,4 +1,9 @@
 on:
+  workflow_run:
+    workflows:
+    - Compile & Test
+    types:
+    - completed
   pull_request_target:
     types:
     - opened
@@ -9,9 +14,6 @@ on:
     - reopened
     - opened
     - edited
-  check_suite:
-    types:
-    - completed
 
 name: Merge steward pr
 
