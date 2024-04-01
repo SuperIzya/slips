@@ -10,7 +10,6 @@ on:
     - 'update/*'
 
 name: Auto-merging steward's prs
-
 jobs:
   compile:
     name: Compile & Test
