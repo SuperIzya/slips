@@ -13,25 +13,17 @@ permissions:
   contents: write
 
 jobs:
-  checkOut:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
-          fetch-depth: 0
-      - name: Run npm
-        run: npm i @actions/core
-
   test:
-    needs: checkOut
     runs-on: ubuntu-latest
     steps:
-      - name: Run tests for the whole project
-        run: sbt test
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
+        fetch-depth: 0
+    - name: Run tests for the whole project
+      run: sbt test
 
   build:
-    needs: checkOut
     strategy:
       matrix:
         version: [ 11, 17, 19 ]
@@ -39,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: actions/checkout@v4
     - name: Set up JDK ${{ matrix.version }}
       uses: actions/setup-java@v4
       with:
