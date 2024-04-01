@@ -1,4 +1,14 @@
 on:
+  pull_request_target:
+    types:
+    - opened
+    - edited
+    - reopened
+  pull_request:
+    types:
+    - reopened
+    - opened
+    - edited
   check_suite:
     types:
     - completed
