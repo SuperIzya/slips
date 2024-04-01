@@ -1,7 +1,7 @@
 on:
   workflow_run:
     workflows:
-    - Compile & Test
+    - 'Compile & Test'
     types:
     - completed
   pull_request_target:
