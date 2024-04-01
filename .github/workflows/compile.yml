@@ -25,31 +25,6 @@ jobs:
       - name: Run npm
         run: npm i @actions/core
 
-  readme:
-    needs: checkOut
-    runs-on: ubuntu-latest
-    steps:
-    - name: Building README.md
-      uses: ./.github/action-badges
-      with:
-        badges: "[{ \"name\": \"Compile\", \"yaml\": \"compile\" }, { \"name\": \"Test\", \"yaml\": \"test\" }]"
-        context: ${{ toJson(github) }}
-    - name: Commit README.md
-      id: commit
-      continue-on-error: true
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"      
-        git commit ./README.md -m "Updating README.md"
-    - name: Push README.md
-      if: ${{ steps.commit.outcome == 'success' }}
-      uses: ad-m/github-push-action@master
-      continue-on-error: true
-      with:
-        github_token: ${{ secrets.README_COMMIT_TOKEN }}
-        branch: ${{ github.ref }}
-
-
   build:
     needs: checkOut
     strategy:
