@@ -11,7 +11,7 @@ name: Auto-merging steward's prs
 jobs:
   compile:
     name: Compile & Test
-    if: contains(github.ref, 'update/')
+    if: contains(github.head_ref, 'update/')
     uses: ./.github/workflows/compile.yml
 
   merge:
@@ -20,7 +20,7 @@ jobs:
       - compile
     runs-on: ubuntu-latest
     continue-on-error: true
-    if: contains(github.ref, 'update/')
+    if: contains(github.head_ref, 'update/')
     steps:
       - name: merge dependency update PRs
         uses: desbo/merge-pr-action@v0.3.2
