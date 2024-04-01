@@ -15,7 +15,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: merge PR
       uses: pascalgn/automerge-action@v0.16.2
-      with:
+      env:
         GITHUB_TOKEN: ${{ secrets.COMMIT_TOKEN }}
         MERGE_LABELS: ""
         MERGE_DELETE_BRANCH: true
