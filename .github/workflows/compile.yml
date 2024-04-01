@@ -7,7 +7,7 @@ on:
   push:
     branches: [ '**' ]
 
-name: Compile
+name: Compile & Test
 
 permissions:
   contents: write
@@ -23,8 +23,15 @@ jobs:
       - name: Run npm
         run: npm i @actions/core
 
-  build:
+  test:
     needs: checkOut
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run tests for the whole project
+        run: sbt test
+
+  build:
+    needs: test
     strategy:
       matrix:
         version: [ 11, 17, 19 ]
@@ -42,3 +49,14 @@ jobs:
     - name: Compile the whole project
       run: sbt "Test/compile"
 
+  merge:
+    needs: build
+    name: Merge dependency update
+    if: contains(github.head_ref, 'update/')
+    steps:
+      - name: merge PR
+        uses: desbo/merge-pr-action@v0
+        with:
+          GITHUB_TOKEN: ${{ secrets.COMMIT_TOKEN }}
+          ALLOWED_UPDATE: minor
+          MERGE_METHOD: squash
