@@ -39,7 +39,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
     - name: Set up JDK ${{ matrix.version }}
       uses: actions/setup-java@v3
       with:
@@ -55,7 +54,7 @@ jobs:
       - test
     runs-on: ubuntu-latest
     name: Merge dependency update
-    if: contains(github.head_ref, 'update')
+    if: contains(github.ref, 'update')
     steps:
       - name: merge PR
         uses: desbo/merge-pr-action@v0
