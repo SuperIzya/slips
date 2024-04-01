@@ -1,0 +1,33 @@
+on:
+  pull_request:
+    types:
+    - opened
+    - reopened
+    - edited
+    - locked
+    - unlocked
+    branches:
+    - 'update/*'
+
+name: Auto-merging steward's prs
+
+jobs:
+  compile:
+    name: Compile & Test
+    uses: ./.github/workflows/compile.yml
+
+  merge:
+    name: Merge scala steward pr
+    needs:
+      - compile
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: contains(github.ref, 'update/')
+    steps:
+      - name: merge dependency update PRs
+        uses: desbo/merge-pr-action@v0.3.2
+        with:
+          MERGE_METHOD: squash
+          ALLOWED_UPDATE: minor
+          GITHUB_TOKEN: ${{ secrets.MERGE_TOKEN }}
+
