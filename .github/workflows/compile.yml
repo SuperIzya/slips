@@ -41,3 +41,20 @@ jobs:
         cache: 'sbt'
     - name: Compile the whole project
       run: sbt "Test/compile"
+
+  merge:
+    name: Merge scala steward pr
+    needs:
+    - build
+    - test
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: contains(github.ref, 'update/')
+    steps:
+    - name: merge dependency update PRs
+      uses: desbo/merge-pr-action@v0.3.2
+      with:
+        MERGE_METHOD: squash
+        ALLOWED_UPDATE: minor
+        GITHUB_TOKEN: ${{ secrets.MERGE_TOKEN }}
+
