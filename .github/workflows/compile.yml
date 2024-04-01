@@ -51,6 +51,7 @@ jobs:
 
   merge:
     needs: build
+    runs-on: ubuntu-latest
     name: Merge dependency update
     if: contains(github.head_ref, 'update/')
     steps:
