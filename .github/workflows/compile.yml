@@ -3,11 +3,11 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Compile
-
 on:
   push:
     branches: [ '**' ]
+
+name: Compile
 
 permissions:
   contents: write

@@ -1,9 +1,10 @@
 
-name: Dependecy graph
 
 on:
   push:
     branches: [ 'master' ]
+
+name: Dependency graph
 
 jobs:
   dependencies:
