@@ -8,8 +8,6 @@ name: Compile
 on:
   push:
     branches: [ '**' ]
-    paths-ignore:
-      - 'README.md'
 
 permissions:
   contents: write
