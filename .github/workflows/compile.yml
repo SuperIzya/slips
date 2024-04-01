@@ -31,7 +31,7 @@ jobs:
         run: sbt test
 
   build:
-    needs: test
+    needs: checkOut
     strategy:
       matrix:
         version: [ 11, 17, 19 ]
@@ -50,10 +50,12 @@ jobs:
       run: sbt "Test/compile"
 
   merge:
-    needs: build
+    needs:
+      - build
+      - test
     runs-on: ubuntu-latest
     name: Merge dependency update
-    if: contains(github.head_ref, 'update/')
+    if: contains(github.head_ref, 'update')
     steps:
       - name: merge PR
         uses: desbo/merge-pr-action@v0
