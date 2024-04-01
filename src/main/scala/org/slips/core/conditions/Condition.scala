@@ -5,15 +5,14 @@ import org.slips.Environment
 import org.slips.NotTuple
 import org.slips.Signature
 import org.slips.core.*
-import org.slips.core.macros.Macros
 import org.slips.core.build.*
 import org.slips.core.build.BuildStep
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.Val
+import org.slips.core.macros.Macros
 import org.slips.core.network.Node
 import org.slips.core.network.alpha.AlphaNode
 import org.slips.syntax.*
-
 import scala.annotation.targetName
 import scala.compiletime.summonInline
 import scala.util.NotGiven

@@ -3,7 +3,10 @@ package org.slips.core
 import cats.Eq
 import cats.Eval
 import cats.data.State
-import org.slips.{Env, Signature, SimpleEnvironment, Environment as SEnv}
+import org.slips.Env
+import org.slips.Environment as SEnv
+import org.slips.Signature
+import org.slips.SimpleEnvironment
 import org.slips.core.Empty
 import org.slips.core.build.BuildContext
 import org.slips.core.build.Builder
@@ -21,9 +24,9 @@ import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
 
-  val notApple: Fact[Fruit] => Predicate = _.test(_.name != "apple")
-  private val testFruitAndVegie          = testFruitAndVegieF.tupled
-  private val vegie2Fruits               = vegie2FruitsF.tupled
+  val notApple: Fact[Fruit] => Predicate                            = _.test(_.name != "apple")
+  private val testFruitAndVegie                                     = testFruitAndVegieF.tupled
+  private val vegie2Fruits                                          = vegie2FruitsF.tupled
   private val condition1: Condition[(Fruit, Fruit, Vegetable, Int)] = for {
     h     <- all[Herb]
     b     <- all[Herb]
@@ -39,7 +42,7 @@ object BuilderTest extends ZIOSpecDefault {
     _     <- (f1, v).testMany(testFruitAndVegie)
     hname = h.value(_.name)
     fname = f1.value(_.name)
-    _     <- (hname, fname).testMany(_ != _)
+    _ <- (hname, fname).testMany(_ != _)
     _5 = literal(5)
     _ <- (v, f1, f2).testMany(vegie2Fruits)
   } yield (f1, f2, v, _5)
@@ -84,8 +87,8 @@ object BuilderTest extends ZIOSpecDefault {
         literal <- predicate("inplace typing") { all[Fruit].withFilter(_.test(_.name != "apple")) }
         _       <- State.modify[Asserts](_.addSteps {
           Seq(
-            "created by method should be the same as created by partial application" -> ass(m, partial, _ == _),
-            "created by partial application should be the same as created literally" -> ass(partial, literal, _ == _),
+            "created by method should be the same as created by partial application"   -> ass(m, partial, _ == _),
+            "created by partial application should be the same as created literally"   -> ass(partial, literal, _ == _),
             "created by parametric method should not be the same as created literally" -> ass(param, literal, _ != _)
           )
         })

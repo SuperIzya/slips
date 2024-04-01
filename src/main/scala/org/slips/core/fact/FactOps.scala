@@ -4,9 +4,9 @@ import org.slips.Signature
 import org.slips.Signature.SignatureTuple
 import org.slips.core.Empty
 import org.slips.core.WithSignature
-import org.slips.core.macros.Macros
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact.Val
+import org.slips.core.macros.Macros
 
 sealed trait FactOps[T] extends WithSignature {
   def size: Int
@@ -70,7 +70,7 @@ object FactOps {
       T: TupleOps[T],
       evT: Fact.Val[T] =:= Fact.TMap[T],
       evF: Fact.Val[H *: T] =:= Fact.TMap[H *: T],
-      tupleSig: Signature.SignType.TupleSignature[H *: T],
+      tupleSig: Signature.SignType.TupleSignature[H *: T]
     ): TupleOps[H *: T] with {
       override def index: Int = T.index + 1
 
@@ -111,7 +111,8 @@ object FactOps {
     }
   }
 
-  given genFactOpsSingle[T](using ev: ScalarFact[T], T: Empty[T], sign: Signature.SignType.TypeSignature[T]): FactOps[T] with {
+  given genFactOpsSingle[T](using ev: ScalarFact[T], T: Empty[T], sign: Signature.SignType.TypeSignature[T]): FactOps[T]
+  with {
 
     override def signature: Signature = sign.signature
 

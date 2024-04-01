@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 trait SimpleEnvironment extends Environment {
   override type Effect[x] = cats.Id[x]
   override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
-  override val signatureStrategy: Signature.Strategy           = Signature.Strategy.Content
+  override val signatureStrategy: Signature.Strategy          = Signature.Strategy.Content
 
   override given effectMonad: Monad[Id] = new Monad[Id] {
     override def pure[T](

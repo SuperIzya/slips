@@ -1,11 +1,11 @@
 package org.slips
 
 import cats.data.NonEmptyList
+import cats.data.NonEmptySet
+import cats.kernel.Order
 import org.slips.core.WithSignature
 import org.slips.core.macros.Macros
 import scala.annotation.targetName
-import cats.data.NonEmptySet
-import cats.kernel.Order
 
 sealed trait Signature { self =>
   def append(postfix: String): Signature = Signature.DerivedUnary(self, _ + postfix)
@@ -19,7 +19,7 @@ object Signature {
   }
 
   case class Automatic private[Signature] (hash: String, content: String) extends Signature
-  case class Manual(signature: String)                extends Signature
+  case class Manual(signature: String)                                    extends Signature
 
   case class DerivedUnary(orig: Signature, derive: String => String)                              extends Signature
   case class DerivedBinary(left: Signature, right: Signature, derive: (String, String) => String) extends Signature
@@ -61,17 +61,17 @@ object Signature {
     def *(other: WithSignature): Signature = s * other.signature
   }
 
-
   enum Strategy(val select: Automatic => String) {
+
     /**
-     * Creates a signature based on a textual content of the
-     * function.
-     */
+      * Creates a signature based on a textual content of
+      * the function.
+      */
     case Content extends Strategy(_.content)
 
     /**
-     * Uses hash code of a function to generate a signature
-     */
+      * Uses hash code of a function to generate a signature
+      */
     case HashCode extends Strategy(_.hash)
   }
 
