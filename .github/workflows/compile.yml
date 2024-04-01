@@ -4,9 +4,8 @@
 # documentation.
 
 on:
-  push:
-    branches:
-      - '**'
+  workflow_call:
+
 
 name: Compile & Test
 
@@ -41,3 +40,4 @@ jobs:
         cache: 'sbt'
     - name: Compile the whole project
       run: sbt "Test/compile"
+
