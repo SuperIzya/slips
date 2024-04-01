@@ -1,9 +1,4 @@
 on:
-  workflow_run:
-    workflows:
-    - 'Compile & Test'
-    types:
-    - completed
   pull_request:
     types:
     - reopened
@@ -19,6 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.ref, 'update/')
     steps:
+    - name: Wait for tests to succeed
+      uses: lewagon/wait-on-check-action@v1.3.1
+      with:
+        ref: ${{ github.ref }}
+        check-name: 'Compile & Test'
+        repo-token: ${{ secrets.MERGE_TOKEN }}
+        wait-interval: 10
     - name: merge dependency update PRs
       uses: desbo/merge-pr-action@v0.3.2
       with:
