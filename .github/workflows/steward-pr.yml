@@ -6,13 +6,12 @@ on:
     - edited
     - locked
     - unlocked
-    branches:
-    - 'update/*'
 
 name: Auto-merging steward's prs
 jobs:
   compile:
     name: Compile & Test
+    if: contains(github.ref, 'update/')
     uses: ./.github/workflows/compile.yml
 
   merge:
