@@ -1,0 +1,20 @@
+on:
+  check_suite:
+    types:
+    - completed
+
+name: Merge steward pr
+
+jobs:
+  merge:
+    name: Merge scala steward pr
+    runs-on: ubuntu-latest
+    if: contains(github.ref, 'update/')
+    steps:
+    - name: merge dependency update PRs
+      uses: desbo/merge-pr-action@v0.3.2
+      with:
+        MERGE_METHOD: squash
+        ALLOWED_UPDATE: minor
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
