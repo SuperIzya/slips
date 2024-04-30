@@ -5,6 +5,7 @@ import org.slips.core.conditions.*
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.CanBeLiteral
 import org.slips.core.fact.FactOps.TupleOps
+import org.slips.core.macros.ParsePredicates
 import scala.annotation.targetName
 import scala.compiletime.summonInline
 import scala.language.implicitConversions
@@ -70,5 +71,7 @@ trait FactSyntax {
         rep = ev3(fact)
       )
 
+    inline def testM[Q <: NonEmptyTuple : FactOps](inline f: Q => Boolean)(using ev: T =:= Fact.Val[Q]): Predicate =
+      ParsePredicates.testM(ev(fact), f)
   }
 }

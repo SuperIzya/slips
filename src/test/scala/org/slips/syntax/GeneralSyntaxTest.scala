@@ -1,14 +1,15 @@
-package org.slips
+package org.slips.syntax
 
-import org.slips.Environment as SEnv
 import org.slips.core.Empty
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
+import org.slips.{Environment, Environment as SEnv}
+
 import scala.annotation.targetName
 
-object SyntaxTest {
+object GeneralSyntaxTest {
   lazy val rules             = (env: SEnv) ?=> Set(markWord, markText)
   val confidenceDrop: Double = 0.99
 
