@@ -10,8 +10,9 @@ import org.slips.core.conditions.*
 import org.slips.core.conditions.Parser.Context
 import org.slips.core.fact.Fact
 import org.slips.core.fact.FactOps
-import org.slips.core.network.alpha.AlphaNetwork
-import org.slips.core.rule.Rule.RuleM
+import org.slips.core.network.NetworkLayer
+import org.slips.core.rule.Rule
+
 import scala.annotation.tailrec
 import scala.collection.SeqView.Sorted
 import scala.collection.immutable.SortedSet
@@ -21,13 +22,16 @@ object Builder {
 
   val materializeAlphaNetwork: BuildStep[Unit] = BuildStep { ctx => ctx -> () }
 
-  val buildAlphaNetwork: Env[BuildStep[AlphaNetwork]] = BuildStep { ctx =>
-    val network = ctx.network.add(AlphaNetwork(ctx.alphaPredicates))
+  val buildAlphaNetwork: Env[BuildStep[NetworkLayer]] = BuildStep { ctx =>
+    val network = ctx.network.add(NetworkLayer(ctx.allPredicates))
     ctx.copy(network = network) -> network
   }
 
-  def parse(using env: Environment)(rules: RuleM*): BuildStep[List[ParseResult]] = {
-    rules.toList.traverse { r => BuildStep.addParsingResult(ParseResult.fromRule(r)) }
+  def parse(using env: Environment)(rules: env.Rule*): BuildStep[List[ParseResult[env.Effect]]] = {
+    rules.toList.traverse { rule =>
+      val x: SelectedPredicatesAndSources = selectPredicatesAndSources(rule.condition)(using rule.T)
+      ParseResult(rule, x.facts.map(_.signature.compute), x.predicates)
+    }
   }
 
   def selectPredicatesAndSources[T: FactOps](condition: Condition[T]): Env[SelectedPredicatesAndSources] = {

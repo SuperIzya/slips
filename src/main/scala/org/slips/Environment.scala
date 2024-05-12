@@ -24,7 +24,7 @@ trait Environment {
 
   type Effect[_]
 
-  type Rule[q] = rule.Rule[Effect, q]
+  type Rule = rule.Rule[Effect]
 
   trait BufferFactory  {
     def create[T]: Buffer[T]

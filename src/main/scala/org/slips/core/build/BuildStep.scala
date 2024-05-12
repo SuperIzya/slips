@@ -5,7 +5,7 @@ import org.slips.Env
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
 import org.slips.core.network.Node
-import org.slips.core.network.alpha.AlphaNode
+import org.slips.core.network.AlphaNode
 
 object BuildStep {
 

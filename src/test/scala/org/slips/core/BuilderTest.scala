@@ -15,7 +15,7 @@ import org.slips.core.build.SelectedPredicatesAndSources
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
-import org.slips.core.network.alpha.AlphaNetwork
+import org.slips.core.network.NetworkLayer
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
 import zio.*
@@ -114,7 +114,7 @@ object BuilderTest extends ZIOSpecDefault {
         Builder.selectPredicatesAndSources(condition1)
       }
 
-      assert(res.sources)(hasSize(equalTo(4))) &&
+      assert(res.signatures)(hasSize(equalTo(4))) &&
       assert(res.facts.toSeq.filter(_.isAlpha))(hasSize(equalTo(8)))
     },
     test("PredicateSelection.Clean") {
@@ -125,14 +125,14 @@ object BuilderTest extends ZIOSpecDefault {
         Builder.selectPredicatesAndSources(condition1)
       }
 
-      assert(res.sources)(hasSize(equalTo(3))) &&
+      assert(res.signatures)(hasSize(equalTo(3))) &&
       assert(res.facts.filter(_.isAlpha))(hasSize(equalTo(5)))
     }
   )
   private val alphaNetwork               = suite("Alpha network")(
     test("is built") {
-      val res: AlphaNetwork = SimpleEnvironment {
-        val steps: BuildStep[AlphaNetwork] = for {
+      val res: NetworkLayer = SimpleEnvironment {
+        val steps: BuildStep[NetworkLayer] = for {
           _       <- Builder.parse(rule1)
           network <- Builder.buildAlphaNetwork
         } yield network
@@ -140,7 +140,7 @@ object BuilderTest extends ZIOSpecDefault {
         steps.runA(BuildContext.empty).value
       }
       assertTrue(
-        res.alphaNetwork.nonEmpty,
+        res.networkLayer.nonEmpty,
         res.topChains.nonEmpty
       )
     }

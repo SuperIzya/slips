@@ -1,15 +1,19 @@
 package org.slips.core
 
+import cats.data.State
+import org.slips.core.build.BuildPredicate
 import org.slips.core.fact.Fact
+import org.slips.core.fact.Fact.Source
 
 package object network {
-  type Source[T] = T match
-    case x <:< Tuple => Tuple.Map[x, Source]
-    case _           => Node
+  private[network] type FoldState[T] = State[FactsFolder, T]
 
-  // Signature of the source of facts for beta network.
-  // Source signature -> Set of signatures of alpha predicates
-  type FactSourceSignature = (String, Set[String])
 
-  type Sources = Set[Fact.Source]
+  private[network] type FactsScore = Map[Source[?], Map[Int, Long]]
+  
+
+
+  private[network] type PredicateToSignature = Map[BuildPredicate, PredicateSignature]
+  private[network] type SignatureToPredicate = Map[PredicateSignature, BuildPredicate]
+  private[network] type FactToSignature      = Map[Fact.Source[?], FactFullSignature]
 }

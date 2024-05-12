@@ -17,6 +17,8 @@ object GeneralSyntaxTest {
     w <- all[Word]
     t <- all[Text] if t.test(_.categoryM.isEmpty)
     ww = w.value(_.word)
+      .handleErrorCause(c => Response.internalServerError(c.prettyPrint))
+    _ <- w.matches(Word(_, Category(Theme.War, _)))
     _ <- (t.value(_.word1), ww).testMany(_ == _) || (t.value(_.word2), ww).testMany(_ == _)
   } yield (w.value(_.category), t)
 

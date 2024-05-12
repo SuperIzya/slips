@@ -1,13 +1,10 @@
 package org.slips.syntax
 
 import org.slips.Environment
-import org.slips.EnvRule
 import org.slips.core.conditions.*
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.Val
 import org.slips.core.rule.Rule
-import org.slips.core.rule.Rule.RuleAction
-import scala.compiletime.summonInline
 
 trait ConditionSyntax {
 
@@ -16,16 +13,16 @@ trait ConditionSyntax {
     def withFilter(f: Fact.Val[T] => Predicate): Condition[T] =
       Condition.Filter(c, f)
 
-    inline def map[Q, P](f: Fact.Val[T] => Q)(using P: Fact.InverseVal[Q] =:= P): Condition[P] =
-      Condition.Map(c, f.andThen(x => P.liftCo(x.asInstanceOf[Fact.Val[Fact.InverseVal[Q]]])))
+    inline def map[Q, P](f: Fact.Val[T] => Q)(using ev: Q =:= Fact.Val[P], P: FactOps[P]): Condition[P] =
+      Condition.Map(c, f.andThen(ev))
 
-    def flatMap[Q](f: Fact.Val[T] => Condition[Q]): Condition[Q] =
+    def flatMap[Q: FactOps](f: Fact.Val[T] => Condition[Q]): Condition[Q] =
       Condition.FlatMap(c, f)
 
     def notExist(using ev: ScalarFact[T]): Condition[T] =
       withFilter(x => Predicate.NotExist(ev(x)))
 
-    def makeRule(using env: Environment)(name: String)(actions: RuleAction[env.Effect, T]): env.Rule[T] =
+    def makeRule(using env: Environment)(name: String)(actions: (rule: Rule[env.Effect]) ?=> rule.Method[T]): env.Rule =
       Rule(name, c, actions)
   }
 

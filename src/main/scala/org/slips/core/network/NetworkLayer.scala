@@ -1,4 +1,4 @@
-package org.slips.core.network.alpha
+package org.slips.core.network
 
 import cats.Applicative
 import cats.Semigroup
@@ -11,7 +11,7 @@ import org.slips.core.build.*
 import org.slips.core.conditions.*
 import org.slips.core.fact.*
 import org.slips.core.network
-import org.slips.core.network.alpha.*
+import org.slips.core.network.*
 import scala.annotation.showAsInfix
 import scala.annotation.tailrec
 import scala.annotation.targetName
@@ -19,19 +19,19 @@ import scala.collection.MapView
 import scala.collection.immutable.SortedMap
 import scala.collection.immutable.SortedSet
 
-sealed trait AlphaNetwork {
+sealed trait NetworkLayer {
   // Source signature -> Source alpha node -- Data will be passed there
   // TODO: Is this needed?
   val inlets: Map[String, AlphaNode.Source[?]] = Map.empty
   // Fact signature ->
   val outlets: Map[String, AlphaNode]          = Map.empty
 
-  val topChains: Map[Fact.Alpha[?], Chain]
-  private[core] val alphaNetwork: Set[Chain]
-  def add(other: AlphaNetwork): AlphaNetwork
+  val topChains: Map[Fact.Source[?], Chain]
+  private[core] val networkLayer: Set[Chain]
+  def add(other: NetworkLayer): NetworkLayer
 }
 
-object AlphaNetwork {
+object NetworkLayer {
 
   /**
     * Builds alpha network.
@@ -41,7 +41,7 @@ object AlphaNetwork {
     *
     * [[predicates]] are sorted desc by the size of the
     * facts affected. Accumulated in [[Intermediate]] and
-    * transformed to [[AlphaNetworkImpl]] in the end.
+    * transformed to [[Impl]] in the end.
     *
     * For predicates P1 ... P7 and facts F1 ... F6 where
     * facts are tested by predicates as following:
@@ -143,8 +143,9 @@ object AlphaNetwork {
     * starting with P4 already contains P3, P6, P7). So
     * another union node appears `P4 & P2 (F2, F5)`. etc.
     */
-  def apply(predicates: AlphaPredicates): Env[AlphaNetwork] = env ?=> {
-    // Collect all predicate's signatures applied to a fact and it's predecessors
+  def apply(predicates: AllPredicates): Env[NetworkLayer] = env ?=> {
+    // Range all predicates by arity
+    val predicatesByArity = predicates.values.map(p => p.arity -> p).groupBy(_._1)
     val successors: FactToSuccessor =
       predicates
         .values
@@ -174,21 +175,21 @@ object AlphaNetwork {
     predicatesBySign
       .values
       .toList
-      .sorted(using Ordering.fromLessThan[AlphaPredicate]((a, b) => a.facts.size < b.facts.size))
+      .sorted(using Ordering.fromLessThan[BuildPredicate]((a, b) => a.facts.size < b.facts.size))
       .foldLeft(Intermediate(successors, signedPredicates, predicatesBySign))(_ |+| _)
       .toAlphaNetwork
   }
 
-  private[AlphaNetwork] given Ordering[Set[Fact.Alpha[?]]] = Ordering.fromLessThan((x, y) => x.size > y.size)
-  private[AlphaNetwork] case class Intermediate(
+  private[NetworkLayer] given Ordering[Set[Fact[?]]] = Ordering.fromLessThan((x, y) => x.size > y.size)
+  private[NetworkLayer] case class Intermediate(
     successors: FactToSuccessor,
     signedPredicates: PredicateToSignature,
     predicatesBySign: SignatureToPredicate,
-    private val factsToChains: SortedMap[Set[Fact.Alpha[?]], Chain.Predicates] = SortedMap.from(Map.empty)
+    private val factsToChains: SortedMap[Set[Fact[?]], Chain.Predicates] = SortedMap.from(Map.empty)
   ) {
 
     /**
-      * Accumulates alpha nodes for [[AlphaNetworkImpl]].
+      * Accumulates alpha nodes for [[Impl]].
       * Accumulation is done according to following rules:
       *   1. predicate Q with same facts tested. If found,
       *      increase chain for these facts. Else next
@@ -198,7 +199,7 @@ object AlphaNetwork {
       *      facts P.facts.
       */
     @showAsInfix @targetName("flus")
-    def |+|(predicate: AlphaPredicate): Env[Intermediate] = {
+    def |+|(predicate: BuildPredicate): Env[Intermediate] = {
       val facts = predicate.facts
 
       if (factsToChains.contains(facts)) {
@@ -220,9 +221,9 @@ object AlphaNetwork {
       }
     }
 
-    private def foldFacts: Env[Map[Fact.Alpha[?], Chain]] = {
+    private def foldFacts: Env[Map[Fact.Source[?], Chain]] = {
 
-      val res: Map[Fact.Alpha[?], Set[Chain]] = factsToChains
+      val res: Map[Fact.Source[?], Set[Chain]] = factsToChains
         .view
         .iterator
         .flatMap { case (_, chain) =>
@@ -238,34 +239,34 @@ object AlphaNetwork {
       FactsFolder(res)
     }
 
-    def toAlphaNetwork: Env[AlphaNetwork] = {
-      val folded: Map[Fact.Alpha[?], Chain] = foldFacts
+    def toAlphaNetwork: Env[NetworkLayer] = {
+      val folded: Map[Fact.Source[?], Chain] = foldFacts
       val chains: Set[Chain]                = folded.values.toSet
 
-      new AlphaNetworkImpl(
+      new Impl(
         topChains = folded,
-        alphaNetwork = chains
+        networkLayer = chains
       )
     }
 
   }
 
-  private class AlphaNetworkImpl(
-    val topChains: Map[Fact.Alpha[?], Chain],
-    private[core] val alphaNetwork: Set[Chain]
-  ) extends AlphaNetwork {
-    override def add(other: AlphaNetwork): AlphaNetwork = other match
-      case impl: AlphaNetworkImpl =>
-        new AlphaNetworkImpl(
+  private class Impl(
+    val topChains: Map[Fact.Source[?], Chain],
+    private[core] val networkLayer: Set[Chain]
+  ) extends NetworkLayer {
+    override def add(other: NetworkLayer): NetworkLayer = other match
+      case impl: Impl =>
+        new Impl(
           topChains = topChains ++ impl.topChains,
-          alphaNetwork = alphaNetwork ++ impl.alphaNetwork
+          networkLayer = networkLayer ++ impl.networkLayer
         )
       case Empty                  => this
   }
 
-  case object Empty extends AlphaNetwork {
-    override private[core] val alphaNetwork             = Set.empty[Chain]
-    override val topChains: Map[Fact.Alpha[?], Chain]   = Map.empty
-    override def add(other: AlphaNetwork): AlphaNetwork = other
+  case object Empty extends NetworkLayer {
+    override private[core] val networkLayer             = Set.empty[Chain]
+    override val topChains: Map[Fact.Source[?], Chain]   = Map.empty
+    override def add(other: NetworkLayer): NetworkLayer = other
   }
 }

@@ -3,7 +3,7 @@ package org.slips.core.build
 import org.slips.Env
 import org.slips.core.conditions.*
 import org.slips.core.fact.*
-import org.slips.core.network.alpha.AlphaNode
+import org.slips.core.network.AlphaNode
 import org.slips.syntax.*
 
 trait NodeBuilder[T] {

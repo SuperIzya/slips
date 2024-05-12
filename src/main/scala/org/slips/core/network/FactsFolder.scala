@@ -1,4 +1,4 @@
-package org.slips.core.network.alpha
+package org.slips.core.network
 
 import cats.data.State
 import cats.syntax.all.*
@@ -10,8 +10,8 @@ import scala.collection.immutable.SortedSet
 private[network] case class FactsFolder(
   // TODO: Make sure nodes are sorted from the largest to the smallest set.
   unionNodes: SortedMap[Set[Chain], Chain.Combine] = SortedMap.empty,
-  facts: Map[Fact.Alpha[?], FactProgress] = Map.empty,
-  origin: Map[Fact.Alpha[?], Set[Chain]] = Map.empty
+  facts: Map[Fact.Source[?], FactProgress] = Map.empty,
+  origin: Map[Fact.Source[?], Set[Chain]] = Map.empty
 ) {
 
   /**
@@ -48,7 +48,7 @@ private[network] object FactsFolder {
   import FactProgress.*
 
   /** Adds  last chain for a fact. */
-  private def addImmediate1(fact: Fact.Alpha[?], chain: Chain): FoldState[Unit] = for {
+  private def addImmediate1(fact: Fact.Source[?], chain: Chain): FoldState[Unit] = for {
     ff   <- FoldState.get
     done <- ff
       .facts
@@ -77,7 +77,7 @@ private[network] object FactsFolder {
     *      - None - make [[FactProgress.Done]] with combine
     *        from previous step.
     */
-  private def addImmediate2(fact: Fact.Alpha[?], chains: Set[Chain]): FoldState[Unit] = for {
+  private def addImmediate2(fact: Fact.Source[?], chains: Set[Chain]): FoldState[Unit] = for {
     union    <- FoldState(_.addUnion(chains, chains.head, chains.last))
     ff       <- FoldState.get
     progress <- ff.facts.get(fact) match {
@@ -241,7 +241,7 @@ private[network] object FactsFolder {
         } yield ()
     }
   }
-  def apply(origin: Map[Fact.Alpha[?], Set[Chain]]): Map[Fact.Alpha[?], Chain] = {
+  def apply(origin: Map[Fact.Source[?], Set[Chain]]): Map[Fact.Source[?], Chain] = {
 
     fold(SortedSet.from(origin.view.iterator.map { case (fact, chains) => ToProcess(fact, chains) }))
       .runS(new FactsFolder(origin = origin))

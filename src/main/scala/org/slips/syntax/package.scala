@@ -13,7 +13,7 @@ package object syntax
     with ConditionSyntax
     with PredicateSyntax {
 
-  def addFact[Q, T: NotTuple](t: T)(using env: Environment)(using r: env.Rule[Q]): r.Action[Unit] =
+  def addFact[T: NotTuple](t: T)(using env: Environment)(using r: env.Rule): r.Action[Unit] =
     StateT(_.addFact(t))
 
 }

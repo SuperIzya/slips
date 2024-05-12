@@ -28,7 +28,7 @@ trait PredicateSyntax {
 
     private[slips] def toKNF: Predicate = PredicateSyntax.toKNF(p).runA(PredicateSyntax.Stack.empty).value
 
-    private[slips] def alphaSources: Set[Fact.Source] = p.facts.flatMap(_.alphaSources)
+    private[slips] def sources: Set[Fact.Source[?]] = p.facts.map(_.source)
   }
 
   extension [T](t: Predicate.Test[T]) {

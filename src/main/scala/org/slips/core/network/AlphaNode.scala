@@ -1,4 +1,4 @@
-package org.slips.core.network.alpha
+package org.slips.core.network
 
 import org.slips.Signature
 import org.slips.core.build.BuildStep

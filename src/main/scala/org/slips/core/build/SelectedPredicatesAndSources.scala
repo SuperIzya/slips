@@ -5,21 +5,19 @@ import org.slips.core.conditions.*
 import org.slips.core.fact.*
 
 case class SelectedPredicatesAndSources(
-  predicates: Map[Predicate, Set[Fact[?]]] = Map.empty,
-  sources: Set[Signature] = Set.empty,
-  alphaSources: Set[Fact.Source] = Set.empty,
-  facts: Set[Fact[?]] = Set.empty,
-  discarded: Set[Predicate] = Set.empty
+                                         predicates: Set[Predicate] = Set.empty,
+                                         signatures: Set[Signature] = Set.empty,
+                                         facts: Set[Fact.Source[?]] = Set.empty,
+                                         discarded: Set[Predicate] = Set.empty
 ) {
 
   import SelectedPredicatesAndSources.*
 
   def withPredicate(p: Predicate): SelectedPredicatesAndSources = {
     copy(
-      predicates = predicates + (p -> p.facts),
+      predicates = predicates + p,
       facts = facts ++ p.facts,
-      alphaSources = alphaSources ++ p.facts.flatMap(_.alphaSources),
-      sources = sources ++ p.facts.flatMap(_.sources.map(_.signature))
+      signatures = signatures + p.signature
     )
   }
 
@@ -29,11 +27,8 @@ case class SelectedPredicatesAndSources(
 object SelectedPredicatesAndSources {
   lazy val empty: SelectedPredicatesAndSources = SelectedPredicatesAndSources()
 
-  def apply[T: FactOps](start: Fact.Val[T]): SelectedPredicatesAndSources = {
+  def apply[T: FactOps](start: Fact.Val[T]): SelectedPredicatesAndSources =
     new SelectedPredicatesAndSources(
-      sources = start.alphaSources.map(_.signature),
-      facts = (start.facts ++ start.predecessors).toSet,
-      alphaSources = start.alphaSources
+      facts = start.sources
     )
-  }
 }
