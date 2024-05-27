@@ -6,7 +6,7 @@ lazy val Version = new {
   lazy val cats       = "2.10.0"
   lazy val tests      = "3.2.15"
   lazy val magnolia   = "1.3.7"
-  lazy val discipline = "2.2.0"
+  lazy val discipline = "2.3.0"
   lazy val zio        = "2.1.1"
 }
 
