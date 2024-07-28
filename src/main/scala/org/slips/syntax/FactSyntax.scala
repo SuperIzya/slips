@@ -21,14 +21,14 @@ trait FactSyntax {
     def signed(signature: Signature)(using Q: FactOps[Q]): Fact.Map[T, Q] =
       fact.copy(mapSign = signature)
   }
-
+  
   extension [T: FactOps : ScalarFact](fact: Fact[T]) {
     inline def value[I: FactOps : ScalarFact](inline f: T => I): Fact[I] =
       Fact.Map(fact, f, Signature.auto(f).unite(fact)((s, f) => s"$f => $s"))
 
     inline def test(inline f: T => Boolean): Predicate =
       Predicate.Test[T](
-        signature = Signature.auto(f).unite(fact)((s, f) => s"$f -> $s"),
+        signature = Signature.auto(f).unite(fact)((s, f) => s"$f ? (1)$s"),
         test = f,
         rep = summonInline[ScalarFact[T]].flip(fact)
       )
@@ -46,8 +46,9 @@ trait FactSyntax {
 
   private inline def testTwo[T: FactOps : ScalarFact](left: Fact[T], right: Fact[T])
                                                      (inline f: (T, T) => Boolean)
-                                                     (using TupleOps[T *: T *: EmptyTuple]): Predicate = {
-    val sign = left.signature * Signature.sign(f).unite(Signature.hash(f))(_ + "-" + _) * right
+                                                     (using TupleOps[(T, T)]): Predicate = {
+    val arity = Set(left.source, right.source)
+    val sign = left.signature.unite(right)((a, b) => s"($a, $b)").unite(Signature.auto(f))(_ + s" ? ($arity)" + _)
     Predicate.Test[(T, T)](
       signature = sign,
       test = f.tupled,
@@ -57,16 +58,17 @@ trait FactSyntax {
 
   extension [T <: NonEmptyTuple](fact: T) {
     inline def testMany[Q <: NonEmptyTuple](
-                                             inline f: Fact.InverseVal[T] => Boolean
+                                             inline f: Q => Boolean
                                            )(using
-                                             ev2: Fact.InverseVal[T] =:= Q,
                                              Q: TupleOps[Q],
                                              ev: TupleFact[Q],
+                                             ev2: Q =:= Fact.InverseVal[T],
                                              ev3: T =:= Fact.Val[Q]
                                            ): Predicate = {
+      val arity = ev3(fact).sources.size
       Predicate.Test[Q](
-        signature = Q.signature.unite(Signature.auto(f))(_ + " -> " + _),
-        test = ev2.flip.andThen(f),
+        signature = Q.signature.unite(Signature.auto(f))(_ + s" ? ($arity)" + _),
+        test = f,
         rep = ev3(fact)
       )
     }

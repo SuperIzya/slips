@@ -8,11 +8,13 @@ import org.slips.Signature
 import org.slips.core.conditions.Predicate
 import org.slips.core.fact.*
 
-case class BuildPredicate private[slips](
-  facts: Map[Fact.Source[?], Set[Fact.Source[?]]],
+private[slips] case class BuildPredicate(
+  facts: Set[Fact.Source[?]],
   arity: Int,
   predicate: Predicate
 )
 
-object BuildPredicate {
+private[slips] object BuildPredicate {
+  given Semigroup[BuildPredicate] = Semigroup
+    .instance((a, b) => BuildPredicate(a.facts ++ b.facts, a.arity, a.predicate))
 }

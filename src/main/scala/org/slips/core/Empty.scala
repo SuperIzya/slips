@@ -6,8 +6,9 @@ import org.slips.core
 import scala.compiletime.summonAll
 import scala.deriving.Mirror
 
-trait Empty[T]:
+trait Empty[T] {
   def empty: T
+}
 
 object Empty extends AutoDerivation[Empty] {
   given Empty[Unit] with   { override def empty: Unit = ()   }

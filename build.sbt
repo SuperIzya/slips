@@ -20,7 +20,10 @@ lazy val root = (project in file(".")).settings(
     "-print-lines",
     "-Xcheck-macros",
     "-deprecation",
-    "-source:future"
+    "-source:future",
+    "-language:strictEquality",
+    "-no-indent",
+    "-Ysafe-init"
     //   "-Yshow-suppressed-errors"
   ),
   libraryDependencies ++= Seq(

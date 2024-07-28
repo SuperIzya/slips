@@ -7,14 +7,16 @@ import org.slips.core.rule.Rule
 
 import scala.annotation.showAsInfix
 
-private[slips] case class ParseResult[F[_]](
-                                       rule: Rule[F],
-                                       sources: Set[String],
-                                       allPredicates: AllPredicates,
-                                       predicatesAndSources: SelectedPredicatesAndSources
-) {
-  def predicateRules: PredicateRules[F] = allPredicates.values.map(_.predicate)
-    .map(_ -> Set(rule))
-    .toMap
+private[slips] final case class ParseResult[F[_]](
+  rule: Rule[F],
+  sources: Set[String],
+  allPredicates: AllPredicates,
+  predicatesAndSources: SelectedPredicatesAndSources
+)
+
+private[slips] object ParseResult {
+  extension [F[_]](pr: ParseResult[F]) {
+    def predicateRules: PredicateRules[F] = pr.allPredicates.values.map(_.predicate).map(_ -> Set(pr.rule)).toMap
+  }
 }
 

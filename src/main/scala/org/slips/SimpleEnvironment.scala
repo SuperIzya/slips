@@ -29,10 +29,10 @@ trait SimpleEnvironment extends Environment {
     )(
       f: A => Id[Either[A, B]]
     ): Id[B] =
-      f(a) match
-        case Left(a)  => tailRecM(a)(f)
+      f(a) match {
+        case Left(a) => tailRecM(a)(f)
         case Right(b) => b
-
+      }
   }
 
   def apply[T, E >: SimpleEnvironment <: Environment](

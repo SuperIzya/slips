@@ -5,13 +5,14 @@ import cats.Semigroup
 import cats.data.State
 import cats.kernel.Monoid
 import cats.syntax.all.*
-import org.slips.Env
+import org.slips.{Env, Environment}
 import org.slips.core.build
 import org.slips.core.build.*
 import org.slips.core.conditions.*
 import org.slips.core.fact.*
 import org.slips.core.network
 import org.slips.core.network.*
+
 import scala.annotation.showAsInfix
 import scala.annotation.tailrec
 import scala.annotation.targetName
@@ -19,22 +20,25 @@ import scala.collection.MapView
 import scala.collection.immutable.SortedMap
 import scala.collection.immutable.SortedSet
 
-sealed trait NetworkLayer {
+sealed trait NetworkLayer[F[_]] {
   // Source signature -> Source alpha node -- Data will be passed there
   // TODO: Is this needed?
-  val inlets: Map[String, AlphaNode.Source[?]] = Map.empty
+  val inlets: Map[String, AlphaNode.Source[F, ?]] = Map.empty
   // Fact signature ->
-  val outlets: Map[String, AlphaNode]          = Map.empty
+  val outlets: Map[String, AlphaNode[F]]          = Map.empty
 
   val topChains: Map[Fact.Source[?], Chain]
   private[core] val networkLayer: Set[Chain]
-  def add(other: NetworkLayer): NetworkLayer
+  def add(other: NetworkLayer[F]): NetworkLayer[F]
 }
 
 object NetworkLayer {
 
   /**
-    * Builds alpha network.
+    * Builds the network layer.
+    *
+   * Each layer has an increasing arity of [[Fact.Val]].
+   * For the first layer the following rules apply:
     *
     * Each alpha predicate may test several facts from the
     * same source but possibly from different rules.
@@ -113,11 +117,11 @@ object NetworkLayer {
     *
     * Now that the network of predicates is built facts
     * needs to be collected into single nodes to provide
-    * that further to beta network.
+    * that further to next network layer.
     *
     * First, all chains need to be reversed: P6 alone is
     * good only for fact F1. All the rest of the facts
-    * should be collected from the tail somewhere.
+    * should be collected from the tail.
     *
     * ```
     * -P6,P7 - F1 <---- P3 (F6) <---- P4 (F2, F3, F4, F5)
@@ -127,7 +131,7 @@ object NetworkLayer {
     * -P1 - F1, F4, F5, F6
     * -P5 - F3, F6
     * ```
-    * Fact F1 (as the one with fewer predicates) needs
+    * Fact F1 (as the one with most predicates) needs
     * predicates P6, P7, P2 & P1. At the beginning there are
     * no union nodes, so it make sense to unite P2 & P1,
     * since they both have most facts.
@@ -135,31 +139,24 @@ object NetworkLayer {
     * Node `P1 & P2 (F1, F5, F6)` acts as a beta node but
     * actually is an alpha node. P6, P7 are bound together,
     * they will be represented as chain of nodes, but for
-    * for now for all intends and purposes they are one
+    * now for all intends and purposes they are one
     * node. Another union node `P6,P7 & (P1 & P2)` and fact
-    * F1 is ready for consumption by beta network.
+    * F1 is ready for consumption by next network layer.
     *
     * For fact F2 it's P4 from the chain and P2 (since chain
     * starting with P4 already contains P3, P6, P7). So
     * another union node appears `P4 & P2 (F2, F5)`. etc.
     */
-  def apply(predicates: AllPredicates): Env[NetworkLayer] = env ?=> {
+  def apply(predicates: AllPredicates): EnvNetworkLayer = env ?=> {
     // Range all predicates by arity
     val predicatesByArity = predicates.values.map(p => p.arity -> p).groupBy(_._1)
-    val successors: FactToSuccessor =
-      predicates
-        .values
-        .flatMap(ap => ap.facts.map(_ -> ap.predicate.signature))
-        .foldLeft[FactToSuccessor](Map.empty) { case (succ, f -> _) =>
-          f.predecessors.foldLeft(succ)((s, p) => s + (p -> (s.getOrElse(p, Set.empty) + f)))
-        }
-
+    
     val signedPredicates: PredicateToSignature = predicates
       .values
       .map { ap =>
         ap -> PredicateSignature(
           ap.predicate.signature.compute,
-          ap.facts.flatMap(f => successors.get(f).toSet.flatten + f)
+          ap.facts
         )
       }
       .toMap
@@ -176,16 +173,15 @@ object NetworkLayer {
       .values
       .toList
       .sorted(using Ordering.fromLessThan[BuildPredicate]((a, b) => a.facts.size < b.facts.size))
-      .foldLeft(Intermediate(successors, signedPredicates, predicatesBySign))(_ |+| _)
-      .toAlphaNetwork
+      .foldLeft(Intermediate(signedPredicates, predicatesBySign))(_ |+| _)
+      .toNetworkLayer
   }
 
-  private[NetworkLayer] given Ordering[Set[Fact[?]]] = Ordering.fromLessThan((x, y) => x.size > y.size)
+  private[NetworkLayer] given Ordering[Set[Fact.Source[?]]] = Ordering.fromLessThan((x, y) => x.size > y.size)
   private[NetworkLayer] case class Intermediate(
-    successors: FactToSuccessor,
     signedPredicates: PredicateToSignature,
     predicatesBySign: SignatureToPredicate,
-    private val factsToChains: SortedMap[Set[Fact[?]], Chain.Predicates] = SortedMap.from(Map.empty)
+    private val factsToChains: SortedMap[Set[Fact.Source[?]], Chain.Predicates] = SortedMap.from(Map.empty)
   ) {
 
     /**
@@ -239,7 +235,7 @@ object NetworkLayer {
       FactsFolder(res)
     }
 
-    def toAlphaNetwork: Env[NetworkLayer] = {
+    val toNetworkLayer: EnvNetworkLayer = env ?=> {
       val folded: Map[Fact.Source[?], Chain] = foldFacts
       val chains: Set[Chain]                = folded.values.toSet
 
@@ -251,22 +247,23 @@ object NetworkLayer {
 
   }
 
-  private class Impl(
+  private class Impl[F[_]](
     val topChains: Map[Fact.Source[?], Chain],
     private[core] val networkLayer: Set[Chain]
-  ) extends NetworkLayer {
-    override def add(other: NetworkLayer): NetworkLayer = other match
-      case impl: Impl =>
+  ) extends NetworkLayer[F] {
+    override def add(other: NetworkLayer[F]): NetworkLayer[F] = other match {
+      case impl: Impl[F] =>
         new Impl(
           topChains = topChains ++ impl.topChains,
           networkLayer = networkLayer ++ impl.networkLayer
         )
-      case Empty                  => this
+      case _: Empty[F] => this
+    }
   }
 
-  case object Empty extends NetworkLayer {
+  case class Empty[F[_]]() extends NetworkLayer[F] {
     override private[core] val networkLayer             = Set.empty[Chain]
     override val topChains: Map[Fact.Source[?], Chain]   = Map.empty
-    override def add(other: NetworkLayer): NetworkLayer = other
+    override def add(other: NetworkLayer[F]): NetworkLayer[F] = other
   }
 }

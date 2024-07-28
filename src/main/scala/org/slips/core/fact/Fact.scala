@@ -27,21 +27,23 @@ object Fact {
   type TInverseMap = [x <: NonEmptyTuple] =>> Tuple.InverseMap[x, Fact]
   type TIsMapped   = [x <: NonEmptyTuple] =>> Tuple.IsMappedBy[Fact][x]
 
-  type Val[X] = X match
+  type Val[X] = X match {
     case a *: EmptyTuple.type => Fact[a] *: EmptyTuple
-    case a *: t               => Fact[a] *: Val[t]
-    case _                    => Fact[X]
+    case a *: t => Fact[a] *: Val[t]
+    case _ => Fact[X]
+  }
 
-  type InverseVal[X] = X match
+  type InverseVal[X] = X match {
     case Fact[h] *: EmptyTuple.type => h *: EmptyTuple
-    case Fact[h] *: t               => h *: InverseVal[t]
-    case Fact[a]                    => a
+    case Fact[h] *: t => h *: InverseVal[t]
+    case Fact[a] => a
+  }
 
   val unit: Fact[Unit] = Literal.Unit
 
   sealed trait CanBeLiteral[T]
 
-  sealed class Literal[I : FactOps : ScalarFact] private[slips] (val sample: I)
+  sealed class Literal[I : FactOps : ScalarFact] private[slips] (override val sample: I)
       extends Fact.Source[I](Signature.Manual(sample.toString), sample, None) {
     type Src = I
   }

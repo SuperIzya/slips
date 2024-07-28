@@ -5,24 +5,24 @@ import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
-import org.slips.{Environment, Environment as SEnv}
+import cats.implicits.*
+import org.slips.{EnvRule, Environment}
 
 import scala.annotation.targetName
 
 object GeneralSyntaxTest {
-  lazy val rules             = (env: SEnv) ?=> Set(markWord, markText)
+  lazy val rules             = (env: Environment) ?=> Set(markWord, markText)
   val confidenceDrop: Double = 0.99
 
   private val shouldMarkText: Condition[(Category, Text)] = for {
     w <- all[Word]
     t <- all[Text] if t.test(_.categoryM.isEmpty)
     ww = w.value(_.word)
-      .handleErrorCause(c => Response.internalServerError(c.prettyPrint))
     _ <- w.matches(Word(_, Category(Theme.War, _)))
     _ <- (t.value(_.word1), ww).testMany(_ == _) || (t.value(_.word2), ww).testMany(_ == _)
   } yield (w.value(_.category), t)
 
-  private val markText = (env: Environment) ?=>
+  private val markText: EnvRule =
     shouldMarkText.makeRule("mark text") { case (category, text) =>
       for {
         txt <- text.value
@@ -35,8 +35,8 @@ object GeneralSyntaxTest {
   private val shouldMarkWord: Condition[(String, Option[Category], Option[Category])] = for {
     t1 <- all[Text] if t1.test(_.categoryM.isDefined)
     t2 <- all[Text] if t2.test(_.categoryM.isDefined)
-    _  <- (t1.value(_.word1), t2.value(_.word1)).testMany(_ == _)
-    _  <- (t1.value(_.categoryM.map(_.theme)), t2.value(_.categoryM.map(_.theme))).testMany(_ == _)
+    _  <- t1.value(_.word1) == t2.value(_.word1)
+    _  <- t1.value(_.categoryM.map(_.theme)) == t2.value(_.categoryM.map(_.theme))
 
     w <- notExists[Word] if (w.value(_.word), t1.value(_.word1)).testMany(_ == _)
   } yield (t1.value(_.word1), t1.value(_.categoryM), t2.value(_.categoryM))
@@ -63,8 +63,9 @@ object GeneralSyntaxTest {
 
   case class Text(word1: String, word2: String, categoryM: Option[Category])
 
-  enum Theme:
+  enum Theme {
     case War, Peace
+  }
 
   object Theme {
     given empty: Empty[Theme] with {

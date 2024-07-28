@@ -5,7 +5,6 @@ import org.slips.core.WithSignature
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.Val
 import org.slips.core.macros.Macros
-import org.slips.syntax.*
 
 sealed trait Condition[T](using val T: FactOps[T])
 
@@ -14,7 +13,7 @@ object Condition {
   inline def all[T : FactOps : ScalarFact]: All[T] =
     All[T](Signature.Manual(s"All[${ Macros.signType[T] }]"))
 
-  sealed trait Source[T](using val ev: ScalarFact[T], val T: FactOps[T]) extends Condition[T] with WithSignature
+  sealed trait Source[T: FactOps](using val ev: ScalarFact[T]) extends Condition[T] with WithSignature
 
   final case class All[T : FactOps : ScalarFact] private[Condition] (override val signature: Signature)
       extends Source[T]

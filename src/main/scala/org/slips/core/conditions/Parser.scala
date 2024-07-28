@@ -1,7 +1,7 @@
 package org.slips.core.conditions
 
 import org.slips.Environment
-import org.slips.core.build.BuildStep
+import org.slips.core.build.EnvBuildStep
 import org.slips.core.conditions.Predicate.{And, Not, Or}
 import org.slips.core.fact.Fact
 

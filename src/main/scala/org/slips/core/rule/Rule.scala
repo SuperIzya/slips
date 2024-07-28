@@ -20,7 +20,7 @@ sealed trait Rule[F[_]](using F: Monad[F]) { self =>
   type Facts     = Fact.Val[T]
 
   val T: FactOps[T]
-  val selfAction: self.Val[T] => self.Action[Unit]
+  def selfAction: self.Val[T] => self.Action[Unit]
 
   val condition: Condition[T]
   val name: String
@@ -72,7 +72,7 @@ object Rule {
     override val condition: Condition[V],
     actions: (r: Rule[F]) ?=> r.Method[V]
   )(using val T: FactOps[V]) extends Rule[F] { self =>
-    val selfAction: self.Method[T] = actions(using self)
+    def selfAction: self.Method[T] = actions(using self)
     type T = V
   }
 
