@@ -12,7 +12,7 @@ jobs:
     name: Launch Scala Steward
     steps:
       - name: Launch Scala Steward
-        uses: scala-steward-org/scala-steward-action@v2.66.0
+        uses: scala-steward-org/scala-steward-action@v2.68.0
         with:
           github-app-key: ${{ secrets.STEWARD_APP_PRIVATE_KEY }}
           github-app-id: ${{ secrets.STEWARD_APP_ID }}
