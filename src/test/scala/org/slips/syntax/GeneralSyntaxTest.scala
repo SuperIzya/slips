@@ -1,10 +1,12 @@
 package org.slips.syntax
 
+import cats.{Eq, Order}
 import org.slips.core.Empty
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
+import org.slips.data.*
 import cats.implicits.*
 import org.slips.{EnvRule, Environment}
 
@@ -18,8 +20,8 @@ object GeneralSyntaxTest {
     w <- all[Word]
     t <- all[Text] if t.test(_.categoryM.isEmpty)
     ww = w.value(_.word)
-    _ <- w.matches(Word(_, Category(Theme.War, _)))
-    _ <- (t.value(_.word1), ww).testMany(_ == _) || (t.value(_.word2), ww).testMany(_ == _)
+    _ <- w.matches{ case Word(_, Category(Theme.War, _)) => true }
+    _ <- t.value(_.word1) === ww || t.value(_.word2) === ww
   } yield (w.value(_.category), t)
 
   private val markText: EnvRule =
@@ -35,10 +37,10 @@ object GeneralSyntaxTest {
   private val shouldMarkWord: Condition[(String, Option[Category], Option[Category])] = for {
     t1 <- all[Text] if t1.test(_.categoryM.isDefined)
     t2 <- all[Text] if t2.test(_.categoryM.isDefined)
-    _  <- t1.value(_.word1) == t2.value(_.word1)
-    _  <- t1.value(_.categoryM.map(_.theme)) == t2.value(_.categoryM.map(_.theme))
+    _  <- t1.value(_.word1) === t2.value(_.word1)
+    _  <- t1.value(_.categoryM.map(_.theme)) =!= t2.value(_.categoryM.map(_.theme))
 
-    w <- notExists[Word] if (w.value(_.word), t1.value(_.word1)).testMany(_ == _)
+    w <- notExists[Word] if w.value(_.word) === t1.value(_.word1)
   } yield (t1.value(_.word1), t1.value(_.categoryM), t2.value(_.categoryM))
 
   private val markWord = (env: Environment) ?=>
@@ -71,5 +73,7 @@ object GeneralSyntaxTest {
     given empty: Empty[Theme] with {
       override def empty: Theme = Theme.War
     }
+    given order: Order[Theme] = Order.from((x, y) => x.ordinal.compareTo(y.ordinal))
+    given CanEqual[Theme, Theme] = CanEqual.derived
   }
 }

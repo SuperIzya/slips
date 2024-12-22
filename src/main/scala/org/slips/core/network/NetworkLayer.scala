@@ -150,7 +150,7 @@ object NetworkLayer {
   def apply(predicates: AllPredicates): EnvNetworkLayer = env ?=> {
     // Range all predicates by arity
     val predicatesByArity = predicates.values.map(p => p.arity -> p).groupBy(_._1)
-    
+
     val signedPredicates: PredicateToSignature = predicates
       .values
       .map { ap =>
@@ -244,7 +244,6 @@ object NetworkLayer {
         networkLayer = chains
       )
     }
-
   }
 
   private class Impl[F[_]](

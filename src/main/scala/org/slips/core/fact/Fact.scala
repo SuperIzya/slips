@@ -28,8 +28,8 @@ object Fact {
   type TIsMapped   = [x <: NonEmptyTuple] =>> Tuple.IsMappedBy[Fact][x]
 
   type Val[X] = X match {
-    case a *: EmptyTuple.type => Fact[a] *: EmptyTuple
-    case a *: t => Fact[a] *: Val[t]
+    case a *: EmptyTuple => Fact[a] *: EmptyTuple
+    case a *: t => Fact[a] *: TMap[t]
     case _ => Fact[X]
   }
 

@@ -6,11 +6,13 @@ import org.slips.core.fact.Fact
 import org.slips.core.fact.Fact.Source
 
 package object network {
+  private[network] type FactProgress = FactProgress.InProgress | FactProgress.Done
+
   private[network] type FoldState[T] = State[FactsFolder, T]
 
 
   private[network] type FactsScore = Map[Source[?], Map[Int, Long]]
-  
+
 
 
   private[network] type PredicateToSignature = Map[BuildPredicate, PredicateSignature]

@@ -18,20 +18,20 @@ private[network] case class FactsFolder(
     * Adds or replaces [[FactProgress]] in
     * [[FactsFolder.facts]]
     */
-  def setFactProgress(fp: FactProgress): FactsFolder = copy(facts = facts + (fp.fact -> fp))
+  private inline def setFactProgress(inline fp: FactProgress): FactsFolder = copy(facts = facts + (fp.fact -> fp))
 
   /**
     * Sets [[FactProgress]] for [[head]] to either
     * [[FactProgress.InProgress]] if [[left]] is not empty,
     * [[FactProgress.Done]] otherwise.
     */
-  def setFactProgress(tp: ToProcess, left: Set[Chain], topChain: Chain): FactsFolder = setFactProgress {
+  private def setFactProgress(tp: ToProcess, left: Set[Chain], topChain: Chain): FactsFolder = setFactProgress {
     if (left.isEmpty) FactProgress.Done(tp.fact, tp.chains, topChain)
     else
       FactProgress.InProgress(tp.fact, tp.chains, tp.chains -- left, left, topChain)
   }
 
-  def addUnion(chains: Set[Chain], left: Chain, right: Chain): (FactsFolder, Chain.Combine) = {
+  private def addUnion(chains: Set[Chain], left: Chain, right: Chain): (FactsFolder, Chain.Combine) = {
     unionNodes
       .get(chains)
       .map(this -> _)
@@ -57,6 +57,8 @@ private[network] object FactsFolder {
         case InProgress(_, totalChains, _, _, topChain) =>
           FoldState(_.addUnion(totalChains, topChain, chain)).map { Done(fact, totalChains, _) }
         case d: Done if d.chains.contains(chain)        => FoldState.pure(d)
+        // TODO: fix it
+        case _ => throw new RuntimeException("Fix me!!")
       }
       .getOrElse(FoldState.pure {
         Done(fact, Set(chain), chain)
@@ -80,16 +82,18 @@ private[network] object FactsFolder {
   private def addImmediate2(fact: Fact.Source[?], chains: Set[Chain]): FoldState[Unit] = for {
     union    <- FoldState(_.addUnion(chains, chains.head, chains.last))
     ff       <- FoldState.get
-    progress <- ff.facts.get(fact) match {
-      case Some(InProgress(_, totalChains, _, _, topNode)) =>
+
+    progress <- ff.facts.get(fact).map {
+      case InProgress(_, totalChains, _, _, topNode) =>
         FoldState(_.addUnion(totalChains, union, topNode)).map {
           Done(fact, chains, _)
         }
 
-      case Some(d: Done) if chains.subsetOf(d.chains) => FoldState.pure(d)
+      case d: Done if chains.subsetOf(d.chains) => FoldState.pure(d)
+      // TODO: fix it
+      case _ => throw new RuntimeException("Fix me!!")
+    }.getOrElse(FoldState.pure(Done(fact, chains, union)))
 
-      case None => FoldState.pure(Done(fact, chains, union))
-    }
     _        <- FoldState.modify(_.setFactProgress(progress))
   } yield ()
   given Ordering[Set[Chain]] = Ordering.fromLessThan((x, y) => x.size > y.size)
@@ -202,17 +206,21 @@ private[network] object FactsFolder {
   private def onSubset(progressM: Option[FactProgress], head: ToProcess)(
     subset: (Set[Chain], Chain.Combine)
   ): FoldState[Set[Chain]] = {
-    progressM match {
-      case None                                                   =>
-        val left = head.chains -- subset._1
-        FoldState.modify { _.setFactProgress(head, left, subset._2) }.map(_ => left)
-      case Some(InProgress(fact, chains, united, left, topChain)) =>
+    def empty: FoldState[Set[Chain]] = {
+      val left = head.chains -- subset._1
+      FoldState.modify {
+        _.setFactProgress(head, left, subset._2)
+      }.map(_ => left)
+    }
+    progressM.fold(empty) {
+      case InProgress(_, _, united, left, topChain) =>
         for {
           combine <- FoldState(_.addUnion(united ++ subset._1, topChain, subset._2))
           newLeft = left -- subset._1
           _ <- FoldState.modify(_.setFactProgress(head, newLeft, combine))
         } yield newLeft
-
+      // TODO: Fix it
+      case _: Done => throw RuntimeException("Fix me!!!")
     }
   }
 

@@ -33,8 +33,8 @@ object BuilderTest extends ZIOSpecDefault {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry]
-    _     <- berry.value(_.origin) != literal(Origin.Field)
-    _     <- b.value(_.origin) != Origin.GreenHouse && b.test(_.name.nonEmpty)
+    _     <- berry.value(_.origin) =!= literal(Origin.Field)
+    _     <- b.value(_.origin) =!= Origin.GreenHouse && b.test(_.name.nonEmpty)
     _     <- h.test(_.name.nonEmpty)
     f1    <- all[Fruit]
     _     <- f1.test(_.sugar != 1.0)
@@ -44,7 +44,7 @@ object BuilderTest extends ZIOSpecDefault {
     _     <- (f1, v).testMany(testFruitAndVegie)
     hname = h.value(_.name)
     fname = f1.value(_.name)
-    _ <- (hname, fname).testMany(_ != _)
+    _ <- hname =!= fname
     _5 = literal(5)
     _ <- (v, f1, f2).testMany(vegie2Fruits)
   } yield (f1, f2, v, _5)

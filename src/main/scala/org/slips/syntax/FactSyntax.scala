@@ -1,6 +1,6 @@
 package org.slips.syntax
 
-import cats.Eq
+import cats.{Eq, Order}
 import org.slips.Signature
 import org.slips.core.conditions.*
 import org.slips.core.fact.*
@@ -21,7 +21,7 @@ trait FactSyntax {
     def signed(signature: Signature)(using Q: FactOps[Q]): Fact.Map[T, Q] =
       fact.copy(mapSign = signature)
   }
-  
+
   extension [T: FactOps : ScalarFact](fact: Fact[T]) {
     inline def value[I: FactOps : ScalarFact](inline f: T => I): Fact[I] =
       Fact.Map(fact, f, Signature.auto(f).unite(fact)((s, f) => s"$f => $s"))
@@ -33,14 +33,19 @@ trait FactSyntax {
         rep = summonInline[ScalarFact[T]].flip(fact)
       )
 
-    inline def matches[Q](inline f: T => Option[Q]): Predicate = ???
+    inline def matches[Q](inline f: PartialFunction[T, Q]): Predicate =
+      Predicate.Test[T](
+        signature = Signature.auto(f).unite(fact)((s, f) => s"$f matches (1)$s"),
+        test = f.isDefinedAt,
+        rep = summonInline[ScalarFact[T]].flip(fact)
+      )
 
-    inline def !=(other: Fact[T])(using eq: Eq[T]): Predicate = testTwo(fact, other)(!eq.eqv(_, _))
-    inline def ==(other: Fact[T])(using eq: Eq[T]): Predicate = testTwo(fact, other)(eq.eqv)
-    inline def <(other: Fact[T])(using le: cats.Order[T]): Predicate = testTwo(fact, other)(le.lt)
-    inline def >(other: Fact[T])(using le: cats.Order[T]): Predicate = testTwo(fact, other)(le.gt)
-    inline def <=(other: Fact[T])(using le: cats.Order[T]): Predicate = testTwo(fact, other)(le.lteqv)
-    inline def >=(other: Fact[T])(using le: cats.Order[T]): Predicate = testTwo(fact, other)(le.gteqv)
+    inline def =!=(other: Fact[T])(using eq: Eq[T]): Predicate = testTwo(fact, other)(!eq.eqv(_, _))
+    inline def ===(other: Fact[T])(using eq: Eq[T]): Predicate = testTwo(fact, other)(eq.eqv)
+    inline def <(other: Fact[T])(using ord: Order[T]): Predicate = testTwo(fact, other)(ord.lt)
+    inline def >(other: Fact[T])(using ord: Order[T]): Predicate = testTwo(fact, other)(ord.gt)
+    inline def <=(other: Fact[T])(using ord: Order[T]): Predicate = testTwo(fact, other)(ord.lteqv)
+    inline def >=(other: Fact[T])(using ord: Order[T]): Predicate = testTwo(fact, other)(ord.gteqv)
 
   }
 
@@ -69,6 +74,20 @@ trait FactSyntax {
       Predicate.Test[Q](
         signature = Q.signature.unite(Signature.auto(f))(_ + s" ? ($arity)" + _),
         test = f,
+        rep = ev3(fact)
+      )
+    }
+
+    inline def matchesMany[Q <: NonEmptyTuple, P](inline f: PartialFunction[Q, P])(using
+                                                                                   Q: TupleOps[Q],
+                                                                                   ev: TupleFact[Q],
+                                                                                   ev2: Q =:= Fact.InverseVal[T],
+                                                                                   ev3: T =:= Fact.Val[Q]
+    ): Predicate = {
+      val arity = ev3(fact).sources.size
+      Predicate.Test[Q](
+        signature = Q.signature.unite(Signature.auto(f))(_ + s" matches ($arity)" + _),
+        test = f.isDefinedAt,
         rep = ev3(fact)
       )
     }

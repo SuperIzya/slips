@@ -4,38 +4,45 @@ import org.slips.core.fact.Fact
 
 /**
   * Describes the progress of the facts collection while
-  * building AlphaNetwork
+  * building ReteNetwork
   */
-sealed trait FactProgress {
+private[network] object FactProgress {
 
-  /** Source fact being tested */
-  val fact: Fact.Source[?]
+  inline def fold[T](inline fp: FactProgress)
+                    (inProgress: InProgress => T)
+                    (done: Done => T): T = fp match {
+    case ip: InProgress => inProgress(ip)
+    case d: Done        => done(d)
+  }
 
-  /** All chains of predicates testing this source fact */
-  val chains: Set[Chain]
+  extension (inline fp: FactProgress) {
+    inline def fact: Fact.Source[?] = fold(fp)(_.fact)(_.fact)
 
-  /** Top chain collecting all the [[chains]] */
-  val topChain: Chain
-}
-
-object FactProgress {
+    inline def topChain: Chain = fold(fp)(_.topChain)(_.topChain)
+    
+    inline def chains: Set[Chain] = fold(fp)(_.chains)(_.chains)
+  }
 
   /** Fact not fully collected */
-  case class InProgress(
+  final case class InProgress(
     fact: Fact.Source[?],
     chains: Set[Chain],
+
     /** Already united chains */
     united: Set[Chain],
+
     /** Chains left to unite */
     left: Set[Chain],
+
     /** Top chain uniting all chains from [[united]] */
     topChain: Chain
-  ) extends FactProgress
+  ) {
+    def done: Done = Done(fact, chains, topChain)
+  }
 
-  case class Done(
+  final case class Done(
     fact: Fact.Source[?],
     chains: Set[Chain],
     topChain: Chain
-  ) extends FactProgress
-
+  )
 }
