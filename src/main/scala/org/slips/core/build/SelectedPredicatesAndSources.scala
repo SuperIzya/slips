@@ -13,6 +13,13 @@ private[slips] case class SelectedPredicatesAndSources(
 
   import SelectedPredicatesAndSources.*
 
+  def sourceSignatures: Set[Signature] = facts
+    .collect {
+      case _: Fact.Literal[_] => Set.empty
+      case s: Fact.Source[_]  => Set(s.signature)
+    }
+    .flatten
+
   def withPredicate(p: Predicate): SelectedPredicatesAndSources = {
     copy(
       predicates = predicates + p,

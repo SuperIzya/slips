@@ -33,7 +33,7 @@ object Signature {
   inline def auto(inline toSign: => Any): Signature =
     Signature.Automatic(content = Macros.sign(toSign), hash = toSign.hashCode().toHexString)
 
-  def hash(toSign: => Any): Signature = Signature.Manual(toSign.hashCode().toHexString)
+  def hash(toSign: => Any): Signature               = Signature.Manual(toSign.hashCode().toHexString)
   inline def sign(inline toSign: => Any): Signature = Signature.Manual(Macros.sign(toSign))
 
   extension (s: Signature) {

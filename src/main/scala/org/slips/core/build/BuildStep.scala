@@ -1,10 +1,12 @@
 package org.slips.core.build
 
 import cats.data.State
-import org.slips.{Env, Environment}
+import org.slips.Env
+import org.slips.Environment
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
-import org.slips.core.network.{AlphaNode, Node}
+import org.slips.core.network.AlphaNode
+import org.slips.core.network.Node
 
 private[slips] object BuildStep {
 
@@ -17,7 +19,8 @@ private[slips] object BuildStep {
 
   def pureF[F[_], G[_[_]]](pair: (BuildContext[F], G[F])): BuildStepF[F][G] = State.set(pair._1).map(_ => pair._2)
 
-  def F[G[_[_]]](f: (env: Environment) ?=> BuildContext[env.Effect] => (BuildContext[env.Effect], G[env.Effect])): EnvBuildStepF[G] =
+  def F[G[_[_]]](
+    f: (env: Environment) ?=> BuildContext[env.Effect] => (BuildContext[env.Effect], G[env.Effect])): EnvBuildStepF[G] =
     env ?=> State(f)
 
   def update(f: (env: Environment) ?=> BuildContext[env.Effect] => BuildContext[env.Effect]): EnvBuildStep[Unit] =
@@ -30,7 +33,8 @@ private[slips] object BuildStep {
 
   def set(f: EnvBuildContext): EnvBuildStep[Unit] = State.set(f)
 
-  def addParsingResult(using env: Environment)(p: ParseResult[env.Effect]): BuildStep[env.Effect][ParseResult[env.Effect]] =
+  def addParsingResult(using env: Environment)(
+    p: ParseResult[env.Effect]): BuildStep[env.Effect][ParseResult[env.Effect]] =
     State(_.addParsingResult(p) -> p)
 
   def pure[F[_], T](t: T): BuildStep[F][T] = State.pure(t)

@@ -55,7 +55,7 @@ object Predicate {
     rep: Fact.Val[T]
   )(using val T: FactOps[T]) extends Predicate { self =>
     val facts: Set[Fact.Source[?]] = rep.sources
-    def not: Predicate               = copy(
+    def not: Predicate             = copy(
       signature = Signature.DerivedUnary(signature, "!" + _),
       test = (t: T) => !self.test(t)
     )
@@ -75,34 +75,34 @@ object Predicate {
     right: Predicate
   ) extends Predicate {
     val facts: Set[Fact.Source[?]] = left.facts ++ right.facts
-    val signature: Signature = Signature.DerivedBinary(left.signature, right.signature, (l, r) => s"$l || $r")
+    val signature: Signature       = Signature.DerivedBinary(left.signature, right.signature, (l, r) => s"$l || $r")
   }
 
   final case class Not private (p: Predicate) extends Predicate {
-    val facts: Set[Fact.Source[?]]  = p.facts
-    val signature: Signature = Signature.DerivedUnary(p.signature, p => s"!$p")
+    val facts: Set[Fact.Source[?]] = p.facts
+    val signature: Signature       = Signature.DerivedUnary(p.signature, p => s"!$p")
   }
 
   object Not {
     def apply(p: Predicate)(using DummyImplicit): Predicate =
       p match {
-        case Not(pp) => pp
-        case e: Exist[?] => e.not
+        case Not(pp)        => pp
+        case e: Exist[?]    => e.not
         case n: NotExist[?] => n.not
-        case _ => new Not(p)
+        case _              => new Not(p)
       }
   }
 
   final case class NotExist[T : FactOps : ScalarFact](f: Fact[T]) extends Predicate {
     val facts: Set[Fact.Source[?]] = Set(f.source)
-    val signature: Signature     = f.signature.andThen(s => s"NotExist[$s]")
+    val signature: Signature       = f.signature.andThen(s => s"NotExist[$s]")
 
     private[slips] def not: Predicate = Exist(f)
   }
 
   final case class Exist[T : FactOps : ScalarFact](f: Fact[T]) extends Predicate {
     val facts: Set[Fact.Source[?]] = Set(f.source)
-    val signature: Signature     = f.signature.andThen(s => s"Exist[$s]")
+    val signature: Signature       = f.signature.andThen(s => s"Exist[$s]")
 
     private[slips] def not: Predicate = NotExist(f)
   }

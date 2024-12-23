@@ -47,6 +47,42 @@ private[network] object FactsFolder {
 
   import FactProgress.*
 
+  given Ordering[Set[Chain]] = Ordering.fromLessThan((x, y) => x.size > y.size)
+
+  // TODO: Make sure the order is from the smallest unprocessed to the largest
+  def fold(toProcess: SortedSet[ToProcess]): FoldState[Unit] = {
+    if (toProcess.isEmpty) FoldState.pure(())
+    else {
+      val head = toProcess.head
+      if (head.chains.size == 1) addImmediate1(head.fact, head.chains.head).flatMap(_ => fold(toProcess.tail))
+      else if (head.chains.size == 2) addImmediate2(head.fact, head.chains).flatMap(_ => fold(toProcess.tail))
+      else
+        for {
+          fs <- FoldState.get
+          _  <- findSubset(fs.unionNodes, head.chains)
+            .map {
+              onSubset(fs.facts.get(head.fact), head)
+            }
+            .map(_.flatMap { left =>
+              if (left.nonEmpty) fold(toProcess.tail + ToProcess(head.fact, left))
+              else fold(toProcess.tail)
+            })
+            .getOrElse {
+              val (left, right) = suggestPair(toProcess)
+              FoldState(_.addUnion(Set(left, right), left, right)).flatMap(_ => fold(toProcess))
+            }
+        } yield ()
+    }
+  }
+
+  def apply(origin: Map[Fact.Source[?], Set[Chain]]): Map[Fact.Source[?], Chain] = {
+
+    fold(SortedSet.from(origin.view.iterator.map { case (fact, chains) => ToProcess(fact, chains) }))
+      .runS(new FactsFolder(origin = origin))
+      .map(_.facts.view.mapValues(_.topChain).toMap)
+      .value
+  }
+
   /** Adds  last chain for a fact. */
   private def addImmediate1(fact: Fact.Source[?], chain: Chain): FoldState[Unit] = for {
     ff   <- FoldState.get
@@ -58,7 +94,7 @@ private[network] object FactsFolder {
           FoldState(_.addUnion(totalChains, topChain, chain)).map { Done(fact, totalChains, _) }
         case d: Done if d.chains.contains(chain)        => FoldState.pure(d)
         // TODO: fix it
-        case _ => throw new RuntimeException("Fix me!!")
+        case _                                          => throw new RuntimeException("Fix me!!")
       }
       .getOrElse(FoldState.pure {
         Done(fact, Set(chain), chain)
@@ -80,23 +116,26 @@ private[network] object FactsFolder {
     *        from previous step.
     */
   private def addImmediate2(fact: Fact.Source[?], chains: Set[Chain]): FoldState[Unit] = for {
-    union    <- FoldState(_.addUnion(chains, chains.head, chains.last))
-    ff       <- FoldState.get
+    union <- FoldState(_.addUnion(chains, chains.head, chains.last))
+    ff    <- FoldState.get
 
-    progress <- ff.facts.get(fact).map {
-      case InProgress(_, totalChains, _, _, topNode) =>
-        FoldState(_.addUnion(totalChains, union, topNode)).map {
-          Done(fact, chains, _)
-        }
+    progress <- ff
+      .facts
+      .get(fact)
+      .map {
+        case InProgress(_, totalChains, _, _, topNode) =>
+          FoldState(_.addUnion(totalChains, union, topNode)).map {
+            Done(fact, chains, _)
+          }
 
-      case d: Done if chains.subsetOf(d.chains) => FoldState.pure(d)
-      // TODO: fix it
-      case _ => throw new RuntimeException("Fix me!!")
-    }.getOrElse(FoldState.pure(Done(fact, chains, union)))
+        case d: Done if chains.subsetOf(d.chains) => FoldState.pure(d)
+        // TODO: fix it
+        case _                                    => throw new RuntimeException("Fix me!!")
+      }
+      .getOrElse(FoldState.pure(Done(fact, chains, union)))
 
-    _        <- FoldState.modify(_.setFactProgress(progress))
+    _ <- FoldState.modify(_.setFactProgress(progress))
   } yield ()
-  given Ordering[Set[Chain]] = Ordering.fromLessThan((x, y) => x.size > y.size)
 
   /**
     * Finds first element of `nodes` that key is subset of
@@ -124,60 +163,6 @@ private[network] object FactsFolder {
     }
   }
 
-  private case class Solution(left: Chain, right: Chain, intersection: Set[ToProcess])
-
-  private object Solution {
-    def apply(example: (Chain, Set[ToProcess]), toCompare: (Chain, Set[ToProcess])): Option[Solution] = {
-      val intersection = example._2.intersect(toCompare._2)
-      Option.when(intersection.nonEmpty)(Solution(example._1, toCompare._1, intersection))
-    }
-
-    @tailrec
-    private def findLocalSolution(
-      matchAgainst: (Chain, Set[ToProcess]),
-      toCompare: SortedSet[(Chain, Set[ToProcess])],
-      solutionM: Option[Solution] = None
-    ): Option[Solution] = {
-      if (toCompare.isEmpty) solutionM
-      else {
-        val head = toCompare.head
-        if (solutionM.isDefined) {
-          val solution = solutionM.get
-          if (solution.intersection.size >= head._2.size) Some(solution)
-          else {
-            val next = Solution(matchAgainst, head)
-              .filter {
-                _.intersection.size > solution.intersection.size
-              }
-              .getOrElse(solution)
-
-            findLocalSolution(matchAgainst, toCompare.tail, Some(next))
-          }
-        } else {
-          findLocalSolution(matchAgainst, toCompare.tail, Solution(matchAgainst, head))
-        }
-      }
-    }
-
-    @tailrec
-    def selectPair(
-      toCompare: SortedSet[(Chain, Set[ToProcess])],
-      solutionM: Option[Solution] = None
-    ): Option[Solution] = {
-      if (toCompare.isEmpty) solutionM
-      else if (toCompare.size == 1) solutionM
-      else {
-        val head         = toCompare.head
-        val nextSolution = findLocalSolution(head, toCompare.tail, solutionM)
-        val res          = (nextSolution, toCompare.tail.headOption)
-          .mapN { (solution, next) => Option.when(solution.intersection.size >= next._2.size)(solution) }
-          .flatten
-
-        if (res.isDefined) res
-        else selectPair(toCompare.tail, nextSolution)
-      }
-    }
-  }
   private def suggestPair(toProcess: SortedSet[ToProcess]): (Chain, Chain) = {
     if (toProcess.size == 1) {
       // 3 or more unconnected chains for the last one
@@ -208,9 +193,11 @@ private[network] object FactsFolder {
   ): FoldState[Set[Chain]] = {
     def empty: FoldState[Set[Chain]] = {
       val left = head.chains -- subset._1
-      FoldState.modify {
-        _.setFactProgress(head, left, subset._2)
-      }.map(_ => left)
+      FoldState
+        .modify {
+          _.setFactProgress(head, left, subset._2)
+        }
+        .map(_ => left)
     }
     progressM.fold(empty) {
       case InProgress(_, _, united, left, topChain) =>
@@ -220,40 +207,62 @@ private[network] object FactsFolder {
           _ <- FoldState.modify(_.setFactProgress(head, newLeft, combine))
         } yield newLeft
       // TODO: Fix it
-      case _: Done => throw RuntimeException("Fix me!!!")
+      case _: Done                                  => throw RuntimeException("Fix me!!!")
     }
   }
 
-  // TODO: Make sure the order is from the smallest unprocessed to the largest
-  def fold(toProcess: SortedSet[ToProcess]): FoldState[Unit]                   = {
-    if (toProcess.isEmpty) FoldState.pure(())
-    else {
-      val head = toProcess.head
-      if (head.chains.size == 1) addImmediate1(head.fact, head.chains.head).flatMap(_ => fold(toProcess.tail))
-      else if (head.chains.size == 2) addImmediate2(head.fact, head.chains).flatMap(_ => fold(toProcess.tail))
-      else
-        for {
-          fs <- FoldState.get
-          _  <- findSubset(fs.unionNodes, head.chains)
-            .map {
-              onSubset(fs.facts.get(head.fact), head)
-            }
-            .map(_.flatMap { left =>
-              if (left.nonEmpty) fold(toProcess.tail + ToProcess(head.fact, left))
-              else fold(toProcess.tail)
-            })
-            .getOrElse {
-              val (left, right) = suggestPair(toProcess)
-              FoldState(_.addUnion(Set(left, right), left, right)).flatMap(_ => fold(toProcess))
-            }
-        } yield ()
-    }
-  }
-  def apply(origin: Map[Fact.Source[?], Set[Chain]]): Map[Fact.Source[?], Chain] = {
+  private case class Solution(left: Chain, right: Chain, intersection: Set[ToProcess])
 
-    fold(SortedSet.from(origin.view.iterator.map { case (fact, chains) => ToProcess(fact, chains) }))
-      .runS(new FactsFolder(origin = origin))
-      .map(_.facts.view.mapValues(_.topChain).toMap)
-      .value
+  private object Solution {
+    def apply(example: (Chain, Set[ToProcess]), toCompare: (Chain, Set[ToProcess])): Option[Solution] = {
+      val intersection = example._2.intersect(toCompare._2)
+      Option.when(intersection.nonEmpty)(Solution(example._1, toCompare._1, intersection))
+    }
+
+    @tailrec
+    def selectPair(
+      toCompare: SortedSet[(Chain, Set[ToProcess])],
+      solutionM: Option[Solution] = None
+    ): Option[Solution] = {
+      if (toCompare.isEmpty) solutionM
+      else if (toCompare.size == 1) solutionM
+      else {
+        val head         = toCompare.head
+        val nextSolution = findLocalSolution(head, toCompare.tail, solutionM)
+        val res          = (nextSolution, toCompare.tail.headOption)
+          .mapN { (solution, next) => Option.when(solution.intersection.size >= next._2.size)(solution) }
+          .flatten
+
+        if (res.isDefined) res
+        else selectPair(toCompare.tail, nextSolution)
+      }
+    }
+
+    @tailrec
+    private def findLocalSolution(
+      matchAgainst: (Chain, Set[ToProcess]),
+      toCompare: SortedSet[(Chain, Set[ToProcess])],
+      solutionM: Option[Solution] = None
+    ): Option[Solution] = {
+      if (toCompare.isEmpty) solutionM
+      else {
+        val head = toCompare.head
+        if (solutionM.isDefined) {
+          val solution = solutionM.get
+          if (solution.intersection.size >= head._2.size) Some(solution)
+          else {
+            val next = Solution(matchAgainst, head)
+              .filter {
+                _.intersection.size > solution.intersection.size
+              }
+              .getOrElse(solution)
+
+            findLocalSolution(matchAgainst, toCompare.tail, Some(next))
+          }
+        } else {
+          findLocalSolution(matchAgainst, toCompare.tail, Solution(matchAgainst, head))
+        }
+      }
+    }
   }
 }

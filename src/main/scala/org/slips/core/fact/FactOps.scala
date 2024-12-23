@@ -2,7 +2,8 @@ package org.slips.core.fact
 
 import org.slips.Signature
 import org.slips.Signature.SignatureTuple
-import org.slips.core.{Empty, WithSignature}
+import org.slips.core.Empty
+import org.slips.core.WithSignature
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.Fact.Val
 import org.slips.core.macros.Macros
@@ -48,7 +49,6 @@ object FactOps {
 
       override def extract(r: Fact.Val[H *: EmptyTuple]): SignatureTuple =
         SignatureTuple(tuple(r).head.signature)
-
 
       def sourceConditions(f: Fact.Val[H *: EmptyTuple]): Set[Condition.Source[?]] =
         tuple(f).head.source.sourceCondition.toList.toSet
@@ -116,7 +116,7 @@ object FactOps {
 
     override def sources(f: Fact.Val[T]): Set[Fact.Source[?]] = Set(ev(f).source)
 
-    override def extract(r: Fact.Val[T]): SignatureTuple  = SignatureTuple(ev(r).signature)
+    override def extract(r: Fact.Val[T]): SignatureTuple           = SignatureTuple(ev(r).signature)
     def sourceConditions(f: Fact.Val[T]): Set[Condition.Source[?]] = Set(ev(f).source.sourceCondition).flatten
 
     override def facts(f: Val[T]): List[Fact[?]] = List(ev(f))

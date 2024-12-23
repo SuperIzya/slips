@@ -8,9 +8,7 @@ import org.slips.core.fact.Fact
   */
 private[network] object FactProgress {
 
-  inline def fold[T](inline fp: FactProgress)
-                    (inProgress: InProgress => T)
-                    (done: Done => T): T = fp match {
+  inline def fold[T](inline fp: FactProgress)(inProgress: InProgress => T)(done: Done => T): T = fp match {
     case ip: InProgress => inProgress(ip)
     case d: Done        => done(d)
   }
@@ -19,7 +17,7 @@ private[network] object FactProgress {
     inline def fact: Fact.Source[?] = fold(fp)(_.fact)(_.fact)
 
     inline def topChain: Chain = fold(fp)(_.topChain)(_.topChain)
-    
+
     inline def chains: Set[Chain] = fold(fp)(_.chains)(_.chains)
   }
 

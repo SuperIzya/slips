@@ -2,7 +2,9 @@ package org.slips.core.conditions
 
 import org.slips.Environment
 import org.slips.core.build.EnvBuildStep
-import org.slips.core.conditions.Predicate.{And, Not, Or}
+import org.slips.core.conditions.Predicate.And
+import org.slips.core.conditions.Predicate.Not
+import org.slips.core.conditions.Predicate.Or
 import org.slips.core.fact.Fact
 
 object Parser {
@@ -25,9 +27,9 @@ object Parser {
         .modify(_.addSource(source))
         .map[Fact.Val[T]](_ => source.ev.flip(Fact.Source(source)(using source.T, source.ev)))
     case Condition.Opaque(predicate) => parsePredicate(predicate)
-    case Condition.Map(src, f) => parse(src).map(f)
-    case Condition.FlatMap(left, f) => parse(left).flatMap(x => parse(f(x)))
-    case Condition.Filter(cond, f) =>
+    case Condition.Map(src, f)       => parse(src).map(f)
+    case Condition.FlatMap(left, f)  => parse(left).flatMap(x => parse(f(x)))
+    case Condition.Filter(cond, f)   =>
       for {
         t <- parse(cond)
         predicate = f(t)
@@ -41,14 +43,14 @@ object Parser {
         _ <- parsePredicate(left)
         _ <- parsePredicate(right)
       } yield Fact.unit
-    case Or(left, right) =>
+    case Or(left, right)  =>
       for {
         _ <- parsePredicate(left)
         _ <- parsePredicate(right)
         _ <- ParseStep.modify(_.addPredicate(p))
       } yield Fact.unit
-    case Not(p) =>
+    case Not(p)           =>
       parsePredicate(p).flatMap(_ => ParseStep.modify(_.addPredicate(p)))
-    case _ => ParseStep.modify(_.addPredicate(p))
+    case _                => ParseStep.modify(_.addPredicate(p))
   }
 }

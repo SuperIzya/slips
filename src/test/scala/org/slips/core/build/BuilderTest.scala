@@ -1,33 +1,35 @@
 package org.slips.core.build
 
-import cats.{Eq, Eval}
+import cats.Eq
+import cats.Eval
 import cats.data.State
+import org.slips.Env
+import org.slips.Environment as SEnv
+import org.slips.EnvRule
+import org.slips.Signature
+import org.slips.SimpleEnvironment
+import org.slips.core.*
+import org.slips.core.build.BuildContext
+import org.slips.core.build.Builder
+import org.slips.core.build.EnvBuildStep
+import org.slips.core.build.EnvBuildStepF
+import org.slips.core.build.SelectedPredicatesAndSources
 import org.slips.core.build.strategy.PredicateSelection
-import org.slips.core.build.{BuildContext, Builder, EnvBuildStep, EnvBuildStepF, SelectedPredicatesAndSources}
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
 import org.slips.core.network.NetworkLayer
 import org.slips.core.rule.Rule
-import org.slips.core.*
 import org.slips.data.*
 import org.slips.syntax.*
-import org.slips.{Env, EnvRule, Signature, SimpleEnvironment, Environment as SEnv}
+import scala.annotation.targetName
 import zio.*
 import zio.test.*
 import zio.test.Assertion.*
 
-import scala.annotation.targetName
-
 object BuilderTest extends ZIOSpecDefault {
 
-  given signatureStrategy: Signature.Strategy = Signature.Strategy.Content
-
-  def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
-
-  def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
-
   val notApple: Fact[Fruit] => Predicate                            = _.test(_.name != "apple")
-  private val testFruitAndVegie: ((Fruit, Vegetable)) => Boolean = testFruitAndVegieF.tupled
+  private val testFruitAndVegie: ((Fruit, Vegetable)) => Boolean    = testFruitAndVegieF.tupled
   private val vegie2Fruits                                          = vegie2FruitsF.tupled
   private val condition1: Condition[(Fruit, Fruit, Vegetable, Int)] = for {
     h     <- all[Herb]
@@ -49,7 +51,7 @@ object BuilderTest extends ZIOSpecDefault {
     _ <- (v, f1, f2).testMany(vegie2Fruits)
   } yield (f1, f2, v, _5)
 
-  private val rule1: EnvRule = env ?=> {
+  private val rule1: EnvRule             = env ?=> {
     condition1.makeRule("Test rule 1") { case (f1, f2, v, c5) =>
       for {
         x1 <- f1.value
@@ -57,8 +59,7 @@ object BuilderTest extends ZIOSpecDefault {
       } yield ()
     }
   }
-
-  private val predicates = suite("Predicates should have same signature")({
+  private val predicates                 = suite("Predicates should have same signature")({
     case class Asserts(seq: Seq[(String, TestResult)]) {
       def addStep(s: (String, TestResult)): Asserts       = copy(seq = seq :+ s)
       def addSteps(s: Seq[(String, TestResult)]): Asserts = copy(seq = seq ++ s)
@@ -104,7 +105,6 @@ object BuilderTest extends ZIOSpecDefault {
 
     res.map { case (name, check) => test(name)(check) }
   }*)
-
   private val predicateSelectionStrategy = suite(
     "Condition parser should find all predicates and sources with respect to Environment.predicateSelectionStrategy"
   )(
@@ -117,8 +117,8 @@ object BuilderTest extends ZIOSpecDefault {
         Builder.selectPredicatesAndSources(condition1).toOption.get
       }
 
-      assert(res.signatures)(hasSize(equalTo(4))) &&
-      assert(res.facts)(hasSize(equalTo(8)))
+      assert(res.sourceSignatures)(hasSize(equalTo(4))) &&
+      assert(res.facts)(hasSize(equalTo(9)))
     },
     test("PredicateSelection.Clean") {
       object SEClean extends SimpleEnvironment {
@@ -128,11 +128,11 @@ object BuilderTest extends ZIOSpecDefault {
         Builder.selectPredicatesAndSources(condition1).toOption.get
       }
 
-      assert(res.signatures)(hasSize(equalTo(3))) &&
+      assert(res.sourceSignatures)(hasSize(equalTo(3))) &&
       assert(res.facts)(hasSize(equalTo(5)))
     }
   )
-  private val network               = suite("Network")(
+  private val network                    = suite("Network")(
     test("is built") {
       val res = SimpleEnvironment {
         val steps: EnvBuildStepF[NetworkLayer] = for {
@@ -149,12 +149,16 @@ object BuilderTest extends ZIOSpecDefault {
     }
   )
 
+  given signatureStrategy: Signature.Strategy = Signature.Strategy.Content
+
+  def testFruitAndVegieF(f: Fruit, v: Vegetable): Boolean = false
+
+  def vegie2FruitsF(v: Vegetable, f1: Fruit, f2: Fruit): Boolean = true
 
   override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(
     predicates,
     predicateSelectionStrategy,
     network
   )
-
 
 }

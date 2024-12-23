@@ -5,14 +5,14 @@ import cats.Semigroup
 import cats.data.State
 import cats.kernel.Monoid
 import cats.syntax.all.*
-import org.slips.{Env, Environment}
+import org.slips.Env
+import org.slips.Environment
 import org.slips.core.build
 import org.slips.core.build.*
 import org.slips.core.conditions.*
 import org.slips.core.fact.*
 import org.slips.core.network
 import org.slips.core.network.*
-
 import scala.annotation.showAsInfix
 import scala.annotation.tailrec
 import scala.annotation.targetName
@@ -37,8 +37,8 @@ object NetworkLayer {
   /**
     * Builds the network layer.
     *
-   * Each layer has an increasing arity of [[Fact.Val]].
-   * For the first layer the following rules apply:
+    * Each layer has an increasing arity of [[Fact.Val]].
+    * For the first layer the following rules apply:
     *
     * Each alpha predicate may test several facts from the
     * same source but possibly from different rules.
@@ -139,9 +139,9 @@ object NetworkLayer {
     * Node `P1 & P2 (F1, F5, F6)` acts as a beta node but
     * actually is an alpha node. P6, P7 are bound together,
     * they will be represented as chain of nodes, but for
-    * now for all intends and purposes they are one
-    * node. Another union node `P6,P7 & (P1 & P2)` and fact
-    * F1 is ready for consumption by next network layer.
+    * now for all intends and purposes they are one node.
+    * Another union node `P6,P7 & (P1 & P2)` and fact F1 is
+    * ready for consumption by next network layer.
     *
     * For fact F2 it's P4 from the chain and P2 (since chain
     * starting with P4 already contains P3, P6, P7). So
@@ -185,8 +185,8 @@ object NetworkLayer {
   ) {
 
     /**
-      * Accumulates alpha nodes for [[Impl]].
-      * Accumulation is done according to following rules:
+      * Accumulates alpha nodes for [[Impl]]. Accumulation
+      * is done according to following rules:
       *   1. predicate Q with same facts tested. If found,
       *      increase chain for these facts. Else next
       *   1. predicate S where S.facts contains P.facts. If
@@ -237,7 +237,7 @@ object NetworkLayer {
 
     val toNetworkLayer: EnvNetworkLayer = env ?=> {
       val folded: Map[Fact.Source[?], Chain] = foldFacts
-      val chains: Set[Chain]                = folded.values.toSet
+      val chains: Set[Chain]                 = folded.values.toSet
 
       new Impl(
         topChains = folded,
@@ -256,13 +256,13 @@ object NetworkLayer {
           topChains = topChains ++ impl.topChains,
           networkLayer = networkLayer ++ impl.networkLayer
         )
-      case _: Empty[F] => this
+      case _: Empty[F]   => this
     }
   }
 
   case class Empty[F[_]]() extends NetworkLayer[F] {
-    override private[core] val networkLayer             = Set.empty[Chain]
-    override val topChains: Map[Fact.Source[?], Chain]   = Map.empty
+    override private[core] val networkLayer                   = Set.empty[Chain]
+    override val topChains: Map[Fact.Source[?], Chain]        = Map.empty
     override def add(other: NetworkLayer[F]): NetworkLayer[F] = other
   }
 }

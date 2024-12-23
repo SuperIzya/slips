@@ -1,12 +1,13 @@
 package org.slips.core.fact
 
-import org.slips.{NotTuple, Signature, core}
+import org.slips.NotTuple
+import org.slips.Signature
+import org.slips.core
 import org.slips.core.WithSignature
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
 import org.slips.core.macros.Macros
-
 import scala.util.NotGiven
 
 sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T], F: Signature.SignType[Fact[T]]) extends WithSignature {
@@ -29,14 +30,14 @@ object Fact {
 
   type Val[X] = X match {
     case a *: EmptyTuple => Fact[a] *: EmptyTuple
-    case a *: t => Fact[a] *: TMap[t]
-    case _ => Fact[X]
+    case a *: t          => Fact[a] *: TMap[t]
+    case _               => Fact[X]
   }
 
   type InverseVal[X] = X match {
     case Fact[h] *: EmptyTuple.type => h *: EmptyTuple
-    case Fact[h] *: t => h *: InverseVal[t]
-    case Fact[a] => a
+    case Fact[h] *: t               => h *: InverseVal[t]
+    case Fact[a]                    => a
   }
 
   val unit: Fact[Unit] = Literal.Unit

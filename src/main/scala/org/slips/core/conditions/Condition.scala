@@ -20,9 +20,11 @@ object Condition {
 
   final case class Opaque[T] private[slips] (predicate: Predicate) extends Condition[Unit]
 
-  final case class Map[T, Q: FactOps] private[slips] (src: Condition[T], f: Fact.Val[T] => Fact.Val[Q]) extends Condition[Q]
+  final case class Map[T, Q: FactOps] private[slips] (src: Condition[T], f: Fact.Val[T] => Fact.Val[Q])
+      extends Condition[Q]
 
-  final case class FlatMap[T, Q: FactOps] private[slips] (left: Condition[T], f: Fact.Val[T] => Condition[Q]) extends Condition[Q]
+  final case class FlatMap[T, Q: FactOps] private[slips] (left: Condition[T], f: Fact.Val[T] => Condition[Q])
+      extends Condition[Q]
 
   final case class Filter[T: FactOps] private[slips] (
     cond: Condition[T],

@@ -15,10 +15,10 @@ private[network] sealed trait Chain {
 private[network] object Chain {
 
   case class Predicates(
-                         predicates: Set[BuildPredicate],
-                         tail: Iterable[Predicates],
-                         facts: Set[Fact.Source[?]],
-                         allPredicates: Set[String]
+    predicates: Set[BuildPredicate],
+    tail: Iterable[Predicates],
+    facts: Set[Fact.Source[?]],
+    allPredicates: Set[String]
   ) extends Chain {
 
     @tailrec
@@ -69,13 +69,14 @@ private[network] object Chain {
   def apply(predicate: BuildPredicate, facts: Set[Fact.Source[?]], tail: Predicates): Env[Predicates] =
     apply(predicate, facts, Option(tail))
 
-  def apply(predicate: BuildPredicate, facts: Set[Fact.Source[?]], tail: Option[Predicates]): Env[Predicates] = env ?=> {
-    Predicates(
-      Set(predicate),
-      tail,
-      facts,
-      tail.view.toSet.flatMap(_.allPredicates) + predicate.predicate.signature.compute
-    )
-  }
+  def apply(predicate: BuildPredicate, facts: Set[Fact.Source[?]], tail: Option[Predicates]): Env[Predicates] = env ?=>
+    {
+      Predicates(
+        Set(predicate),
+        tail,
+        facts,
+        tail.view.toSet.flatMap(_.allPredicates) + predicate.predicate.signature.compute
+      )
+    }
 
 }

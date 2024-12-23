@@ -30,7 +30,7 @@ trait SimpleEnvironment extends Environment {
       f: A => Id[Either[A, B]]
     ): Id[B] =
       f(a) match {
-        case Left(a) => tailRecM(a)(f)
+        case Left(a)  => tailRecM(a)(f)
         case Right(b) => b
       }
   }

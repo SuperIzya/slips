@@ -1,13 +1,14 @@
 package org.slips.core.build
 
 import cats.data.IndexedStateT
+import org.slips.Env
+import org.slips.Environment
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.conditions.Parser.Context
 import org.slips.core.fact.FactOps
 import org.slips.core.network.NetworkLayer
 import org.slips.core.rule.Rule
-import org.slips.{Env, Environment}
 
 private[slips] object Builder {
   import BuildStep.*
@@ -36,8 +37,8 @@ private[slips] object Builder {
               .groupBy(_._1)
               .view
               .mapValues { v =>
-                val head = v.head
-                val tail = v.tail
+                val head  = v.head
+                val tail  = v.tail
                 val facts = head._2.facts
                 tail.foldLeft(BuildPredicate(facts, facts.size, head._2)) { case (bp, (_, p)) =>
                   bp.copy(facts = bp.facts ++ p.facts)
@@ -47,19 +48,22 @@ private[slips] object Builder {
             predicatesAndSources = x
           )
         }
-      }.foldLeft[Either[String, BuildStep[env.Effect][Unit]]](Right(BuildStep.empty(env))){
-        case (Right(prev), Right(result)) => Right {
-          for {
-            res <- prev
-            _ <- BuildStep.addParsingResult(result)
-          } yield ()
-        }
-        case (Left(value), _) => Left(value)
-        case (_, Left(value)) => Left(value)
+      }
+      .foldLeft[Either[String, BuildStep[env.Effect][Unit]]](Right(BuildStep.empty(env))) {
+        case (Right(prev), Right(result)) =>
+          Right {
+            for {
+              res <- prev
+              _   <- BuildStep.addParsingResult(result)
+            } yield ()
+          }
+        case (Left(value), _)             => Left(value)
+        case (_, Left(value))             => Left(value)
       }
   }
 
-  def selectPredicatesAndSources[T: FactOps](condition: Condition[T]): Env[Either[String, SelectedPredicatesAndSources]] = {
+  def selectPredicatesAndSources[T: FactOps](
+    condition: Condition[T]): Env[Either[String, SelectedPredicatesAndSources]] = {
     val (Context(predicates, _), result) = Parser(condition)
 
     PredicateSelection.select[T](
