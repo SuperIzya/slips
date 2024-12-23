@@ -11,11 +11,11 @@ sealed trait Reversible[A, B] {
 }
 
 object Reversible {
-  given instance[A, B](using
-    ev1: InverseVal[A] =:= B,
+  given instance[A, B](
+    using ev1: InverseVal[A] =:= B,
     ev2: Val[B] =:= A,
-    ev3: NotGiven[A =:= Predicate]): Reversible[A, B]
-  with {
+    ev3: NotGiven[A =:= Predicate]
+  ): Reversible[A, B] with {
     override def apply(a: A): Val[B] = ev2.flip(a)
 
     override def flip(b: InverseVal[A]): B = ev1(b)

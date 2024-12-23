@@ -53,7 +53,8 @@ object Fact {
     override val signature: Signature,
     override val sample: T,
     val sourceCondition: Option[Condition.Source[T]]
-  )(using val scalarEv: ScalarFact[T], val factOps: FactOps[T]) extends Fact[T] {
+  )(using val scalarEv: ScalarFact[T], val factOps: FactOps[T])
+      extends Fact[T] {
     self =>
     override type Src = T
     override val source: Source[T] = self

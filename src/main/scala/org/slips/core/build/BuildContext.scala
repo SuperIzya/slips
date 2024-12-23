@@ -39,23 +39,28 @@ private[build] object BuildContext {
 
   extension [F[_]](ctx: BuildContext[F]) {
 
-    def addNetwork(using env: Environment)(network: NetworkLayer[env.Effect])(using
-      F: NetworkLayer[env.Effect] =:= NetworkLayer[F]): BuildStepF[F][NetworkLayer] = BuildStep.pureF {
-      ctx.copy(network = ctx.network.add(F(network))) -> F(network)
-    }
-
-    def addNode(using env: Environment)(node: Node[env.Effect])(using
-      F: Node[env.Effect] =:= Node[F]): BuildStepF[F][Node] = BuildStep.pureF {
-      val signature = node.signature.compute
-      val newCtx    = {
-        if (ctx.nodes.contains(signature)) ctx
-        else ctx.copy(nodes = ctx.nodes + (signature -> F(node)))
+    def addNetwork(using env: Environment)(
+      network: NetworkLayer[env.Effect]
+    )(using F: NetworkLayer[env.Effect] =:= NetworkLayer[F]): BuildStepF[F][NetworkLayer] =
+      BuildStep.pureF {
+        ctx.copy(network = ctx.network.add(F(network))) -> F(network)
       }
-      newCtx -> F(node)
-    }
 
-    def addSourceNode[T](using env: Environment)(signature: Signature, node: => AlphaNode.Source[env.Effect, T])(using
-      F: AlphaNode.Source[env.Effect, T] =:= AlphaNode.Source[F, T]): BuildStepF[F][AlphaNode] =
+    def addNode(
+      using env: Environment
+    )(node: Node[env.Effect])(using F: Node[env.Effect] =:= Node[F]): BuildStepF[F][Node] =
+      BuildStep.pureF {
+        val signature = node.signature.compute
+        val newCtx    = {
+          if (ctx.nodes.contains(signature)) ctx
+          else ctx.copy(nodes = ctx.nodes + (signature -> F(node)))
+        }
+        newCtx -> F(node)
+      }
+
+    def addSourceNode[T](using env: Environment)(signature: Signature, node: => AlphaNode.Source[env.Effect, T])(
+      using F: AlphaNode.Source[env.Effect, T] =:= AlphaNode.Source[F, T]
+    ): BuildStepF[F][AlphaNode] =
       BuildStep.pureF {
         val sign                             = signature.compute
         val nextNode: AlphaNode.Source[F, T] = ctx
@@ -71,8 +76,9 @@ private[build] object BuildContext {
         newCtx -> nextNode
       }
 
-    def addParsingResult(using env: Environment)(parseResult: ParseResult[env.Effect])(using
-      F: ParseResult[env.Effect] =:= ParseResult[F]): BuildContext[F] = {
+    def addParsingResult(
+      using env: Environment
+    )(parseResult: ParseResult[env.Effect])(using F: ParseResult[env.Effect] =:= ParseResult[F]): BuildContext[F] = {
       val res: ParseResult[F] = F(parseResult)
       ctx.copy(
         allPredicates = ctx.allPredicates |+| res.allPredicates,

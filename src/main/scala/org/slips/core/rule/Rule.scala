@@ -41,8 +41,7 @@ sealed trait Rule[F[_]](using F: Monad[F]) { self =>
 
   }
 
-  sealed trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q])
-      extends Matchable {
+  sealed trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q]) extends Matchable {
     val fact: Fact[Q]
   }
 
@@ -71,7 +70,8 @@ object Rule {
     override val name: String,
     override val condition: Condition[V],
     actions: (r: Rule[F]) ?=> r.Method[V]
-  )(using val T: FactOps[V]) extends Rule[F] { self =>
+  )(using val T: FactOps[V])
+      extends Rule[F] { self =>
     def selfAction: self.Method[T] = actions(using self)
     type T = V
   }

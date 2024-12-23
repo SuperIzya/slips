@@ -15,7 +15,8 @@ trait ConditionSyntax {
       Condition.Filter(c, f)
 
     inline def map[Q, P](
-      f: Fact.Val[T] => Q)(using ev: P =:= Fact.InverseVal[Q], ev2: Q =:= Fact.Val[P], P: FactOps[P]): Condition[P] =
+      f: Fact.Val[T] => Q
+    )(using ev: P =:= Fact.InverseVal[Q], ev2: Q =:= Fact.Val[P], P: FactOps[P]): Condition[P] =
       Condition.Map(c, f.andThen(ev2))
 
     def flatMap[Q: FactOps](f: Fact.Val[T] => Condition[Q]): Condition[Q] =

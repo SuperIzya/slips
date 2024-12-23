@@ -63,7 +63,8 @@ private[slips] object Builder {
   }
 
   def selectPredicatesAndSources[T: FactOps](
-    condition: Condition[T]): Env[Either[String, SelectedPredicatesAndSources]] = {
+    condition: Condition[T]
+  ): Env[Either[String, SelectedPredicatesAndSources]] = {
     val (Context(predicates, _), result) = Parser(condition)
 
     PredicateSelection.select[T](

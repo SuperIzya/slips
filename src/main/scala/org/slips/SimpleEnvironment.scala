@@ -37,9 +37,7 @@ trait SimpleEnvironment extends Environment {
 
   def apply[T, E >: SimpleEnvironment <: Environment](
     f: E ?=> T
-  ): T = f(using
-    this
-  )
+  ): T = f(using this)
 
   class SimpleBuffer[T] private[SimpleEnvironment] (
     override val buffer: Effect[ArrayBuffer[T]] = new ArrayBuffer[T]()

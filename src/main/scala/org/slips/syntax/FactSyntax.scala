@@ -49,8 +49,9 @@ trait FactSyntax {
 
   }
 
-  private inline def testTwo[T : FactOps : ScalarFact](left: Fact[T], right: Fact[T])(inline f: (T, T) => Boolean)(using
-    TupleOps[(T, T)]): Predicate = {
+  private inline def testTwo[T : FactOps : ScalarFact](left: Fact[T], right: Fact[T])(
+    inline f: (T, T) => Boolean
+  )(using TupleOps[(T, T)]): Predicate = {
     val arity = Set(left.source, right.source)
     val sign  = left.signature.unite(right)((a, b) => s"($a, $b)").unite(Signature.auto(f))(_ + s" ? ($arity)" + _)
     Predicate.Test[(T, T)](
@@ -63,12 +64,7 @@ trait FactSyntax {
   extension [T <: NonEmptyTuple](fact: T) {
     inline def testMany[Q <: NonEmptyTuple](
       inline f: Q => Boolean
-    )(using
-      Q: TupleOps[Q],
-      ev: TupleFact[Q],
-      ev2: Q =:= Fact.InverseVal[T],
-      ev3: T =:= Fact.Val[Q]
-    ): Predicate = {
+    )(using Q: TupleOps[Q], ev: TupleFact[Q], ev2: Q =:= Fact.InverseVal[T], ev3: T =:= Fact.Val[Q]): Predicate = {
       val arity = ev3(fact).sources.size
       Predicate.Test[Q](
         signature = Q.signature.unite(Signature.auto(f))(_ + s" ? ($arity)" + _),
@@ -77,12 +73,9 @@ trait FactSyntax {
       )
     }
 
-    inline def matchesMany[Q <: NonEmptyTuple, P](inline f: PartialFunction[Q, P])(using
-      Q: TupleOps[Q],
-      ev: TupleFact[Q],
-      ev2: Q =:= Fact.InverseVal[T],
-      ev3: T =:= Fact.Val[Q]
-    ): Predicate = {
+    inline def matchesMany[Q <: NonEmptyTuple, P](
+      inline f: PartialFunction[Q, P]
+    )(using Q: TupleOps[Q], ev: TupleFact[Q], ev2: Q =:= Fact.InverseVal[T], ev3: T =:= Fact.Val[Q]): Predicate = {
       val arity = ev3(fact).sources.size
       Predicate.Test[Q](
         signature = Q.signature.unite(Signature.auto(f))(_ + s" matches ($arity)" + _),

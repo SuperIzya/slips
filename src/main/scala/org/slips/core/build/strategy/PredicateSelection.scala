@@ -36,7 +36,8 @@ object PredicateSelection {
         collectPredicates(
           allFacts.values.flatten.toSet,
           SelectedPredicatesAndSources(initial)
-        ))
+        )
+      )
     }
 
     @tailrec
@@ -109,7 +110,8 @@ object PredicateSelection {
     }
 
     private def processDiscarded(
-      selected: SelectedPredicatesAndSources): Either[String, SelectedPredicatesAndSources] = {
+      selected: SelectedPredicatesAndSources
+    ): Either[String, SelectedPredicatesAndSources] = {
       if (selected.discarded.isEmpty) Right(selected)
       else
         selected

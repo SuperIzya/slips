@@ -53,7 +53,8 @@ object Predicate {
     signature: Signature,
     test: T => Boolean,
     rep: Fact.Val[T]
-  )(using val T: FactOps[T]) extends Predicate { self =>
+  )(using val T: FactOps[T])
+      extends Predicate { self =>
     val facts: Set[Fact.Source[?]] = rep.sources
     def not: Predicate             = copy(
       signature = Signature.DerivedUnary(signature, "!" + _),
