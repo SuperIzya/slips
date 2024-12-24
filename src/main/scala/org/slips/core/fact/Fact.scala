@@ -40,13 +40,11 @@ object Fact {
     case Fact[a]                    => a
   }
 
-  val unit: Fact[Unit] = Literal.Unit
-
-  sealed trait CanBeLiteral[T]
-
-  sealed class Literal[I : FactOps : ScalarFact] private[slips] (override val sample: I)
-      extends Fact.Source[I](Signature.Manual(sample.toString), sample, None) {
-    type Src = I
+  extension [T](f: Fact.Val[T]) {
+    private[slips] def sourceConditions(using T: FactOps[T]): Set[Condition.Source[?]] = T.sourceConditions(f)
+    private[slips] def signature(using T: FactOps[T]): Signature                       = T.extract(f)
+    private[slips] def sources(using T: FactOps[T]): Set[Fact.Source[?]]               = T.sources(f)
+    private[slips] def facts(using T: FactOps[T]): List[Fact[?]]                       = T.facts(f)
   }
 
   sealed class Source[T] private[Fact] (
@@ -60,23 +58,12 @@ object Fact {
     override val source: Source[T] = self
   }
 
-  final case class Map[T, Q: FactOps](pred: Fact[T], map: T => Q, mapSign: Signature) extends Fact[Q] {
-    override type Src = pred.Src
-    override val source: Source[Src] = pred.source
-
-    override val signature: Signature = Signature.DerivedBinary(pred.signature, mapSign, (s1, s2) => s"$s1 -> $s2")
-    override val sample: Q            = map(pred.sample)
-  }
-
-  object Literal {
-    case object Unit extends Literal[Unit](())
-  }
-
   object Source {
     def apply[T](source: Condition.Source[T])(using T: FactOps[T], F: ScalarFact[T]): Source[T] =
       new Source(source.signature, T.empty, Some(source))
   }
 
+  sealed trait CanBeLiteral[T]
   object CanBeLiteral {
     given [T <: NonEmptyTuple](using NotGiven[TIsMapped[T]]): CanBeLiteral[T] =
       new CanBeLiteral[T] {}
@@ -85,10 +72,22 @@ object Fact {
       new CanBeLiteral[T] {}
   }
 
-  extension [T](f: Fact.Val[T]) {
-    private[slips] def sourceConditions(using T: FactOps[T]): Set[Condition.Source[?]] = T.sourceConditions(f)
-    private[slips] def signature(using T: FactOps[T]): Signature                       = T.extract(f)
-    private[slips] def sources(using T: FactOps[T]): Set[Fact.Source[?]]               = T.sources(f)
-    private[slips] def facts(using T: FactOps[T]): List[Fact[?]]                       = T.facts(f)
+  sealed class Literal[I : FactOps : ScalarFact] private[slips] (override val sample: I)
+      extends Fact.Source[I](Signature.Manual(sample.toString), sample, None) {
+    type Src = I
   }
+
+  object Literal {
+    case object Unit extends Literal[Unit](())
+  }
+  val unit: Fact[Unit] = Literal.Unit
+
+  final case class Map[T, Q: FactOps](pred: Fact[T], map: T => Q, mapSign: Signature) extends Fact[Q] {
+    override type Src = pred.Src
+    override val source: Source[Src] = pred.source
+
+    override val signature: Signature = Signature.DerivedBinary(pred.signature, mapSign, (s1, s2) => s"$s1 -> $s2")
+    override val sample: Q            = map(pred.sample)
+  }
+
 }

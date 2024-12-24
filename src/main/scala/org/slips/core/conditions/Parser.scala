@@ -1,7 +1,5 @@
 package org.slips.core.conditions
 
-import org.slips.Environment
-import org.slips.core.build.EnvBuildStep
 import org.slips.core.conditions.Predicate.And
 import org.slips.core.conditions.Predicate.Not
 import org.slips.core.conditions.Predicate.Or
@@ -49,8 +47,8 @@ object Parser {
         _ <- parsePredicate(right)
         _ <- ParseStep.modify(_.addPredicate(p))
       } yield Fact.unit
-    case Not(p)           =>
-      parsePredicate(p).flatMap(_ => ParseStep.modify(_.addPredicate(p)))
+    case Not(pp)          =>
+      parsePredicate(pp).flatMap(_ => ParseStep.modify(_.addPredicate(p)))
     case _                => ParseStep.modify(_.addPredicate(p))
   }
 }

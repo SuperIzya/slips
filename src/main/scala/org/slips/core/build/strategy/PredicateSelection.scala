@@ -1,9 +1,8 @@
 package org.slips.core.build.strategy
 
 import org.slips.Env
-import org.slips.Environment
 import org.slips.core.build.*
-import org.slips.core.conditions.Condition.Source
+import org.slips.core.build.strategy.PredicateSelection.ValidatedRes
 import org.slips.core.conditions.Predicate
 import org.slips.core.fact.*
 import scala.annotation.tailrec
@@ -14,15 +13,28 @@ trait PredicateSelection {
   def selectPredicatesAndSources[T: FactOps](
     initial: Fact.Val[T],
     allFacts: AllFacts
-  ): Either[String, SelectedPredicatesAndSources]
+  ): ValidatedRes
 }
 
 object PredicateSelection {
 
+  type ValidatedRes = Either[String, SelectedPredicatesAndSources]
+  object ValidatedRes {
+    type Valid = Right[String, SelectedPredicatesAndSources]
+    object Valid {
+      def apply(src: SelectedPredicatesAndSources): ValidatedRes = Right(src)
+    }
+
+    type Invalid = Left[String, SelectedPredicatesAndSources]
+    object Invalid {
+      def apply(msg: String): ValidatedRes = Left(msg)
+    }
+  }
+
   def select[T](
     initial: Fact.Val[T],
     allFacts: AllFacts
-  )(using T: FactOps[T]): Env[Either[String, SelectedPredicatesAndSources]] =
+  )(using T: FactOps[T]): Env[ValidatedRes] =
     env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, allFacts)
 
   /** Keep all predicates */
@@ -30,9 +42,9 @@ object PredicateSelection {
     override def selectPredicatesAndSources[T: FactOps](
       initial: Fact.Val[T],
       allFacts: AllFacts
-    ): Either[String, SelectedPredicatesAndSources] = {
+    ): ValidatedRes = {
 
-      Right(
+      ValidatedRes.Valid(
         collectPredicates(
           allFacts.values.flatten.toSet,
           SelectedPredicatesAndSources(initial)
@@ -88,7 +100,7 @@ object PredicateSelection {
     override def selectPredicatesAndSources[T: FactOps](
       initial: Fact.Val[T],
       allFacts: AllFacts
-    ): Either[String, SelectedPredicatesAndSources] = {
+    ): ValidatedRes = {
       val initialSources = initial.sources
       processPredicates(
         allFacts.values.flatten.toList,
@@ -102,22 +114,20 @@ object PredicateSelection {
     }
 
     extension (q: Queue[Predicate]) {
-      private inline def deq(selected: SelectedPredicatesAndSources): Either[String, SelectedPredicatesAndSources] =
+      private inline def deq(selected: SelectedPredicatesAndSources): ValidatedRes =
         q.dequeueOption match {
           case Some((pd, qu)) => collectSources(selected, pd, qu)
-          case None           => Right(selected)
+          case None           => ValidatedRes.Valid(selected)
         }
     }
 
-    private def processDiscarded(
-      selected: SelectedPredicatesAndSources
-    ): Either[String, SelectedPredicatesAndSources] = {
-      if (selected.discarded.isEmpty) Right(selected)
+    private def processDiscarded(selected: SelectedPredicatesAndSources): ValidatedRes = {
+      if (selected.discarded.isEmpty) ValidatedRes.Valid(selected)
       else
         selected
           .discarded
-          .foldLeft[Either[String, SelectedPredicatesAndSources]](Right(selected.copy(discarded = Set.empty))) {
-            (col, dis) => col.flatMap(collectSources(_, dis))
+          .foldLeft(ValidatedRes.Valid(selected.copy(discarded = Set.empty))) { (col, dis) =>
+            col.flatMap(collectSources(_, dis))
           }
     }
 
@@ -126,7 +136,7 @@ object PredicateSelection {
       col: SelectedPredicatesAndSources,
       p: Predicate,
       queue: Queue[Predicate] = Queue.empty
-    ): Either[String, SelectedPredicatesAndSources] = {
+    ): ValidatedRes = {
       p match {
         case _ if col.facts.intersect(p.facts).isEmpty                              =>
           queue.deq(col.withDiscard(p))
@@ -140,23 +150,20 @@ object PredicateSelection {
           collectSources(col, left, queue.enqueue(right))
         case Predicate.And(l, right)                                                =>
           collectSources(col.withDiscard(l), right, queue)
-        case _                                                                      => Left(s"Unexpected predicate $p")
+        case _ => ValidatedRes.Invalid(s"Unexpected predicate $p")
       }
     }
 
     @tailrec
-    private def processPredicates(
-      toCheck: List[Predicate],
-      collected: SelectedPredicatesAndSources
-    ): Either[String, SelectedPredicatesAndSources] = {
+    private def processPredicates(toCheck: List[Predicate], collected: SelectedPredicatesAndSources): ValidatedRes = {
 
-      val result = toCheck.foldLeft[Either[String, SelectedPredicatesAndSources]](Right(collected)) { (col, p) =>
+      val result: ValidatedRes = toCheck.foldLeft(ValidatedRes.Valid(collected)) { (col, p) =>
         col.flatMap(collectSources(_, p))
       }
       result match {
-        case Left(value)                                          => Left(value)
-        case Right(res) if (res.discarded == collected.discarded) => Right(res)
-        case Right(res)                                           => processPredicates(res.discarded.toList, res)
+        case Left(value)                                        => ValidatedRes.Invalid(value)
+        case Right(res) if res.discarded == collected.discarded => ValidatedRes.Valid(res)
+        case Right(res)                                         => processPredicates(res.discarded.toList, res)
       }
     }
   }
