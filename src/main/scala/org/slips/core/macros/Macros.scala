@@ -14,9 +14,10 @@ object Macros {
   private def cleanupSignature(in: String): String = {
     val re = """(_\$\d+)""".r
 
-    extension (s: String)
+    extension (s: String) {
       def replaceWithChar(what: String, substitute: String)(char: Char): String =
         s.replace(what + char, substitute + char)
+    }
 
     re.findAllMatchIn(in)
       .map(_.group(0))

@@ -2,28 +2,44 @@ package org.slips.core.build
 
 import cats.data.State
 import org.slips.Env
+import org.slips.Environment
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
+import org.slips.core.network.AlphaNode
 import org.slips.core.network.Node
-import org.slips.core.network.alpha.AlphaNode
 
-object BuildStep {
+private[slips] object BuildStep {
 
-  def apply[T](f: BuildContext => (BuildContext, T)): BuildStep[T] = State(f)
+  def get: EnvBuildStepF[BuildContext] = env ?=> State.get[BuildContext[env.Effect]]
 
-  def update(f: BuildContext => BuildContext): BuildStep[Unit] = State(f.andThen(_ -> ()))
-  def set(f: => BuildContext): BuildStep[Unit]                 = State.set(f)
+  def pure[F[_], T](pair: (BuildContext[F], T)): BuildStep[F][T] = State.set(pair._1).map(_ => pair._2)
+
+  def apply[T](f: (env: Environment) ?=> BuildContext[env.Effect] => (BuildContext[env.Effect], T)): EnvBuildStep[T] =
+    env ?=> State(f)
+
+  def pureF[F[_], G[_[_]]](pair: (BuildContext[F], G[F])): BuildStepF[F][G] = State.set(pair._1).map(_ => pair._2)
+
+  def F[G[_[_]]](
+    f: (env: Environment) ?=> BuildContext[env.Effect] => (BuildContext[env.Effect], G[env.Effect])
+  ): EnvBuildStepF[G] =
+    env ?=> State(f)
+
+  def update(f: (env: Environment) ?=> BuildContext[env.Effect] => BuildContext[env.Effect]): EnvBuildStep[Unit] =
+    env ?=> State(f.andThen(_ -> ()))
   /*
   def getSourceNode[T](src: Condition.Source[T]): Env[BuildStep[AlphaNode.Source[T]]] = env ?=> {
     val signature = env.signatureStrategy(src.signature)
     BuildStep(_.addSourceNode(signature, AlphaNode.Source(src.signature)))
   }*/
 
-  val get: BuildStep[BuildContext] = State.get[BuildContext]
+  def set(f: EnvBuildContext): EnvBuildStep[Unit] = State.set(f)
 
-  def addParsingResult(p: ParseResult): BuildStep[ParseResult] =
-    State(s => s.addParsingResult(p) -> p)
+  def addParsingResult(using env: Environment)(
+    p: ParseResult[env.Effect]
+  ): BuildStep[env.Effect][ParseResult[env.Effect]] =
+    State(_.addParsingResult(p) -> p)
 
-  def pure[T](t: T): BuildStep[T] = State.pure(t)
+  def pure[F[_], T](t: T): BuildStep[F][T] = State.pure(t)
 
+  def empty(env: Environment): BuildStep[env.Effect][Unit] = State.pure(())
 }

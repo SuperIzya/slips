@@ -1,6 +1,6 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
-ThisBuild / scalaVersion := "3.3.4"
+ThisBuild / scalaVersion := "3.4.1"
 
 lazy val Version = new {
   lazy val cats       = "2.12.0"
@@ -20,7 +20,10 @@ lazy val root = (project in file(".")).settings(
     "-print-lines",
     "-Xcheck-macros",
     "-deprecation",
-    "-source:future"
+    "-source:future",
+    "-language:strictEquality",
+    "-no-indent",
+    "-Ysafe-init"
     //   "-Yshow-suppressed-errors"
   ),
   libraryDependencies ++= Seq(

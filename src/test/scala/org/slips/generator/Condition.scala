@@ -11,14 +11,17 @@ import zio.test.*
 
 object Condition {
 
-  sealed trait PredicateOps:
+  sealed trait PredicateOps {
     def combine(p1: Predicate, p2: Predicate): Predicate
+  }
   object PredicateOps {
-    case object And extends PredicateOps:
+    case object And extends PredicateOps {
       override def combine(p1: Predicate, p2: Predicate): Predicate = p1 && p2
+    }
 
-    case object Or extends PredicateOps:
+    case object Or extends PredicateOps {
       override def combine(p1: Predicate, p2: Predicate): Predicate = p1 || p2
+    }
 
     case object Not extends PredicateOps {
       override def combine(p1: Predicate, p2: Predicate): Predicate = (p1, p2) match {

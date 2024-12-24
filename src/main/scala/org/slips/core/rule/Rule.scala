@@ -12,19 +12,18 @@ import org.slips.core.fact.Fact
 import org.slips.core.fact.FactOps
 import scala.compiletime.asMatchable
 
-sealed trait Rule[F[_], T](using F: Monad[F], T: FactOps[T]) extends Rule.RuleM { self =>
+sealed trait Rule[F[_]](using F: Monad[F]) { self =>
+  type T
 
   type ThisRule  = self.type
   type Action[q] = StateT[F, Context, q]
   type Facts     = Fact.Val[T]
 
-  val selfAction: self.Val[T] => self.Action[Unit]
+  val T: FactOps[T]
+  def selfAction: self.Val[T] => self.Action[Unit]
 
   val condition: Condition[T]
   val name: String
-
-  override private[slips] def sourcesAndPredicates: Env[SelectedPredicatesAndSources] =
-    Builder.selectPredicatesAndSources(condition)
 
   case class Context(values: T, asserted: Seq[Any], retracted: Seq[Fact[?]]) { self =>
 
@@ -42,8 +41,7 @@ sealed trait Rule[F[_], T](using F: Monad[F], T: FactOps[T]) extends Rule.RuleM 
 
   }
 
-  sealed trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q])
-      extends Matchable {
+  sealed trait Value[Q](using inFacts: InTuple[Facts, Fact[Q]], inVals: InTuple[T, Q]) extends Matchable {
     val fact: Fact[Q]
   }
 
@@ -68,26 +66,21 @@ sealed trait Rule[F[_], T](using F: Monad[F], T: FactOps[T]) extends Rule.RuleM 
 
 object Rule {
 
-  type RuleAction[F[_], T] = (r: Rule[F, T]) ?=> r.Method[T]
-
-  private final class Impl[F[_]: Monad, T: FactOps](
+  private final class Impl[F[_]: Monad, V](
     override val name: String,
-    override val condition: Condition[T],
-    actions: (r: Rule[F, T]) ?=> r.Method[T]
-  ) extends Rule[F, T] { self =>
-    val selfAction: self.Method[T] = actions(using self)
-
+    override val condition: Condition[V],
+    actions: (r: Rule[F]) ?=> r.Method[V]
+  )(using val T: FactOps[V])
+      extends Rule[F] { self =>
+    def selfAction: self.Method[T] = actions(using self)
+    type T = V
   }
 
   def apply[T: FactOps](using env: Environment)(
     name: String,
     condition: Condition[T],
-    actions: RuleAction[env.Effect, T]
-  ): env.Rule[T] =
+    actions: (rule: Rule[env.Effect]) ?=> rule.Method[T]
+  ): env.Rule =
     new Impl[env.Effect, T](name, condition, actions)
-
-  sealed trait RuleM {
-    private[slips] def sourcesAndPredicates: Env[SelectedPredicatesAndSources]
-  }
 
 }

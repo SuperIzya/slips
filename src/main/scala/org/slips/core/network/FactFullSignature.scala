@@ -1,4 +1,4 @@
-package org.slips.core.network.alpha
+package org.slips.core.network
 
 case class FactFullSignature(fact: String, predicates: Set[String]) {
   def addPredicate(p: String): FactFullSignature = copy(predicates = predicates + p)

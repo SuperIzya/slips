@@ -1,4 +1,4 @@
-package org.slips.core.network.alpha
+package org.slips.core.network
 
 import cats.data.State
 

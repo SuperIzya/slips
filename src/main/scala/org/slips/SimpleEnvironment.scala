@@ -29,17 +29,15 @@ trait SimpleEnvironment extends Environment {
     )(
       f: A => Id[Either[A, B]]
     ): Id[B] =
-      f(a) match
+      f(a) match {
         case Left(a)  => tailRecM(a)(f)
         case Right(b) => b
-
+      }
   }
 
   def apply[T, E >: SimpleEnvironment <: Environment](
     f: E ?=> T
-  ): T = f(using
-    this
-  )
+  ): T = f(using this)
 
   class SimpleBuffer[T] private[SimpleEnvironment] (
     override val buffer: Effect[ArrayBuffer[T]] = new ArrayBuffer[T]()

@@ -1,23 +1,27 @@
-package org.slips.core
+package org.slips.core.build
 
 import cats.Eq
 import cats.Eval
 import cats.data.State
 import org.slips.Env
 import org.slips.Environment as SEnv
+import org.slips.EnvRule
 import org.slips.Signature
 import org.slips.SimpleEnvironment
-import org.slips.core.Empty
+import org.slips.core.*
 import org.slips.core.build.BuildContext
 import org.slips.core.build.Builder
-import org.slips.core.build.BuildStep
+import org.slips.core.build.EnvBuildStep
+import org.slips.core.build.EnvBuildStepF
 import org.slips.core.build.SelectedPredicatesAndSources
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
-import org.slips.core.network.alpha.AlphaNetwork
+import org.slips.core.network.NetworkLayer
 import org.slips.core.rule.Rule
+import org.slips.data.*
 import org.slips.syntax.*
+import scala.annotation.targetName
 import zio.*
 import zio.test.*
 import zio.test.Assertion.*
@@ -25,14 +29,14 @@ import zio.test.Assertion.*
 object BuilderTest extends ZIOSpecDefault {
 
   val notApple: Fact[Fruit] => Predicate                            = _.test(_.name != "apple")
-  private val testFruitAndVegie                                     = testFruitAndVegieF.tupled
+  private val testFruitAndVegie: ((Fruit, Vegetable)) => Boolean    = testFruitAndVegieF.tupled
   private val vegie2Fruits                                          = vegie2FruitsF.tupled
   private val condition1: Condition[(Fruit, Fruit, Vegetable, Int)] = for {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry]
-    _     <- berry.test(_.origin != Origin.Field)
-    _     <- b.test(_.origin != Origin.GreenHouse) && b.test(_.name.nonEmpty)
+    _     <- berry.value(_.origin) =!= literal(Origin.Field)
+    _     <- b.value(_.origin) =!= Origin.GreenHouse && b.test(_.name.nonEmpty)
     _     <- h.test(_.name.nonEmpty)
     f1    <- all[Fruit]
     _     <- f1.test(_.sugar != 1.0)
@@ -42,20 +46,20 @@ object BuilderTest extends ZIOSpecDefault {
     _     <- (f1, v).testMany(testFruitAndVegie)
     hname = h.value(_.name)
     fname = f1.value(_.name)
-    _ <- (hname, fname).testMany(_ != _)
+    _ <- hname =!= fname
     _5 = literal(5)
     _ <- (v, f1, f2).testMany(vegie2Fruits)
   } yield (f1, f2, v, _5)
 
-  private def rule1(using env: SimpleEnvironment) =
+  private val rule1: EnvRule             = env ?=> {
     condition1.makeRule("Test rule 1") { case (f1, f2, v, c5) =>
       for {
         x1 <- f1.value
         vv <- v.value
       } yield ()
     }
-
-  private val predicates = suite("Predicates should have same signature")({
+  }
+  private val predicates                 = suite("Predicates should have same signature")({
     case class Asserts(seq: Seq[(String, TestResult)]) {
       def addStep(s: (String, TestResult)): Asserts       = copy(seq = seq :+ s)
       def addSteps(s: Seq[(String, TestResult)]): Asserts = copy(seq = seq ++ s)
@@ -69,7 +73,7 @@ object BuilderTest extends ZIOSpecDefault {
     val testSeq = SimpleEnvironment { env ?=>
       type Step[T] = State[Asserts, T]
       def predicate(name: String)(cond: Condition[Fruit]): Step[Option[String]] = State { asserts =>
-        val set: Set[Predicate] = Builder.selectPredicatesAndSources(cond).predicates.keySet
+        val set: Set[Predicate] = Builder.selectPredicatesAndSources(cond).toOption.get.predicates
 
         asserts.addStep {
           s"condition created by $name should have only one predicate" -> assert(set)(hasSize(equalTo(1)))
@@ -101,7 +105,6 @@ object BuilderTest extends ZIOSpecDefault {
 
     res.map { case (name, check) => test(name)(check) }
   }*)
-
   private val predicateSelectionStrategy = suite(
     "Condition parser should find all predicates and sources with respect to Environment.predicateSelectionStrategy"
   )(
@@ -111,36 +114,36 @@ object BuilderTest extends ZIOSpecDefault {
       }
 
       val res = SEKeep {
-        Builder.selectPredicatesAndSources(condition1)
+        Builder.selectPredicatesAndSources(condition1).toOption.get
       }
 
-      assert(res.sources)(hasSize(equalTo(4))) &&
-      assert(res.facts.toSeq.filter(_.isAlpha))(hasSize(equalTo(8)))
+      assert(res.sourceSignatures)(hasSize(equalTo(4))) &&
+      assert(res.facts)(hasSize(equalTo(9)))
     },
     test("PredicateSelection.Clean") {
       object SEClean extends SimpleEnvironment {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
       val res: SelectedPredicatesAndSources = SEClean {
-        Builder.selectPredicatesAndSources(condition1)
+        Builder.selectPredicatesAndSources(condition1).toOption.get
       }
 
-      assert(res.sources)(hasSize(equalTo(3))) &&
-      assert(res.facts.filter(_.isAlpha))(hasSize(equalTo(5)))
+      assert(res.sourceSignatures)(hasSize(equalTo(3))) &&
+      assert(res.facts)(hasSize(equalTo(5)))
     }
   )
-  private val alphaNetwork               = suite("Alpha network")(
+  private val network                    = suite("Network")(
     test("is built") {
-      val res: AlphaNetwork = SimpleEnvironment {
-        val steps: BuildStep[AlphaNetwork] = for {
-          _       <- Builder.parse(rule1)
-          network <- Builder.buildAlphaNetwork
+      val res = SimpleEnvironment {
+        val steps: EnvBuildStepF[NetworkLayer] = for {
+          _       <- Builder.parse(rule1).toOption.get
+          network <- Builder.buildNetwork
         } yield network
 
         steps.runA(BuildContext.empty).value
       }
       assertTrue(
-        res.alphaNetwork.nonEmpty,
+        res.networkLayer.nonEmpty,
         res.topChains.nonEmpty
       )
     }
@@ -155,28 +158,7 @@ object BuilderTest extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment & Scope, Any] = suite("BuilderTest")(
     predicates,
     predicateSelectionStrategy,
-    alphaNetwork
+    network
   )
 
-  case class Fruit(name: String, sugar: Double, acidity: Double)
-
-  case class Vegetable(name: String, origin: Origin)
-
-  case class Herb(name: String, origin: Origin)
-
-  case class Berry(name: String, origin: Origin)
-
-  object Origin {
-    given Empty[Origin] with {
-      override def empty: Origin = Origin.GreenHouse
-    }
-
-    given Eq[Origin] with {
-      override def eqv(x: Origin, y: Origin): Boolean = x == y
-    }
-  }
-
-  enum Origin {
-    case Field, GreenHouse
-  }
 }

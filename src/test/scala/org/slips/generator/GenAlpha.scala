@@ -2,6 +2,7 @@ package org.slips.generator
 
 import org.slips.data.Data
 import org.slips.data.Data.*
+import org.slips.data.*
 import org.slips.syntax.*
 import zio.test.Gen
 
@@ -14,7 +15,7 @@ object GenAlpha {
 
   given paFruit: GenAlpha[Fruit] = (d: Fruit) =>
     Gen.elements[Alpha[Fruit]](
-      _.test(_.color == d.color),
+      _.test(_.color =:= d.color),
       _.test(_.name == d.name),
       _.test(_.sugar == d.sugar),
       _.test(_.juice == d.juice),
@@ -24,7 +25,7 @@ object GenAlpha {
   given paVegie: GenAlpha[Vegetable] = (v: Vegetable) =>
     Gen.elements[Alpha[Vegetable]](
       _.test(_.name == v.name),
-      _.test(_.color == v.color),
+      _.test(_.color =:= v.color),
       cls(v)
     )
 
@@ -38,7 +39,7 @@ object GenAlpha {
   given paBerry: GenAlpha[Berry] = (b: Berry) =>
     Gen.elements[Alpha[Berry]](
       _.test(_.name == b.name),
-      _.test(_.color == b.color),
+      _.test(_.color =:= b.color),
       cls(b)
     )
 
