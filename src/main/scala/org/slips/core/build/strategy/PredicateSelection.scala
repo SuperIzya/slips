@@ -18,18 +18,7 @@ trait PredicateSelection {
 
 object PredicateSelection {
 
-  type ValidatedRes = Either[String, SelectedPredicatesAndSources]
-  object ValidatedRes {
-    type Valid = Right[String, SelectedPredicatesAndSources]
-    object Valid {
-      def apply(src: SelectedPredicatesAndSources): ValidatedRes = Right(src)
-    }
-
-    type Invalid = Left[String, SelectedPredicatesAndSources]
-    object Invalid {
-      def apply(msg: String): ValidatedRes = Left(msg)
-    }
-  }
+  type ValidatedRes = Result[SelectedPredicatesAndSources]
 
   def select[T](
     initial: Fact.Val[T],
@@ -44,7 +33,7 @@ object PredicateSelection {
       allFacts: AllFacts
     ): ValidatedRes = {
 
-      ValidatedRes.Valid(
+      Result.result(
         collectPredicates(
           allFacts.values.flatten.toSet,
           SelectedPredicatesAndSources(initial)
@@ -117,16 +106,16 @@ object PredicateSelection {
       private inline def deq(selected: SelectedPredicatesAndSources): ValidatedRes =
         q.dequeueOption match {
           case Some((pd, qu)) => collectSources(selected, pd, qu)
-          case None           => ValidatedRes.Valid(selected)
+          case None           => Result.result(selected)
         }
     }
 
     private def processDiscarded(selected: SelectedPredicatesAndSources): ValidatedRes = {
-      if (selected.discarded.isEmpty) ValidatedRes.Valid(selected)
+      if (selected.discarded.isEmpty) Result.result(selected)
       else
         selected
           .discarded
-          .foldLeft(ValidatedRes.Valid(selected.copy(discarded = Set.empty))) { (col, dis) =>
+          .foldLeft(Result.result(selected.copy(discarded = Set.empty))) { (col, dis) =>
             col.flatMap(collectSources(_, dis))
           }
     }
@@ -150,20 +139,29 @@ object PredicateSelection {
           collectSources(col, left, queue.enqueue(right))
         case Predicate.And(l, right)                                                =>
           collectSources(col.withDiscard(l), right, queue)
-        case _ => ValidatedRes.Invalid(s"Unexpected predicate $p")
+        case _ => Result.errorMsg(s"Unexpected predicate $p")
       }
     }
 
     @tailrec
-    private def processPredicates(toCheck: List[Predicate], collected: SelectedPredicatesAndSources): ValidatedRes = {
+    private def processPredicates(
+      toCheck: List[Predicate],
+      collected: SelectedPredicatesAndSources,
+      warnings: List[Warning] = List.empty
+    ): ValidatedRes = {
 
-      val result: ValidatedRes = toCheck.foldLeft(ValidatedRes.Valid(collected)) { (col, p) =>
-        col.flatMap(collectSources(_, p))
-      }
+      val result: ValidatedRes = toCheck
+        .foldLeft(Result.result(collected)) { (col, p) => col.flatMap(collectSources(_, p)) }
+        .withMaybeWarnings(warnings)
+
       result match {
-        case Left(value)                                        => ValidatedRes.Invalid(value)
-        case Right(res) if res.discarded == collected.discarded => ValidatedRes.Valid(res)
-        case Right(res)                                         => processPredicates(res.discarded.toList, res)
+        case Result.Pure(res) if res.discarded == collected.discarded                   => Result.result(res)
+        case Result.WithWarnings(res, warnings) if res.discarded == collected.discarded =>
+          Result.WithWarnings(res, warnings)
+        case Result.Error(error)                                                        => Result.Error(error)
+        case Result.WithWarnings(res, warnings)                                         =>
+          processPredicates(res.discarded.toList, res, warnings.toList)
+        case Result.Pure(res) => processPredicates(res.discarded.toList, res)
       }
     }
   }

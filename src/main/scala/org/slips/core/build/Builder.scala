@@ -19,11 +19,11 @@ private[slips] object Builder {
     for {
       ctx <- BuildStep.get
       network: NetworkLayer[env.Effect] = NetworkLayer(ctx.allPredicates)
-      res <- ctx.addNetwork(network)
+      _ <- ctx.addNetwork(network)
     } yield network
   }
 
-  def parse(using env: Environment)(rules: env.Rule*): Either[String, BuildStep[env.Effect][Unit]] = {
+  def parse(using env: Environment)(rules: env.Rule*): Result[BuildStep[env.Effect][Unit]] = {
     rules
       .toList
       .map { rule =>
@@ -49,22 +49,21 @@ private[slips] object Builder {
           )
         }
       }
-      .foldLeft[Either[String, BuildStep[env.Effect][Unit]]](Right(BuildStep.empty(env))) {
-        case (Right(prev), Right(result)) =>
-          Right {
-            for {
-              res <- prev
-              _   <- BuildStep.addParsingResult(result)
-            } yield ()
-          }
-        case (Left(value), _)             => Left(value)
-        case (_, Left(value))             => Left(value)
+      .foldLeft(Result.result(BuildStep.empty(env))) { (collected, element) =>
+        val res: Result[BuildStep[env.Effect][Unit]] = for {
+          el  <- element
+          col <- collected
+        } yield {
+          for {
+            _ <- col
+            _ <- BuildStep.addParsingResult(el)
+          } yield ()
+        }
+        res
       }
   }
 
-  def selectPredicatesAndSources[T: FactOps](
-    condition: Condition[T]
-  ): Env[Either[String, SelectedPredicatesAndSources]] = {
+  def selectPredicatesAndSources[T: FactOps](condition: Condition[T]): Env[Result[SelectedPredicatesAndSources]] = {
     val (Context(predicates, _), result) = Parser(condition)
 
     PredicateSelection.select[T](

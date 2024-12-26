@@ -1,5 +1,6 @@
 package org.slips.core.build
 
+import ResultAssertion.*
 import cats.Eq
 import cats.Eval
 import cats.data.State
@@ -9,11 +10,7 @@ import org.slips.EnvRule
 import org.slips.Signature
 import org.slips.SimpleEnvironment
 import org.slips.core.*
-import org.slips.core.build.BuildContext
-import org.slips.core.build.Builder
-import org.slips.core.build.EnvBuildStep
-import org.slips.core.build.EnvBuildStepF
-import org.slips.core.build.SelectedPredicatesAndSources
+import org.slips.core.build.*
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
@@ -23,7 +20,7 @@ import org.slips.data.*
 import org.slips.syntax.*
 import scala.annotation.targetName
 import zio.*
-import zio.test.*
+import zio.test.{Result as _, *}
 import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
@@ -51,7 +48,7 @@ object BuilderTest extends ZIOSpecDefault {
     _ <- (v, f1, f2).testMany(vegie2Fruits)
   } yield (f1, f2, v, _5)
 
-  private val rule1: EnvRule             = env ?=> {
+  private val rule1: EnvRule = env ?=> {
     condition1.makeRule("Test rule 1") { case (f1, f2, v, c5) =>
       for {
         x1 <- f1.value
@@ -59,7 +56,7 @@ object BuilderTest extends ZIOSpecDefault {
       } yield ()
     }
   }
-  private val predicates                 = suite("Predicates should have same signature")({
+  private val predicates     = suite("Predicates should have same signature")({
     case class Asserts(seq: Seq[(String, TestResult)]) {
       def addStep(s: (String, TestResult)): Asserts       = copy(seq = seq :+ s)
       def addSteps(s: Seq[(String, TestResult)]): Asserts = copy(seq = seq ++ s)
@@ -70,10 +67,12 @@ object BuilderTest extends ZIOSpecDefault {
 
     val notAppleF: Fact[Fruit] => Predicate = method
 
-    val testSeq = SimpleEnvironment { env ?=>
+    val testSeq = SimpleEnvironment {
       type Step[T] = State[Asserts, T]
       def predicate(name: String)(cond: Condition[Fruit]): Step[Option[String]] = State { asserts =>
-        val set: Set[Predicate] = Builder.selectPredicatesAndSources(cond).toOption.get.predicates
+        val predicatesAndSources: Result[SelectedPredicatesAndSources] = Builder.selectPredicatesAndSources(cond)
+
+        val set: Set[Predicate] = predicatesAndSources.toOption.get.predicates
 
         asserts.addStep {
           s"condition created by $name should have only one predicate" -> assert(set)(hasSize(equalTo(1)))
@@ -105,6 +104,7 @@ object BuilderTest extends ZIOSpecDefault {
 
     res.map { case (name, check) => test(name)(check) }
   }*)
+
   private val predicateSelectionStrategy = suite(
     "Condition parser should find all predicates and sources with respect to Environment.predicateSelectionStrategy"
   )(
@@ -113,39 +113,48 @@ object BuilderTest extends ZIOSpecDefault {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Keep
       }
 
-      val res = SEKeep {
-        Builder.selectPredicatesAndSources(condition1).toOption.get
+      val res: Result[SelectedPredicatesAndSources] = SEKeep {
+        Builder.selectPredicatesAndSources(condition1)
       }
 
-      assert(res.sourceSignatures)(hasSize(equalTo(4))) &&
-      assert(res.facts)(hasSize(equalTo(9)))
+      assert(res) {
+        res.assertField("sourceSignatures", _.sourceSignatures, hasSize(equalTo(4))) &&
+        res.assertField("facts", _.facts, hasSize(equalTo(9)))
+      }
     },
     test("PredicateSelection.Clean") {
       object SEClean extends SimpleEnvironment {
         override val predicateSelectionStrategy: PredicateSelection = PredicateSelection.Clean
       }
-      val res: SelectedPredicatesAndSources = SEClean {
-        Builder.selectPredicatesAndSources(condition1).toOption.get
+      val res: Result[SelectedPredicatesAndSources] = SEClean {
+        Builder.selectPredicatesAndSources(condition1)
       }
 
-      assert(res.sourceSignatures)(hasSize(equalTo(3))) &&
-      assert(res.facts)(hasSize(equalTo(5)))
+      assert(res) {
+        res.assertField("sourceSignatures", _.sourceSignatures, hasSize(equalTo(3))) &&
+        res.assertField("facts", _.facts, hasSize(equalTo(5)))
+      }
     }
   )
-  private val network                    = suite("Network")(
-    test("is built") {
-      val res = SimpleEnvironment {
-        val steps: EnvBuildStepF[NetworkLayer] = for {
-          _       <- Builder.parse(rule1).toOption.get
-          network <- Builder.buildNetwork
-        } yield network
 
-        steps.runA(BuildContext.empty).value
+  private val network = suite("Network")(
+    test("is built") {
+      val res = SimpleEnvironment { env ?=>
+        val parsed: Result[BuildStep[env.Effect][Unit]] = Builder.parse(rule1)
+        parsed.map { parseStep =>
+          val steps = for {
+            _       <- parseStep
+            network <- Builder.buildNetwork
+          } yield network
+
+          steps.runA(BuildContext.empty).value
+        }
       }
-      assertTrue(
-        res.networkLayer.nonEmpty,
-        res.topChains.nonEmpty
-      )
+
+      assert(res) {
+        res.assertField("networkLayer", _.networkLayer, isNonEmpty) &&
+        res.assertField("topChains", _.topChains, isNonEmpty)
+      }
     }
   )
 

@@ -50,12 +50,12 @@ object NetworkLayer {
     * For predicates P1 ... P7 and facts F1 ... F6 where
     * facts are tested by predicates as following:
     * ```
-    * -F1 - P1, P2, P6, P7
-    * -F2 - P2, P3, P4, P6, P7
-    * -F3 - P3, P4, P5, P6, P7
-    * -F4 - P1, P3, P4, P6, P7
-    * -F5 - P1, P2, P3, P4, P6, P7
-    * -F6 - P1, P2, P3, P5, P6, P7
+    * - F1 - P1, P2, P6, P7
+    * - F2 - P2, P3, P4, P6, P7
+    * - F3 - P3, P4, P5, P6, P7
+    * - F4 - P1, P3, P4, P6, P7
+    * - F5 - P1, P2, P3, P4, P6, P7
+    * - F6 - P1, P2, P3, P5, P6, P7
     * ```
     *
     * Then predicates are testing facts as following:
@@ -200,18 +200,16 @@ object NetworkLayer {
 
       if (factsToChains.contains(facts)) {
         val chain    = factsToChains(facts)
-        val newChain = chain.appendPredicate(predicate, facts)
+        val newChain = chain.appendPredicate(predicate)
 
-        copy(factsToChains = factsToChains + (facts -> newChain))
+        copy(factsToChains = factsToChains.updated(facts, newChain))
       } else {
         factsToChains
-          .values
-          .toList
-          .find(c => c.facts.subsetOf(facts))
+          .find(_._1.subsetOf(facts))
           .fold {
             copy(factsToChains = factsToChains + (facts -> Chain(predicate, facts)))
           } { c =>
-            val newChain = Chain(predicate, facts, c)
+            val newChain = Chain(predicate, facts, c._2)
             copy(factsToChains = factsToChains + (facts -> newChain))
           }
       }
@@ -221,12 +219,10 @@ object NetworkLayer {
 
       val res: Map[Fact.Source[?], Set[Chain]] = factsToChains
         .view
-        .iterator
         .flatMap { case (_, chain) =>
-          val inverted = chain.invert(None)
+          val inverted = chain.invert
           inverted.facts.map(_ -> inverted)
         }
-        .toList
         .groupBy(_._1)
         .view
         .mapValues(_.map(_._2).toSet)

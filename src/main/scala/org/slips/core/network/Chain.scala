@@ -21,41 +21,43 @@ private[network] object Chain {
     allPredicates: Set[String]
   ) extends Chain {
 
-    @tailrec
-    final def invert(newTail: Option[Predicates] = None): Env[Chain] = env ?=> {
-      val tailM = tail.headOption
-      val next  = Predicates(
+    def invert: Env[Chain] = {
+      val next = nextPredicate(None)
+      invertNext(next)
+    }
+
+    private def nextPredicate(newTail: Option[Predicates]): Env[Predicates] =
+      Predicates(
         predicates = predicates,
         tail = newTail,
-        facts = tailM.map(_.facts).fold(facts)(facts -- _),
-        allPredicates = newTail.fold(predicates.map(_.predicate.signature).map(_.compute))(
-          _.allPredicates ++ predicates.map(_.predicate.signature).map(_.compute)
-        )
+        facts = facts -- tail.headOption.fold(Set.empty)(_.facts),
+        allPredicates = predicates.map(_.predicate.signature.compute) ++ newTail.fold(Set.empty)(_.allPredicates)
       )
 
-      if (tailM.isEmpty) next
-      else tailM.get.invert(Some(next))
-    }
+    private inline def invertNext(next: => Predicates): Env[Chain] =
+      tail.headOption match {
+        case Some(value) => value.invert(next)
+        case None        => next
+      }
+
+    private final def invert(newTail: Predicates): Env[Chain] =
+      invertNext(nextPredicate(Some(newTail)))
   }
 
-  case class Combine(
-    left: Chain,
-    right: Chain
-  ) extends Chain {
-    override def tail: Iterable[Chain] = Seq(left, right)
+  case class Combine(left: Chain, right: Chain) extends Chain {
+    def tail: Iterable[Chain] = Seq(left, right)
 
-    override lazy val facts: Set[Fact.Source[?]] = left.facts ++ right.facts
+    def facts: Set[Fact.Source[?]] = left.facts ++ right.facts
 
-    override def predicates: Set[BuildPredicate] = Set.empty
+    def predicates: Set[BuildPredicate] = Set.empty
 
-    override lazy val allPredicates: Set[String] = left.allPredicates ++ right.allPredicates
+    def allPredicates: Set[String] = left.allPredicates ++ right.allPredicates
   }
 
   extension (chain: Predicates) {
-    def appendPredicate(predicate: BuildPredicate, facts: Set[Fact.Source[?]]): Env[Predicates] = env ?=> {
+    def appendPredicate(predicate: BuildPredicate): Env[Predicates] = env ?=> {
       chain.copy(
         predicates = chain.predicates + predicate,
-        facts = chain.facts ++ facts,
         allPredicates = chain.allPredicates + predicate.predicate.signature.compute
       )
     }
@@ -69,14 +71,11 @@ private[network] object Chain {
   def apply(predicate: BuildPredicate, facts: Set[Fact.Source[?]], tail: Predicates): Env[Predicates] =
     apply(predicate, facts, Option(tail))
 
-  def apply(predicate: BuildPredicate, facts: Set[Fact.Source[?]], tail: Option[Predicates]): Env[Predicates] = env ?=>
-    {
-      Predicates(
-        Set(predicate),
-        tail,
-        facts,
-        tail.view.toSet.flatMap(_.allPredicates) + predicate.predicate.signature.compute
-      )
-    }
-
+  def apply(predicate: BuildPredicate, facts: Set[Fact.Source[?]], tail: Option[Predicates]): Env[Predicates] =
+    Predicates(
+      Set(predicate),
+      tail,
+      facts,
+      tail.view.toSet.flatMap(_.allPredicates) + predicate.predicate.signature.compute
+    )
 }

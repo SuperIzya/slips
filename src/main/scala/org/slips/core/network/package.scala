@@ -14,5 +14,4 @@ package object network {
 
   private[network] type PredicateToSignature = Map[BuildPredicate, PredicateSignature]
   private[network] type SignatureToPredicate = Map[PredicateSignature, BuildPredicate]
-  private[network] type FactToSignature      = Map[Fact.Source[?], FactFullSignature]
 }
