@@ -34,7 +34,7 @@ package object data {
   }
 
   object Origin {
-    given Empty[Origin] with {
+    given Empty[Origin] {
       override def empty: Origin = Origin.GreenHouse
     }
 

@@ -23,9 +23,9 @@ jobs:
     if: contains(github.head_ref, 'update/')
     steps:
       - name: merge dependency update PRs
-        uses: desbo/merge-pr-action@v0.3.2
+        uses: desbo/merge-pr-action@v0
         with:
           MERGE_METHOD: squash
-          ALLOWED_UPDATE: minor
+          ALLOWED_UPDATE: any
           GITHUB_TOKEN: ${{ secrets.MERGE_TOKEN }}
 

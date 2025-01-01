@@ -6,19 +6,7 @@ import cats.syntax.functor.*
 import org.slips.core.*
 import org.slips.core.build.*
 import org.slips.core.build.strategy.PredicateSelection
-import org.slips.core.conditions.*
-import org.slips.core.fact.Fact
-import org.slips.core.fact.FactOps
-import org.slips.core.rule.Rule
-import scala.annotation.tailrec
-import scala.annotation.targetName
-import scala.deriving.Mirror
 import scala.language.implicitConversions
-import scala.quoted.Expr
-import scala.quoted.Quotes
-import scala.quoted.Type
-import scala.reflect.TypeTest
-import scala.util.NotGiven
 
 trait Environment {
 
@@ -30,11 +18,8 @@ trait Environment {
     def create[T]: Buffer[T]
   }
   object BufferFactory {
-    def apply(
-      buffer: [x] => (
-      ) => Buffer[x]
-    ): BufferFactory = new BufferFactory {
-      override def create[T]: Buffer[T] = buffer[T]()
+    def apply(buffer: [x] => () => Buffer[x]): BufferFactory = new BufferFactory {
+      def create[T]: Buffer[T] = buffer[T]()
     }
   }
 
@@ -56,6 +41,6 @@ trait Environment {
     type Step[x] = StateT[Effect, ContextBuilder, x]
   }
 
-  given effectMonad: Monad[Effect]
+  given effectMonad: Monad[Effect] = compiletime.deferred
 
 }

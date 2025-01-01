@@ -28,7 +28,7 @@ package object build {
   private[slips] type EnvParseResult      = (env: Environment) ?=> ParseResult[env.Effect]
   private[slips] type EnvBuildParseResult = (env: Environment) ?=> BuildStep[env.Effect][ParseResult[env.Effect]]
 
-  private[slips] given app[F[_]]: Applicative[BuildStep[F]] = new Applicative[BuildStep[F]] {
+  private[slips] given [F[_]] => Applicative[BuildStep[F]] = new Applicative[BuildStep[F]] {
     override def pure[A](x: A): BuildStep[F][A] = BuildStep.pure(x)
 
     override def ap[A, B](ff: BuildStep[F][A => B])(fa: BuildStep[F][A]): BuildStep[F][B] = for {

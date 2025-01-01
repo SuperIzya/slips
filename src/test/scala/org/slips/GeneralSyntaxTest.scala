@@ -1,14 +1,13 @@
-package org.slips.syntax
+package org.slips
 
-import cats.{Eq, Order}
+import cats.Order
+import cats.implicits.*
+import org.slips.EnvRule
 import org.slips.core.Empty
 import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
-import org.slips.data.*
-import cats.implicits.*
-import org.slips.{EnvRule, Environment}
 
 import scala.annotation.targetName
 
@@ -70,10 +69,10 @@ object GeneralSyntaxTest {
   }
 
   object Theme {
-    given empty: Empty[Theme] with {
+    given Empty[Theme] {
       override def empty: Theme = Theme.War
     }
-    given order: Order[Theme] = Order.from((x, y) => x.ordinal.compareTo(y.ordinal))
+    given Order[Theme] = Order.from((x, y) => x.ordinal.compareTo(y.ordinal))
     given CanEqual[Theme, Theme] = CanEqual.derived
   }
 }

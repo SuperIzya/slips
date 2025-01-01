@@ -1,11 +1,10 @@
 package org.slips.core.conditions
 
-import org.slips.core.conditions.Predicate.And
-import org.slips.core.conditions.Predicate.Not
-import org.slips.core.conditions.Predicate.Or
+import org.slips.core.SourceLocation
+import org.slips.core.conditions.Predicate.*
 import org.slips.core.fact.Fact
 
-object Parser {
+object Parser extends PredicateSyntax {
 
   def apply[T](condition: Condition[T]): (Context, Fact.Val[T]) =
     parse(condition).run(Context.empty).value
@@ -20,35 +19,38 @@ object Parser {
   }
 
   private def parse[T](condition: Condition[T]): ParseStep[T] = condition match {
-    case source: Condition.Source[T] =>
+    case source: Condition.Source[T]        =>
       ParseStep
         .modify(_.addSource(source))
-        .map[Fact.Val[T]](_ => source.ev.flip(Fact.Source(source)(using source.T, source.ev)))
-    case Condition.Opaque(predicate) => parsePredicate(predicate)
-    case Condition.Map(src, f)       => parse(src).map(f)
-    case Condition.FlatMap(left, f)  => parse(left).flatMap(x => parse(f(x)))
-    case Condition.Filter(cond, f)   =>
+        .map[Fact.Val[T]](_ =>
+          source.ev.flip(Fact.Source(source)(using source.T, source.ev)(using source.sourceLocation))
+        )
+    case Condition.Opaque(predicate)        => parsePredicate(predicate.toCNF)
+    case Condition.Map(src, f)              => parse(src).map(f)
+    case Condition.FlatMap(left, f)         => parse(left).flatMap(x => parse(f(x)))
+    case filter @ Condition.Filter(cond, f) =>
+      given SourceLocation = filter.sourceLocation
       for {
         t <- parse(cond)
         predicate = f(t)
-        _ <- parsePredicate(predicate.toDNF)
+        _ <- parsePredicate(predicate.toCNF)
       } yield t
   }
 
   private def parsePredicate(p: Predicate): ParseStep[Unit] = p match {
-    case And(left, right) =>
+    case left && right =>
       for {
         _ <- parsePredicate(left)
         _ <- parsePredicate(right)
       } yield Fact.unit
-    case Or(left, right)  =>
+    case left || right =>
       for {
         _ <- parsePredicate(left)
         _ <- parsePredicate(right)
         _ <- ParseStep.modify(_.addPredicate(p))
       } yield Fact.unit
-    case Not(pp)          =>
+    case !(pp)         =>
       parsePredicate(pp).flatMap(_ => ParseStep.modify(_.addPredicate(p)))
-    case _                => ParseStep.modify(_.addPredicate(p))
+    case _             => ParseStep.modify(_.addPredicate(p))
   }
 }
