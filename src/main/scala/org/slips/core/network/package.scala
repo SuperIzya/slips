@@ -10,8 +10,6 @@ package object network {
 
   private[network] type FoldState[T] = State[FactsFolder, T]
 
-  private[network] type FactsScore = Map[Source[?], Map[Int, Long]]
-
   private[network] type PredicateToSignature = Map[BuildPredicate, PredicateSignature]
   private[network] type SignatureToPredicate = Map[PredicateSignature, BuildPredicate]
 }

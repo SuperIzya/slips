@@ -1,16 +1,11 @@
 package org.slips.core.build
 
-import ResultAssertion.*
-import cats.Eq
 import cats.Eval
 import cats.data.State
-import org.slips.Env
-import org.slips.Environment as SEnv
-import org.slips.EnvRule
-import org.slips.Signature
-import org.slips.SimpleEnvironment
+import org.slips.{EnvRule, Signature, SimpleEnvironment}
 import org.slips.core.*
 import org.slips.core.build.*
+import org.slips.core.build.ResultAssertion.*
 import org.slips.core.build.strategy.PredicateSelection
 import org.slips.core.conditions.*
 import org.slips.core.fact.Fact
@@ -18,10 +13,9 @@ import org.slips.core.network.NetworkLayer
 import org.slips.core.rule.Rule
 import org.slips.data.*
 import org.slips.syntax.*
-import scala.annotation.targetName
 import zio.*
-import zio.test.{Result as _, *}
 import zio.test.Assertion.*
+import zio.test.{Result as _, *}
 
 object BuilderTest extends ZIOSpecDefault {
 
@@ -35,8 +29,7 @@ object BuilderTest extends ZIOSpecDefault {
     _     <- berry.value(_.origin) =!= literal(Origin.Field)
     _     <- b.value(_.origin) =!= Origin.GreenHouse && b.test(_.name.nonEmpty)
     _     <- h.test(_.name.nonEmpty)
-    f1    <- all[Fruit]
-    _     <- f1.test(_.sugar != 1.0)
+    f1    <- all[Fruit] if f1.test(_.sugar != 1.0)
     f2    <- all[Fruit]
     _     <- notApple(f2) || notApple(f1)
     v     <- all[Vegetable]

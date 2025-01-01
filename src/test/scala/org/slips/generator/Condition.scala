@@ -10,11 +10,12 @@ import scala.annotation.tailrec
 import zio.test.*
 
 object Condition {
+  import Predicate.*
 
   sealed trait PredicateOps {
     def combine(p1: Predicate, p2: Predicate): Predicate
   }
-  object PredicateOps {
+  object PredicateOps       {
     case object And extends PredicateOps {
       override def combine(p1: Predicate, p2: Predicate): Predicate = p1 && p2
     }
@@ -25,10 +26,10 @@ object Condition {
 
     case object Not extends PredicateOps {
       override def combine(p1: Predicate, p2: Predicate): Predicate = (p1, p2) match {
-        case (Predicate.Or(_, _), _)  => !p1 || p2
-        case (_, Predicate.And(a, b)) => p1 && !a && !b
-        case (Predicate.And(a, b), _) => a && !b && !p2
-        case (_, _)                   => p1 || !p2
+        case (_ || _, _) => !p1 || p2
+        case (_, a && b) => p1 && !a && !b
+        case (a && b, _) => a && !b && !p2
+        case (_, _)      => p1 || !p2
       }
     }
     def next: DGen[PredicateOps] = Gen.elements(And, Or, Not)

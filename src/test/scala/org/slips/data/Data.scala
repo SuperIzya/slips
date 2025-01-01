@@ -10,7 +10,7 @@ object Data {
   object Fruit {
     val names: DGen[String] = Gen.elements("apple", "grapes", "orange", "plum")
 
-    given gen(using C: DGen[Color]): DGen[Fruit] = for {
+    given gen: (C: DGen[Color]) => DGen[Fruit] = for {
       color <- C
       sugar <- Gen.double
       juice <- Gen.double
@@ -23,7 +23,7 @@ object Data {
   object Vegetable {
     val names: DGen[String] = Gen.elements("potato", "tomato", "onion", "cabbage")
 
-    given gen(using C: DGen[Color]): DGen[Vegetable] = for {
+    given gen: (C: DGen[Color]) => DGen[Vegetable] = for {
       color <- C
       name  <- names
     } yield Vegetable(name, color)
@@ -34,7 +34,7 @@ object Data {
   object Leaf {
     val names: DGen[String] = Gen.elements("lettuce", "coriander", "salad", "spinach")
 
-    given gen(using C: DGen[Color]): DGen[Leaf] = for {
+    given gen: (C: DGen[Color]) => DGen[Leaf] = for {
       name <- names
       size <- Gen.double
     } yield Leaf(name, size)
@@ -45,7 +45,7 @@ object Data {
   object Berry {
     val names: DGen[String] = Gen.elements("blueberry", "blackberry", "cranberry", "strawberry")
 
-    given gen(using C: DGen[Color]): DGen[Berry] = for {
+    given gen: (C: DGen[Color]) => DGen[Berry] = for {
       color <- C
       name  <- names
     } yield Berry(name, color)
@@ -56,7 +56,7 @@ object Data {
   object Mushroom {
     val names: DGen[String] = Gen.elements("porcini", "truffles", "chanterelle", "armillaria mellea")
 
-    given gen(using C: DGen[Color]): DGen[Mushroom] = for {
+    given gen: (C: DGen[Color]) => DGen[Mushroom] = for {
       name <- names
     } yield Mushroom(name, name)
   }

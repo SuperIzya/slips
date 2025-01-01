@@ -12,39 +12,20 @@ import scala.util.NotGiven
 
 class ConditionTest extends AnyFunSuiteLike {
 
-  case class Data1(
-    i: Int,
-    s: String
-  )
+  case class Data1(i: Int, s: String)
 
-  case class Data2(
-    s: String,
-    i: Int
-  )
+  case class Data2(s: String, i: Int)
 
-  case class Data3(
-    d: Double,
-    f: Float,
-    b: Boolean
-  )
+  case class Data3(d: Double, f: Float, b: Boolean)
 
   test("flatMap is stack-safe") {
-    inline def flatMap[T](
-      count: Int
-    )(using
-      NotTuple[T],
-      ScalarFact[T],
-      FactOps[T]
-    ): Condition[T] = {
+    inline def flatMap[T: {NotTuple, ScalarFact, FactOps}](count: Int): Condition[T] = {
       @tailrec
-      def work(
-        left: Int,
-        current: Condition[T]
-      ): Condition[T] = {
+      def work(left: Int, current: Condition[T]): Condition[T] = {
         if (left == 0) current
-        else work(left - 1, current.flatMap(_ => Condition.all[T]))
+        else work(left - 1, current.flatMap(_ => all[T]))
       }
-      work(count, Condition.all[T])
+      work(count, all[T])
     }
 
     val f1 = flatMap[Data1](165536)

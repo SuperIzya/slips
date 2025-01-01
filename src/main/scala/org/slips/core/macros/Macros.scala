@@ -1,11 +1,20 @@
 package org.slips.core.macros
 
+import org.slips.core.SourceLocation
 import scala.quoted.*
 import scala.util.matching.Regex
 
-object Macros {
+private[slips] object Macros {
   inline def sign(inline toSign: Any): String = ${ signAnyImpl('toSign) }
   inline def signType[T]: String              = ${ signTypeImpl[T] }
+
+  def sourceLocation(using Quotes): Expr[SourceLocation] = {
+    import quotes.reflect.*
+    val source = Position.ofMacroExpansion
+    val path   = source.sourceFile.path
+    val line   = source.startLine
+    '{ SourceLocation(${ Expr(path) }, ${ Expr(line) }) }
+  }
 
   private def signAnyImpl(toSign: Expr[Any])(using Quotes): Expr[String] = {
     Expr(signAny(toSign))

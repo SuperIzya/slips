@@ -5,6 +5,7 @@ import cats.data.StateT
 import cats.syntax.all.*
 import org.slips.Env
 import org.slips.Environment
+import org.slips.core.SourceLocation
 import org.slips.core.build.Builder
 import org.slips.core.build.SelectedPredicatesAndSources
 import org.slips.core.conditions.Condition
@@ -70,7 +71,7 @@ object Rule {
     override val name: String,
     override val condition: Condition[V],
     actions: (r: Rule[F]) ?=> r.Method[V]
-  )(using val T: FactOps[V])
+  )(using val T: FactOps[V], sourceLocation: SourceLocation)
       extends Rule[F] { self =>
     def selfAction: self.Method[T] = actions(using self)
     type T = V
@@ -80,7 +81,7 @@ object Rule {
     name: String,
     condition: Condition[T],
     actions: (rule: Rule[env.Effect]) ?=> rule.Method[T]
-  ): env.Rule =
+  )(using SourceLocation): env.Rule =
     new Impl[env.Effect, T](name, condition, actions)
 
 }

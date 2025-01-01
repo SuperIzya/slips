@@ -3,43 +3,34 @@ package org.slips.core.build.strategy
 import org.slips.Env
 import org.slips.core.build.*
 import org.slips.core.build.strategy.PredicateSelection.ValidatedRes
-import org.slips.core.conditions.Predicate
+import org.slips.core.conditions.{Predicate, PredicateSyntax}
 import org.slips.core.fact.*
+
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
 /** Selection of predicates from condition of the rule */
 trait PredicateSelection {
-  def selectPredicatesAndSources[T: FactOps](
-    initial: Fact.Val[T],
-    allFacts: AllFacts
-  ): ValidatedRes
+  def selectPredicatesAndSources[T: FactOps](initial: Fact.Val[T], allFacts: AllFacts): ValidatedRes
 }
 
 object PredicateSelection {
 
   type ValidatedRes = Result[SelectedPredicatesAndSources]
 
-  def select[T](
-    initial: Fact.Val[T],
-    allFacts: AllFacts
-  )(using T: FactOps[T]): Env[ValidatedRes] =
+  def select[T](initial: Fact.Val[T], allFacts: AllFacts)(using T: FactOps[T]): Env[ValidatedRes] =
     env ?=> env.predicateSelectionStrategy.selectPredicatesAndSources(initial, allFacts)
 
   /** Keep all predicates */
   case object Keep extends PredicateSelection {
-    override def selectPredicatesAndSources[T: FactOps](
-      initial: Fact.Val[T],
-      allFacts: AllFacts
-    ): ValidatedRes = {
-
+    import Predicate.*
+    def selectPredicatesAndSources[T: FactOps](initial: Fact.Val[T], allFacts: AllFacts): ValidatedRes =
       Result.result(
         collectPredicates(
           allFacts.values.flatten.toSet,
           SelectedPredicatesAndSources(initial)
         )
       )
-    }
 
     @tailrec
     private def collectPredicates(
@@ -48,9 +39,9 @@ object PredicateSelection {
     ): SelectedPredicatesAndSources = predicates.headOption match {
       case Some(head) =>
         head match {
-          case Predicate.And(left, right) =>
+          case left && right =>
             collectPredicates((predicates.tail + left) + right, collected)
-          case Predicate.Or(left, right)  =>
+          case left || right  =>
             collectPredicates((predicates.tail + left) + right, collected.withPredicate(head))
           case _                          =>
             collectPredicates(predicates.tail, collected.withPredicate(head))
@@ -85,12 +76,13 @@ object PredicateSelection {
     * fact `v`
     */
   case object Clean extends PredicateSelection {
+    import Predicate.*
 
-    override def selectPredicatesAndSources[T: FactOps](
+    def selectPredicatesAndSources[T: {FactOps as T}](
       initial: Fact.Val[T],
       allFacts: AllFacts
     ): ValidatedRes = {
-      val initialSources = initial.sources
+      val initialSources = T.sources(initial)
       processPredicates(
         allFacts.values.flatten.toList,
         SelectedPredicatesAndSources
@@ -131,13 +123,13 @@ object PredicateSelection {
           queue.deq(col.withDiscard(p))
         case Predicate.Test(_, _, _)                                                =>
           queue.deq(col.withPredicate(p))
-        case Predicate.Not(pred)                                                    =>
+        case  !(pred)                                                    =>
           collectSources(col.withPredicate(p), pred, queue)
-        case Predicate.Or(left, right)                                              =>
+        case left || right                                              =>
           collectSources(col.withPredicate(p), left, queue.enqueue(right))
-        case Predicate.And(left, right) if col.facts.intersect(left.facts).nonEmpty =>
+        case left && right if col.facts.intersect(left.facts).nonEmpty =>
           collectSources(col, left, queue.enqueue(right))
-        case Predicate.And(l, right)                                                =>
+        case l && right                                                =>
           collectSources(col.withDiscard(l), right, queue)
         case _ => Result.errorMsg(s"Unexpected predicate $p")
       }

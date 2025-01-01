@@ -34,6 +34,6 @@ private[slips] case class SelectedPredicatesAndSources(
 private[slips] object SelectedPredicatesAndSources {
   lazy val empty: SelectedPredicatesAndSources = SelectedPredicatesAndSources()
 
-  def apply[T: FactOps](start: Fact.Val[T]): SelectedPredicatesAndSources =
-    new SelectedPredicatesAndSources(facts = start.sources)
+  def apply[T: {FactOps as T}](start: Fact.Val[T]): SelectedPredicatesAndSources =
+    new SelectedPredicatesAndSources(facts = T.sources(start))
 }

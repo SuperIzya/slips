@@ -1,6 +1,6 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
-ThisBuild / scalaVersion := "3.4.1"
+ThisBuild / scalaVersion := "3.6.2"
 
 lazy val Version = new {
   lazy val cats       = "2.12.0"
@@ -14,17 +14,20 @@ lazy val root = (project in file(".")).settings(
   name := "slips",
   scalacOptions ++= Seq(
 //    "-Vprofile",
+    //   "-Yprofile-enabled",
+    // "--verbose",
     "-explain",
     "-Xprint-suspension",
     "-Yprint-debug",
+    "-Xno-decode-stacktraces",
     "-print-lines",
     "-Xcheck-macros",
     "-deprecation",
     "-source:future",
     "-language:strictEquality",
     "-no-indent",
-    "-Ysafe-init"
-    //   "-Yshow-suppressed-errors"
+    "-Wsafe-init",
+    "-Yshow-suppressed-errors"
   ),
   libraryDependencies ++= Seq(
     "org.typelevel"                %% "cats-core"            % Version.cats,
