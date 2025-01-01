@@ -6,26 +6,25 @@ on:
     - edited
     - locked
     - unlocked
+  check_suite:
+    types:
+      - completed
 
 name: Auto-merging steward's prs
 jobs:
-  compile:
-    name: Compile & Test
-    if: contains(github.head_ref, 'update/')
-    uses: ./.github/workflows/compile.yml
-
   merge:
     name: Merge scala steward pr
-    needs:
-      - compile
     runs-on: ubuntu-latest
-    continue-on-error: true
     if: contains(github.head_ref, 'update/')
     steps:
       - name: merge dependency update PRs
-        uses: desbo/merge-pr-action@v0
-        with:
-          MERGE_METHOD: squash
-          ALLOWED_UPDATE: any
-          GITHUB_TOKEN: ${{ secrets.MERGE_TOKEN }}
+        uses: pascalgn/automerge-action@v0
+        env:
+          MERGE_COMMIT_MESSAGE: "pull-request-title"
+          MERGE_DELETE_BRANCH: "true"
+          MERGE_ERROR_FAIL: "true"
+          MERGE_LABELS: "automerge"
+          MERGE_METHOD: "squash"
+          MERGE_REMOVE_LABELS: "automerge"
+          GITHUB_TOKEN: "${{ secrets.MERGE_TOKEN }}"
 
