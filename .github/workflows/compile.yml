@@ -20,6 +20,8 @@ jobs:
       with:
         persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
         fetch-depth: 0
+    - name: Setup sbt launcher
+      uses: sbt/setup-sbt@v1
     - name: Run tests for the whole project
       run: sbt test
 
@@ -38,6 +40,8 @@ jobs:
         java-version: '${{ matrix.version }}'
         distribution: 'temurin'
         cache: 'sbt'
+    - name: Setup sbt launcher
+      uses: sbt/setup-sbt@v1
     - name: Compile the whole project
       run: sbt "Test/compile"
 
