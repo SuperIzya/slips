@@ -1,13 +1,17 @@
 package org.slips.core.fact
 
-import cats.{Eq, Order}
-import org.slips.{NotTuple, Signature, core}
-import org.slips.core.{SourceLocation, WithSignature}
-import org.slips.core.conditions.{Condition, Predicate}
+import cats.Eq
+import cats.Order
+import org.slips.NotTuple
+import org.slips.Signature
+import org.slips.core
+import org.slips.core.SourceLocation
+import org.slips.core.WithSignature
+import org.slips.core.conditions.Condition
+import org.slips.core.conditions.Predicate
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
 import org.slips.core.fact.FactOps.TupleOps
-
 import scala.compiletime.summonInline
 import scala.util.NotGiven
 
@@ -66,7 +70,7 @@ object Fact {
       new CanBeLiteral[T] {}
   }
 
-  sealed class Literal[I : {FactOps, ScalarFact}] private[slips] (override val sample: I)(
+  sealed class Literal[I : { FactOps, ScalarFact }] private[slips] (override val sample: I)(
     using SourceLocation
   ) extends Fact.Source[I](Signature.Manual(sample.toString), sample, None) {
     type Src = I
@@ -86,6 +90,5 @@ object Fact {
     override val signature: Signature = Signature.DerivedBinary(pred.signature, mapSign, (s1, s2) => s"$s1 -> $s2")
     override val sample: Q            = map(pred.sample)
   }
-
 
 }

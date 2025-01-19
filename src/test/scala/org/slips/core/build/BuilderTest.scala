@@ -2,7 +2,9 @@ package org.slips.core.build
 
 import cats.Eval
 import cats.data.State
-import org.slips.{EnvRule, Signature, SimpleEnvironment}
+import org.slips.EnvRule
+import org.slips.Signature
+import org.slips.SimpleEnvironment
 import org.slips.core.*
 import org.slips.core.build.*
 import org.slips.core.build.ResultAssertion.*
@@ -14,8 +16,8 @@ import org.slips.core.rule.Rule
 import org.slips.data.*
 import org.slips.syntax.*
 import zio.*
-import zio.test.Assertion.*
 import zio.test.{Result as _, *}
+import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
 

@@ -3,9 +3,9 @@ package org.slips.core.build.strategy
 import org.slips.Env
 import org.slips.core.build.*
 import org.slips.core.build.strategy.PredicateSelection.ValidatedRes
-import org.slips.core.conditions.{Predicate, PredicateSyntax}
+import org.slips.core.conditions.Predicate
+import org.slips.core.conditions.PredicateSyntax
 import org.slips.core.fact.*
-
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
@@ -41,9 +41,9 @@ object PredicateSelection {
         head match {
           case left && right =>
             collectPredicates((predicates.tail + left) + right, collected)
-          case left || right  =>
+          case left || right =>
             collectPredicates((predicates.tail + left) + right, collected.withPredicate(head))
-          case _                          =>
+          case _             =>
             collectPredicates(predicates.tail, collected.withPredicate(head))
         }
       case None       => collected
@@ -78,7 +78,7 @@ object PredicateSelection {
   case object Clean extends PredicateSelection {
     import Predicate.*
 
-    def selectPredicatesAndSources[T: {FactOps as T}](
+    def selectPredicatesAndSources[T: { FactOps as T }](
       initial: Fact.Val[T],
       allFacts: AllFacts
     ): ValidatedRes = {
@@ -119,19 +119,19 @@ object PredicateSelection {
       queue: Queue[Predicate] = Queue.empty
     ): ValidatedRes = {
       p match {
-        case _ if col.facts.intersect(p.facts).isEmpty                              =>
+        case _ if col.facts.intersect(p.facts).isEmpty                 =>
           queue.deq(col.withDiscard(p))
-        case Predicate.Test(_, _, _)                                                =>
+        case Predicate.Test(_, _, _)                                   =>
           queue.deq(col.withPredicate(p))
-        case  !(pred)                                                    =>
+        case !(pred)                                                   =>
           collectSources(col.withPredicate(p), pred, queue)
-        case left || right                                              =>
+        case left || right                                             =>
           collectSources(col.withPredicate(p), left, queue.enqueue(right))
         case left && right if col.facts.intersect(left.facts).nonEmpty =>
           collectSources(col, left, queue.enqueue(right))
         case l && right                                                =>
           collectSources(col.withDiscard(l), right, queue)
-        case _ => Result.errorMsg(s"Unexpected predicate $p")
+        case _                                                         => Result.errorMsg(s"Unexpected predicate $p")
       }
     }
 
