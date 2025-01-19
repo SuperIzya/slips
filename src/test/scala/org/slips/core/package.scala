@@ -2,7 +2,6 @@ package org.slips
 
 import cats.Eq
 import org.slips.data.Origin
-
 import scala.annotation.targetName
 
 package object core {

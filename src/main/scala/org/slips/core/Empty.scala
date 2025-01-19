@@ -15,25 +15,25 @@ object Empty extends AutoDerivation[Empty] {
   given Empty[Char]   { override def empty: Char = 0    }
   given Empty[Byte]   { override def empty: Byte = 0    }
   given Empty[Short]  { override def empty: Short = 0   }
-  given Empty[Int]     { override def empty: Int = 0     }
-  given Empty[Long]    { override def empty: Long = 0L   }
-  given Empty[Float]   { override def empty: Float = 0f  }
-  given Empty[Double]  { override def empty: Double = 0  }
-  given Empty[String]  { override def empty: String = "" }
+  given Empty[Int]    { override def empty: Int = 0     }
+  given Empty[Long]   { override def empty: Long = 0L   }
+  given Empty[Float]  { override def empty: Float = 0f  }
+  given Empty[Double] { override def empty: Double = 0  }
+  given Empty[String] { override def empty: String = "" }
 
-  given genOption: [T] => Empty[Option[T]]  {
+  given genOption: [T] => Empty[Option[T]] {
     override def empty: Option[T] = None
   }
 
-  given genEmptyStart: [T: {Empty as T}] => Empty[T *: EmptyTuple]  {
+  given genEmptyStart: [T: { Empty as T }] => Empty[T *: EmptyTuple] {
     override def empty: T *: EmptyTuple = T.empty *: EmptyTuple
   }
 
-  given genEmptyStep: [T <: NonEmptyTuple: {Empty as T}, H: {Empty as H}] => Empty[H *: T]  {
+  given genEmptyStep: [T <: NonEmptyTuple : { Empty as T }, H: { Empty as H }] => Empty[H *: T] {
     override def empty: H *: T = H.empty *: T.empty
   }
 
-  given genEmptyByMonoid: [T: {Monoid as T}] => Empty[T]  {
+  given genEmptyByMonoid: [T: { Monoid as T }] => Empty[T] {
     override def empty: T = T.empty
   }
 
