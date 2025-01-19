@@ -1,8 +1,8 @@
 package org.slips.generator
 
+import org.slips.data.*
 import org.slips.data.Data
 import org.slips.data.Data.*
-import org.slips.data.*
 import org.slips.syntax.*
 import zio.test.Gen
 

@@ -22,9 +22,7 @@ object Parser extends PredicateSyntax {
     case source: Condition.Source[T]        =>
       ParseStep
         .modify(_.addSource(source))
-        .map[Fact.Val[T]](_ =>
-          source.ev.flip(Fact.Source(source)(using source.T, source.ev)(using source.sourceLocation))
-        )
+        .map[Fact.Val[T]](_ => source.ev.flip(Fact.Source(source)(using source.T, source.ev)(using source.sourceLocation)))
     case Condition.Opaque(predicate)        => parsePredicate(predicate.toCNF)
     case Condition.Map(src, f)              => parse(src).map(f)
     case Condition.FlatMap(left, f)         => parse(left).flatMap(x => parse(f(x)))
