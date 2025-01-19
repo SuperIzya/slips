@@ -8,7 +8,6 @@ import org.slips.core.conditions.Condition
 import org.slips.core.fact.*
 import org.slips.core.rule.Rule
 import org.slips.syntax.*
-
 import scala.annotation.targetName
 
 object GeneralSyntaxTest {
@@ -19,7 +18,7 @@ object GeneralSyntaxTest {
     w <- all[Word]
     t <- all[Text] if t.test(_.categoryM.isEmpty)
     ww = w.value(_.word)
-    _ <- w.matches{ case Word(_, Category(Theme.War, _)) => true }
+    _ <- w.matches { case Word(_, Category(Theme.War, _)) => true }
     _ <- t.value(_.word1) === ww || t.value(_.word2) === ww
   } yield (w.value(_.category), t)
 

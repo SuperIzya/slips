@@ -3,7 +3,6 @@ package org.slips.core.conditions
 import org.slips.Signature
 import org.slips.core.*
 import org.slips.core.fact.*
-
 import scala.annotation.targetName
 
 sealed trait Predicate extends WithSignature { self =>
@@ -12,8 +11,10 @@ sealed trait Predicate extends WithSignature { self =>
 }
 
 object Predicate {
-  final case class Test[T](signature: Signature, test: T => Boolean, rep: Fact.Val[T])(using val T: FactOps[T], val sourceLocation: SourceLocation)
-      extends Predicate { self =>
+  final case class Test[T](signature: Signature, test: T => Boolean, rep: Fact.Val[T])(
+    using val T: FactOps[T],
+    val sourceLocation: SourceLocation
+  ) extends Predicate { self =>
     val facts: Set[Fact.Source[?]] = T.sources(rep)
     def not: Predicate             = copy(
       signature = Signature.DerivedUnary(signature, "!" + _),
@@ -35,7 +36,7 @@ object Predicate {
   }
 
   @targetName("not")
-  final case class ! private(p: Predicate) extends Predicate {
+  final case class ! private (p: Predicate) extends Predicate {
     val facts: Set[Fact.Source[?]] = p.facts
     val signature: Signature       = Signature.DerivedUnary(p.signature, p => s"!$p")
   }
@@ -44,7 +45,7 @@ object Predicate {
   object ! {
     def apply(p: Predicate)(using DummyImplicit): Predicate =
       p match {
-        case !(pp)        => pp
+        case !(pp)          => pp
         case e: Exist[?]    => e.not
         case n: NotExist[?] => n.not
         case _              => new !(p)
@@ -57,11 +58,10 @@ object Predicate {
     @targetName("or")
     def ||(right: Predicate): Predicate = Predicate.||(self, right)
     @targetName("not")
-    def unary_! : Predicate = Predicate.!(self)
+    def unary_! : Predicate             = Predicate.!(self)
   }
 
-
-  final case class NotExist[T : {FactOps, ScalarFact}](f: Fact[T])(using val sourceLocation: SourceLocation)
+  final case class NotExist[T : { FactOps, ScalarFact }](f: Fact[T])(using val sourceLocation: SourceLocation)
       extends Predicate {
     val facts: Set[Fact.Source[?]] = Set(f.source)
     val signature: Signature       = f.signature.andThen(s => s"NotExist[$s]")
@@ -69,7 +69,7 @@ object Predicate {
     private[slips] def not: Predicate = Exist(f)
   }
 
-  final case class Exist[T : {FactOps, ScalarFact}](f: Fact[T])(using val sourceLocation: SourceLocation)
+  final case class Exist[T : { FactOps, ScalarFact }](f: Fact[T])(using val sourceLocation: SourceLocation)
       extends Predicate {
     val facts: Set[Fact.Source[?]] = Set(f.source)
     val signature: Signature       = f.signature.andThen(s => s"Exist[$s]")

@@ -72,9 +72,7 @@ object Signature {
       */
     case Content extends Strategy(_.content)
 
-    /**
-      * Uses hash code of a function to generate a signature
-      */
+    /** Uses hash code of a function to generate a signature */
     case HashCode extends Strategy(_.hash)
   }
 
@@ -89,10 +87,11 @@ object Signature {
 
     inline given nonTuple: [T: NotTuple] => SignType.TypeSignature[T] = SignType.TypeSignature(Manual(Macros.signType[T]))
 
-    given tuple: [H: {NotTuple, TypeSignature as H}, T <: NonEmptyTuple : {TupleSignature as T}] => TupleSignature[H *: T] =
+    given tuple: [H : { NotTuple, TypeSignature as H }, T <: NonEmptyTuple : { TupleSignature as T }]
+      => TupleSignature[H *: T] =
       TupleSignature(T.tuple.prepend(H.single))
 
-    given firstTuple: [H: {NotTuple, TypeSignature as H}] => TupleSignature[H *: EmptyTuple] =
+    given firstTuple: [H : { NotTuple, TypeSignature as H }] => TupleSignature[H *: EmptyTuple] =
       TupleSignature(TupleSign.first(H.single))
 
   }
