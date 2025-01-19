@@ -19,7 +19,7 @@ class ConditionTest extends AnyFunSuiteLike {
   case class Data3(d: Double, f: Float, b: Boolean)
 
   test("flatMap is stack-safe") {
-    inline def flatMap[T: {NotTuple, ScalarFact, FactOps}](count: Int): Condition[T] = {
+    inline def flatMap[T : { NotTuple, ScalarFact, FactOps }](count: Int): Condition[T] = {
       @tailrec
       def work(left: Int, current: Condition[T]): Condition[T] = {
         if (left == 0) current
