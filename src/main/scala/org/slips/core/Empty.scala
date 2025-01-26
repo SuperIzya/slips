@@ -25,15 +25,15 @@ object Empty extends AutoDerivation[Empty] {
     override def empty: Option[T] = None
   }
 
-  given genEmptyStart: [T: { Empty as T }] => Empty[T *: EmptyTuple] {
+  given genEmptyStart: [T: {Empty as T}] => Empty[T *: EmptyTuple] {
     override def empty: T *: EmptyTuple = T.empty *: EmptyTuple
   }
 
-  given genEmptyStep: [T <: NonEmptyTuple : { Empty as T }, H: { Empty as H }] => Empty[H *: T] {
+  given genEmptyStep: [T <: NonEmptyTuple : {Empty as T}, H: {Empty as H}] => Empty[H *: T] {
     override def empty: H *: T = H.empty *: T.empty
   }
 
-  given genEmptyByMonoid: [T: { Monoid as T }] => Empty[T] {
+  given genEmptyByMonoid: [T: {Monoid as T}] => Empty[T] {
     override def empty: T = T.empty
   }
 

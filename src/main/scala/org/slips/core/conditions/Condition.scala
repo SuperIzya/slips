@@ -14,7 +14,7 @@ object Condition {
   sealed trait Source[T: FactOps](using val ev: ScalarFact[T], val sourceLocation: SourceLocation) extends Condition[T]
       with WithSignature
 
-  final case class All[T : { FactOps, ScalarFact }] private[slips] (override val signature: Signature)(
+  final case class All[T : {FactOps, ScalarFact}] private[slips] (override val signature: Signature)(
     using SourceLocation
   ) extends Source[T]
 
