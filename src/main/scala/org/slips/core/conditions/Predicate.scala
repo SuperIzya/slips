@@ -61,7 +61,7 @@ object Predicate {
     def unary_! : Predicate             = Predicate.!(self)
   }
 
-  final case class NotExist[T : { FactOps, ScalarFact }](f: Fact[T])(using val sourceLocation: SourceLocation)
+  final case class NotExist[T : {FactOps, ScalarFact}](f: Fact[T])(using val sourceLocation: SourceLocation)
       extends Predicate {
     val facts: Set[Fact.Source[?]] = Set(f.source)
     val signature: Signature       = f.signature.andThen(s => s"NotExist[$s]")
@@ -69,7 +69,7 @@ object Predicate {
     private[slips] def not: Predicate = Exist(f)
   }
 
-  final case class Exist[T : { FactOps, ScalarFact }](f: Fact[T])(using val sourceLocation: SourceLocation)
+  final case class Exist[T : {FactOps, ScalarFact}](f: Fact[T])(using val sourceLocation: SourceLocation)
       extends Predicate {
     val facts: Set[Fact.Source[?]] = Set(f.source)
     val signature: Signature       = f.signature.andThen(s => s"Exist[$s]")
