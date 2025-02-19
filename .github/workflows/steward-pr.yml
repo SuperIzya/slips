@@ -18,13 +18,11 @@ jobs:
     if: contains(github.head_ref, 'update/')
     steps:
       - name: merge dependency update PRs
-        uses: pascalgn/automerge-action@v0.16.14
+        uses: "pascalgn/automerge-action@v0.16.4"
         env:
           MERGE_COMMIT_MESSAGE: "pull-request-title"
           MERGE_DELETE_BRANCH: "true"
           MERGE_ERROR_FAIL: "true"
-          MERGE_LABELS: "automerge"
           MERGE_METHOD: "squash"
-          MERGE_REMOVE_LABELS: "automerge"
           GITHUB_TOKEN: "${{ secrets.MERGE_TOKEN }}"
 

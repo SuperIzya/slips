@@ -70,7 +70,7 @@ object Fact {
       new CanBeLiteral[T] {}
   }
 
-  sealed class Literal[I : { FactOps, ScalarFact }] private[slips] (override val sample: I)(
+  sealed class Literal[I : {FactOps, ScalarFact}] private[slips] (override val sample: I)(
     using SourceLocation
   ) extends Fact.Source[I](Signature.Manual(sample.toString), sample, None) {
     type Src = I
