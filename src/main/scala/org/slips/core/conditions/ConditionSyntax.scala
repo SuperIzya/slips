@@ -11,9 +11,9 @@ import org.slips.core.rule.Rule
 
 trait ConditionSyntax {
 
-  inline def notExists[T : { FactOps, ScalarFact }](using SourceLocation): Condition[T] = all[T].notExist
+  inline def notExists[T : {FactOps, ScalarFact}](using SourceLocation): Condition[T] = all[T].notExist
 
-  inline def all[T : { FactOps, ScalarFact }](using SourceLocation): Condition.All[T] =
+  inline def all[T : {FactOps, ScalarFact}](using SourceLocation): Condition.All[T] =
     Condition.All[T](Signature.Manual(s"All[${ Macros.signType[T] }]"))
 
   extension [T: FactOps](c: Condition[T]) {

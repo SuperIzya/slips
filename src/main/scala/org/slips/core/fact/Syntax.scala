@@ -11,7 +11,7 @@ import org.slips.core.fact.FactOps.TupleOps
 import scala.compiletime.summonInline
 
 trait Syntax {
-  implicit def literal[T : { CanBeLiteral, FactOps, ScalarFact }](v: T)(using SourceLocation): Fact[T] =
+  implicit def literal[T : {CanBeLiteral, FactOps, ScalarFact}](v: T)(using SourceLocation): Fact[T] =
     new Fact.Literal(v)
 
   extension [T, Q](fact: Fact.Map[T, Q]) {
@@ -25,8 +25,8 @@ trait Syntax {
     }
   }
 
-  extension [T : { FactOps, ScalarFact }](fact: Fact[T]) {
-    inline def value[I : { FactOps, ScalarFact }](inline f: T => I)(using SourceLocation): Fact[I] =
+  extension [T : {FactOps, ScalarFact}](fact: Fact[T]) {
+    inline def value[I : {FactOps, ScalarFact}](inline f: T => I)(using SourceLocation): Fact[I] =
       Fact.Map(fact, f, Signature.auto(f).unite(fact)((s, f) => s"$f => $s"))
 
     inline def test(inline f: T => Boolean)(using SourceLocation): Predicate =
@@ -52,7 +52,7 @@ trait Syntax {
 
   }
 
-  private inline def testTwo[T : { FactOps, ScalarFact }](left: Fact[T], right: Fact[T])(
+  private inline def testTwo[T : {FactOps, ScalarFact}](left: Fact[T], right: Fact[T])(
     inline f: (T, T) => Boolean
   )(using TupleOps[(T, T)], SourceLocation): Predicate = {
     val arity = Set(left.source, right.source)

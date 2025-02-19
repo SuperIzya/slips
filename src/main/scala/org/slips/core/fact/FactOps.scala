@@ -33,7 +33,7 @@ object FactOps {
 
   object TupleOps {
 
-    given genTupleOpsStart: [H : { FactOps as H, ScalarFact }]
+    given genTupleOpsStart: [H : {FactOps as H, ScalarFact}]
       => (tupleSig: Signature.SignType.TupleSignature[H *: EmptyTuple])
       => (tuple: Fact.Val[H *: EmptyTuple] =:= Fact[H] *: EmptyTuple) => TupleOps[H *: EmptyTuple] {
       def signature: Signature = tupleSig.signature
@@ -56,7 +56,7 @@ object FactOps {
       def index: Int = 1
     }
 
-    given genTupleOpsStep: [H : { FactOps as H, ScalarFact }, T <: NonEmptyTuple : { TupleOps as T }]
+    given genTupleOpsStep: [H : {FactOps as H, ScalarFact}, T <: NonEmptyTuple : {TupleOps as T}]
       => (evT: Fact.Val[T] =:= Fact.TMap[T]) => (evF: Fact.Val[H *: T] =:= Fact.TMap[H *: T])
       => (tupleSig: Signature.SignType.TupleSignature[H *: T]) => TupleOps[H *: T] {
       def signature: Signature = tupleSig.signature
@@ -95,7 +95,7 @@ object FactOps {
     }
   }
 
-  given genFactOpsSingle: [T : { ScalarFact as ev, Empty as T, Signature.SignType.TypeSignature as sign }] => FactOps[T] {
+  given genFactOpsSingle: [T : {ScalarFact as ev, Empty as T, Signature.SignType.TypeSignature as sign}] => FactOps[T] {
 
     def signature: Signature = sign.signature
 

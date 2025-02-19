@@ -78,7 +78,7 @@ object PredicateSelection {
   case object Clean extends PredicateSelection {
     import Predicate.*
 
-    def selectPredicatesAndSources[T: { FactOps as T }](
+    def selectPredicatesAndSources[T: {FactOps as T}](
       initial: Fact.Val[T],
       allFacts: AllFacts
     ): ValidatedRes = {
