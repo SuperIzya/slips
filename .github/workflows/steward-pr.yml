@@ -18,7 +18,7 @@ jobs:
     if: contains(github.head_ref, 'update/')
     steps:
       - name: merge dependency update PRs
-        uses: pascalgn/automerge-action@v0.16.14
+        uses: "pascalgn/automerge-action@v0.16.4"
         env:
           MERGE_COMMIT_MESSAGE: "pull-request-title"
           MERGE_DELETE_BRANCH: "true"
