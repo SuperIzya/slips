@@ -7,7 +7,7 @@ lazy val Version = new {
   lazy val tests      = "3.2.19"
   lazy val magnolia   = "1.3.14"
   lazy val discipline = "2.3.0"
-  lazy val zio        = "2.1.15"
+  lazy val zio        = "2.1.16"
 }
 
 lazy val root = (project in file(".")).settings(
