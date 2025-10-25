@@ -27,8 +27,7 @@ private[network] case class FactsFolder(
     */
   private def setFactProgress(tp: ToProcess, left: Set[Chain], topChain: Chain): FactsFolder = setFactProgress {
     if left.isEmpty then FactProgress.Done(tp.fact, tp.chains, topChain)
-    else
-      FactProgress.InProgress(tp.fact, tp.chains, tp.chains -- left, left, topChain)
+    else FactProgress.InProgress(tp.fact, tp.chains, tp.chains -- left, left, topChain)
   }
 
   private def addUnion(chains: Set[Chain], left: Chain, right: Chain): (FactsFolder, Chain.Combine) = {
@@ -57,7 +56,7 @@ private[network] object FactsFolder {
       if head.chains.size == 1 then addImmediate1(head.fact, head.chains.head).flatMap(_ => fold(toProcess.tail))
       else if head.chains.size == 2 then addImmediate2(head.fact, head.chains).flatMap(_ => fold(toProcess.tail))
       else
-        for
+        for {
           fs <- FoldState.get
           _  <- findSubset(fs.unionNodes, head.chains)
             .map {
@@ -71,6 +70,7 @@ private[network] object FactsFolder {
               val (left, right) = suggestPair(toProcess)
               FoldState(_.addUnion(Set(left, right), left, right)).flatMap(_ => fold(toProcess))
             }
+        }
         yield ()
     }
   }
@@ -84,7 +84,7 @@ private[network] object FactsFolder {
   }
 
   /** Adds  last chain for a fact. */
-  private def addImmediate1(fact: Fact.Source[?], chain: Chain): FoldState[Unit] = for
+  private def addImmediate1(fact: Fact.Source[?], chain: Chain): FoldState[Unit] = for {
     ff   <- FoldState.get
     done <- ff
       .facts
@@ -100,6 +100,7 @@ private[network] object FactsFolder {
         Done(fact, Set(chain), chain)
       })
     _    <- FoldState.modify(_.setFactProgress(done))
+  }
   yield ()
 
   /**
@@ -115,7 +116,7 @@ private[network] object FactsFolder {
     *      - None - make [[FactProgress.Done]] with combine
     *        from previous step.
     */
-  private def addImmediate2(fact: Fact.Source[?], chains: Set[Chain]): FoldState[Unit] = for
+  private def addImmediate2(fact: Fact.Source[?], chains: Set[Chain]): FoldState[Unit] = for {
     union <- FoldState(_.addUnion(chains, chains.head, chains.last))
     ff    <- FoldState.get
 
@@ -135,6 +136,7 @@ private[network] object FactsFolder {
       .getOrElse(FoldState.pure(Done(fact, chains, union)))
 
     _ <- FoldState.modify(_.setFactProgress(progress))
+  }
   yield ()
 
   /**
@@ -201,10 +203,11 @@ private[network] object FactsFolder {
     }
     progressM.fold(empty) {
       case InProgress(_, _, united, left, topChain) =>
-        for
+        for {
           combine <- FoldState(_.addUnion(united ++ subset._1, topChain, subset._2))
           newLeft = left -- subset._1
           _ <- FoldState.modify(_.setFactProgress(head, newLeft, combine))
+        }
         yield newLeft
       // TODO: Fix it
       case _: Done                                  => throw RuntimeException("Fix me!!!")

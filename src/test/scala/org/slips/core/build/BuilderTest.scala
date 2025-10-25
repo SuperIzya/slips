@@ -23,10 +23,10 @@ import zio.test.Assertion.*
 
 object BuilderTest extends ZIOSpecDefault {
 
-  val notApple: Fact[Fruit] => Predicate                            = _.test(_.name != "apple")
-  private val testFruitAndVegie: ((Fruit, Vegetable)) => Boolean    = testFruitAndVegieF.tupled
-  private val vegie2Fruits                                          = vegie2FruitsF.tupled
-  private val condition1: Condition[(Fruit, Fruit, Vegetable, Int)] = for
+  val notApple: Fact[Fruit] => Predicate                         = _.test(_.name != "apple")
+  private val testFruitAndVegie: ((Fruit, Vegetable)) => Boolean = testFruitAndVegieF.tupled
+  private val vegie2Fruits                                       = vegie2FruitsF.tupled
+  private val condition1                                         = for
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry]

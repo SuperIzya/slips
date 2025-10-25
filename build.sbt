@@ -16,6 +16,7 @@ lazy val root = (project in file(".")).settings(
 //    "-Vprofile",
     //   "-Yprofile-enabled",
     // "--verbose",
+    "-Xfatal-warnings:false",
     "-explain",
     "-feature",
     "-Yprint-debug",

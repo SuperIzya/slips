@@ -17,11 +17,10 @@ private[slips] object Builder {
   val materializeAlphaNetwork: EnvBuildStep[Unit] = BuildStep { ctx => ctx -> () }
 
   val buildNetwork: EnvBuildStepF[NetworkLayer] = (env: Environment) ?=> {
-    for {
+    for
       ctx <- BuildStep.get
       network: NetworkLayer[env.Effect] = NetworkLayer(ctx.allPredicates)
       _ <- ctx.addNetwork(network)
-    }
     yield network
   }
 
@@ -59,13 +58,15 @@ private[slips] object Builder {
         }
       }
       .foldLeft(Result.result(BuildStep.empty(env))) { (collected, element) =>
-        val res: Result[BuildStep[env.Effect][Unit]] = for
+        val res: Result[BuildStep[env.Effect][Unit]] = for {
           el  <- element
           col <- collected
+        }
         yield {
-          for
+          for {
             _ <- col
             _ <- BuildStep.addParsingResult(el)
+          }
           yield ()
         }
         res
