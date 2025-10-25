@@ -31,26 +31,26 @@ package object build {
   private[slips] given [F[_]] => Applicative[BuildStep[F]] = new Applicative[BuildStep[F]] {
     override def pure[A](x: A): BuildStep[F][A] = BuildStep.pure(x)
 
-    override def ap[A, B](ff: BuildStep[F][A => B])(fa: BuildStep[F][A]): BuildStep[F][B] = for {
+    override def ap[A, B](ff: BuildStep[F][A => B])(fa: BuildStep[F][A]): BuildStep[F][B] = for
       a <- fa
       f <- ff
-    } yield f(a)
+    yield f(a)
   }
 
   extension (b: BuildStep.type) {
     private[slips] def addNode(using env: Environment)(n: Node[env.Effect]): BuildStepF[env.Effect][Node] =
       n match {
         case a: AlphaNode.Source[env.Effect, ?] =>
-          for {
+          for
             ctx <- b.get
             _   <- ctx.addSourceNode(a.signature, a)
-          } yield n
+          yield n
 
         case _ =>
-          for {
+          for
             ctx <- b.get
             _   <- ctx.addNode(n)
-          } yield n
+          yield n
       }
   }
 

@@ -17,9 +17,8 @@ lazy val root = (project in file(".")).settings(
     //   "-Yprofile-enabled",
     // "--verbose",
     "-explain",
-    "-Xprint-suspension",
+    "-feature",
     "-Yprint-debug",
-    "-Xno-decode-stacktraces",
     "-print-lines",
     "-Xcheck-macros",
     "-deprecation",
@@ -27,7 +26,8 @@ lazy val root = (project in file(".")).settings(
     "-language:strictEquality",
     "-no-indent",
     "-Wsafe-init",
-    "-Yshow-suppressed-errors"
+    "-Yshow-suppressed-errors",
+    "--rewrite"
   ),
   libraryDependencies ++= Seq(
     "org.typelevel"                %% "cats-core"            % Version.cats,

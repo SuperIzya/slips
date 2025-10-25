@@ -2,8 +2,6 @@ package org.slips.core
 
 import cats.data.State
 import org.slips.core.build.BuildPredicate
-import org.slips.core.fact.Fact
-import org.slips.core.fact.Fact.Source
 
 package object network {
   private[network] type FactProgress = FactProgress.InProgress | FactProgress.Done

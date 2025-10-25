@@ -23,6 +23,10 @@ object Result {
       case Result.Error(error)                   => Result.Error(error)
     }
 
+    def as[Q](q: Q): Result[Q] = res.map(_ => q)
+
+    def unit: Result[Unit] = res.as(())
+
     def withMaybeWarnings(newWarning: List[Warning]): Result[T] =
       NonEmptyList.fromList(newWarning).fold(res)(res.withWarnings)
 

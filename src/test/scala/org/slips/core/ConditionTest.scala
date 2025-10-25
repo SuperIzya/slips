@@ -22,7 +22,7 @@ class ConditionTest extends AnyFunSuiteLike {
     inline def flatMap[T : {NotTuple, ScalarFact, FactOps}](count: Int): Condition[T] = {
       @tailrec
       def work(left: Int, current: Condition[T]): Condition[T] = {
-        if (left == 0) current
+        if left == 0 then current
         else work(left - 1, current.flatMap(_ => all[T]))
       }
       work(count, all[T])

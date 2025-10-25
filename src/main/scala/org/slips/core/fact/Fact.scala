@@ -1,18 +1,13 @@
 package org.slips.core.fact
 
-import cats.Eq
-import cats.Order
 import org.slips.NotTuple
 import org.slips.Signature
 import org.slips.core
 import org.slips.core.SourceLocation
 import org.slips.core.WithSignature
 import org.slips.core.conditions.Condition
-import org.slips.core.conditions.Predicate
 import org.slips.core.fact.*
 import org.slips.core.fact.Fact.*
-import org.slips.core.fact.FactOps.TupleOps
-import scala.compiletime.summonInline
 import scala.util.NotGiven
 
 sealed trait Fact[T <: Any : NotTuple](using T: FactOps[T], F: Signature.SignType[Fact[T]]) extends WithSignature {
@@ -70,13 +65,18 @@ object Fact {
       new CanBeLiteral[T] {}
   }
 
-  sealed class Literal[I : {FactOps, ScalarFact}] private[slips] (override val sample: I)(
-    using SourceLocation
+  sealed class Literal[I](override val sample: I)(
+    using SourceLocation,
+    FactOps[I],
+    ScalarFact[I]
   ) extends Fact.Source[I](Signature.Manual(sample.toString), sample, None) {
     type Src = I
   }
 
   object Literal {
+    inline def apply[I : {CanBeLiteral, FactOps, ScalarFact}](inline i: I)(using SourceLocation): Literal[I] =
+      new Literal(i)
+
     def Unit(using SourceLocation): Literal[Unit] = Literal[Unit](())
   }
   def unit: Fact[Unit] = Literal.Unit(using SourceLocation("", 0))

@@ -10,26 +10,17 @@ import scala.language.implicitConversions
 
 trait PredicateSyntax {
 
-  implicit inline def convertToCondition(p: Predicate): Condition[Unit] =
-    Condition.Opaque(p)
+  given Conversion[Predicate, Condition[Unit]] =
+    (p: Predicate) => Condition.Opaque(p)
 
   extension (self: Predicate) {
-    /*  @targetName("and_op")
+    @targetName("and_op")
     inline def &&(other: Predicate): Predicate = Predicate.&&(self, other)
 
     @targetName("or_op")
     inline def ||(other: Predicate): Predicate = Predicate.||(self, other)
 
-    @targetName("not_op")
-    inline def unary_! : Predicate = Predicate.Not(self)
-     */
     def toCNF: Predicate = PredicateSyntax.traverseToCnf(self)
-  }
-  /*
-  opaque type ! = Predicate.Not
-  @targetName("unary_!")
-  object ! {
-    def unapply(p: Predicate.Not): Option[Predicate] = Some(p.p)
   }
 
   opaque type || = Predicate.||
@@ -42,7 +33,7 @@ trait PredicateSyntax {
   @targetName("and")
   object && {
     inline infix def unapply(p: Predicate.&&): Option[(Predicate, Predicate)] = Some((p.left, p.right))
-  }*/
+  }
 
   extension [T](self: Predicate.Test[T]) {
     def signed(signature: => String): Predicate.Test[T] =
@@ -60,7 +51,7 @@ object PredicateSyntax {
     import Predicate.*
 
     inline def treeEnd(p: Predicate, tasks: List[NextTask], results: List[Predicate]): Predicate = {
-      if (tasks.isEmpty) p
+      if tasks.isEmpty then p
       else processTasks(tasks.head, tasks.tail, p :: results)
     }
 
@@ -80,9 +71,9 @@ object PredicateSyntax {
       ComputationResult(results.take(n).reduce(_ && _), results.drop(n))
     }
 
-    val computeAnd = computeAndN(2)
+    val computeAnd: NextTask = computeAndN(2)
 
-    val computeOr = Compute { (results, tasks) =>
+    val computeOr: Compute = Compute { (results, tasks) =>
       def andResult(rs: Seq[Predicate], a: &&, other: Predicate): NextComputations = NextComputations(
         rs.toList,
         TraverseToCnf(a.left || other) :: TraverseToCnf(a.right || other) :: computeAnd :: tasks

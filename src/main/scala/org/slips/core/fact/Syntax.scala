@@ -9,16 +9,19 @@ import org.slips.core.fact.*
 import org.slips.core.fact.Fact.CanBeLiteral
 import org.slips.core.fact.FactOps.TupleOps
 import scala.compiletime.summonInline
+import scala.language.implicitConversions
 
 trait Syntax {
-  implicit def literal[T : {CanBeLiteral, FactOps, ScalarFact}](v: T)(using SourceLocation): Fact[T] =
-    new Fact.Literal(v)
+  inline def literal[T : {CanBeLiteral, FactOps, ScalarFact}](inline v: T): Fact[T] = Fact.Literal(v)
+
+  given [T : {CanBeLiteral, FactOps, ScalarFact}] => Conversion[T, Fact[T]] =
+    (v: T) => literal(v)
 
   extension [T, Q](fact: Fact.Map[T, Q]) {
-    def signed(signature: String)(using Q: FactOps[Q]): Fact.Map[T, Q] =
+    def signed(signature: String)(using FactOps[Q]): Fact.Map[T, Q] =
       signed(Signature.Manual(signature))
 
-    def signed(signature: Signature)(using Q: FactOps[Q]): Fact.Map[T, Q] = {
+    def signed(signature: Signature)(using FactOps[Q]): Fact.Map[T, Q] = {
       given SourceLocation = fact.sourceLocation
 
       fact.copy(mapSign = signature)

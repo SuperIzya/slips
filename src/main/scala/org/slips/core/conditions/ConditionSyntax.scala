@@ -26,7 +26,7 @@ trait ConditionSyntax {
     ): Condition[P] =
       Condition.Map(c, f.andThen(ev2))
 
-    def flatMap[Q: FactOps](f: Fact.Val[T] => Condition[Q])(using SourceLocation): Condition[Q] =
+    inline def flatMap[Q: FactOps](f: Fact.Val[T] => Condition[Q])(using SourceLocation): Condition[Q] =
       Condition.FlatMap(c, f)
 
     def notExist(using ev: ScalarFact[T])(using SourceLocation): Condition[T] =
@@ -37,7 +37,7 @@ trait ConditionSyntax {
 
 }
 
-object ConditionSyntax {
+object ConditionSyntax extends ConditionSyntax {
   private[ConditionSyntax] final class RuleMaker[T: FactOps](condition: Condition[T], name: String) {
     inline def apply(using env: Environment)(actions: (rule: Rule[env.Effect]) ?=> rule.Method[T])(
       using SourceLocation

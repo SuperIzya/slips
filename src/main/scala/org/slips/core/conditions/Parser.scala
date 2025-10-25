@@ -28,25 +28,25 @@ object Parser extends PredicateSyntax {
     case Condition.FlatMap(left, f)         => parse(left).flatMap(x => parse(f(x)))
     case filter @ Condition.Filter(cond, f) =>
       given SourceLocation = filter.sourceLocation
-      for {
+      for
         t <- parse(cond)
         predicate = f(t)
         _ <- parsePredicate(predicate.toCNF)
-      } yield t
+      yield t
   }
 
   private def parsePredicate(p: Predicate): ParseStep[Unit] = p match {
     case left && right =>
-      for {
+      for
         _ <- parsePredicate(left)
         _ <- parsePredicate(right)
-      } yield Fact.unit
+      yield Fact.unit
     case left || right =>
-      for {
+      for
         _ <- parsePredicate(left)
         _ <- parsePredicate(right)
         _ <- ParseStep.modify(_.addPredicate(p))
-      } yield Fact.unit
+      yield Fact.unit
     case !(pp)         =>
       parsePredicate(pp).flatMap(_ => ParseStep.modify(_.addPredicate(p)))
     case _             => ParseStep.modify(_.addPredicate(p))

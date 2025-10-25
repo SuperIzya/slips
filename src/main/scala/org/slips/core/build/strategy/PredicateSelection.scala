@@ -103,7 +103,7 @@ object PredicateSelection {
     }
 
     private def processDiscarded(selected: SelectedPredicatesAndSources): ValidatedRes = {
-      if (selected.discarded.isEmpty) Result.result(selected)
+      if selected.discarded.isEmpty then Result.result(selected)
       else
         selected
           .discarded

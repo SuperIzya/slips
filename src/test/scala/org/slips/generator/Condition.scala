@@ -42,12 +42,12 @@ object Condition {
 
     @tailrec
     def run(g: AlphaGen[D], rest: Int): AlphaGen[D] = {
-      if (rest > 0) {
-        val next: AlphaGen[D] = for {
+      if rest > 0 then {
+        val next: AlphaGen[D] = for
           prev <- g
           n    <- genNext
           ops  <- PredicateOps.next
-        } yield f => ops.combine(prev(f), n(f))
+        yield f => ops.combine(prev(f), n(f))
         run(next, rest - 1)
       } else g
     }

@@ -16,4 +16,7 @@ private[slips] case class BuildPredicate(
 
 private[slips] object BuildPredicate {
   given Semigroup[BuildPredicate] = Semigroup.instance((a, b) => BuildPredicate(a.facts ++ b.facts, a.arity, a.predicate))
+
+  def apply(p: Predicate): BuildPredicate = BuildPredicate(p.facts, p.facts.size, p)
+
 }

@@ -52,10 +52,10 @@ private[build] object BuildContext {
       BuildStep.pureF {
         val signature = node.signature.compute
         val newCtx    = {
-          if (ctx.nodes.contains(signature)) ctx
+          if ctx.nodes.contains(signature) then ctx
           else ctx.copy(nodes = ctx.nodes + (signature -> F(node)))
         }
-        newCtx -> F(node)
+        newCtx -> newCtx.nodes(signature)
       }
 
     def addSourceNode[T](using env: Environment)(signature: Signature, node: => AlphaNode.Source[env.Effect, T])(

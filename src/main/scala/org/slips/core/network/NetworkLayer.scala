@@ -188,7 +188,7 @@ object NetworkLayer {
     infix def |+|(predicate: BuildPredicate): Env[Intermediate] = {
       val facts = predicate.facts
 
-      if (factsToChains.contains(facts)) {
+      if factsToChains.contains(facts) then {
         val chain    = factsToChains(facts)
         val newChain = chain.appendPredicate(predicate)
 
