@@ -22,8 +22,7 @@ object GeneralSyntaxTest {
     ww = w.value(_.word)
     _ <- w.matches { case Word(_, Category(Theme.War, _)) => true }
     _ <- t.value(_.word1) === ww || t.value(_.word2) === ww
-  }
-  yield (w.value(_.category), t)
+  } yield (w.value(_.category), t)
 
   private val markText: EnvRule =
     shouldMarkText.makeRule("mark text") { case (category, text) =>
@@ -32,8 +31,7 @@ object GeneralSyntaxTest {
         cat <- category.value
         _   <- text.remove
         _   <- addFact(txt.copy(categoryM = Some(cat)))
-      }
-      yield ()
+      } yield ()
     }
 
   private val shouldMarkWord = for {
@@ -43,8 +41,7 @@ object GeneralSyntaxTest {
     _  <- t1.value(_.categoryM.map(_.theme)) =!= t2.value(_.categoryM.map(_.theme))
 
     w <- notExists[Word] if w.value(_.word) === t1.value(_.word1)
-  }
-  yield (t1.value(_.word1), t1.value(_.categoryM), t2.value(_.categoryM))
+  } yield (t1.value(_.word1), t1.value(_.categoryM), t2.value(_.categoryM))
 
   private val markWord = (env: Environment) ?=>
     shouldMarkWord.makeRule("mark word") { case (w, c1, c2) =>
@@ -53,8 +50,7 @@ object GeneralSyntaxTest {
         cat1 <- c1.value
         cat2 <- c2.value
         _    <- addFact(Word(word, cat1.get :*: cat2.get))
-      }
-      yield ()
+      } yield ()
     }
 // TODO: Make possible for combined `value` operator, e.g. (w, c1, c2).valueN{ case (word, cat1, cat2) => Word(word, cat1 :*: cat2) }
 

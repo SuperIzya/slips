@@ -56,8 +56,7 @@ object Data {
   object Mushroom {
     val names: DGen[String] = Gen.elements("porcini", "truffles", "chanterelle", "armillaria mellea")
 
-    given gen: (C: DGen[Color]) => DGen[Mushroom] = for
-      name <- names
+    given gen: (C: DGen[Color]) => DGen[Mushroom] = for name <- names
     yield Mushroom(name, name)
   }
 

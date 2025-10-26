@@ -61,13 +61,11 @@ private[slips] object Builder {
         val res: Result[BuildStep[env.Effect][Unit]] = for {
           el  <- element
           col <- collected
-        }
-        yield {
+        } yield {
           for {
             _ <- col
             _ <- BuildStep.addParsingResult(el)
-          }
-          yield ()
+          } yield ()
         }
         res
       }
