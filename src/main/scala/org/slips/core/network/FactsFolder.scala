@@ -70,8 +70,7 @@ private[network] object FactsFolder {
               val (left, right) = suggestPair(toProcess)
               FoldState(_.addUnion(Set(left, right), left, right)).flatMap(_ => fold(toProcess))
             }
-        }
-        yield ()
+        } yield ()
     }
   }
 
@@ -100,8 +99,7 @@ private[network] object FactsFolder {
         Done(fact, Set(chain), chain)
       })
     _    <- FoldState.modify(_.setFactProgress(done))
-  }
-  yield ()
+  } yield ()
 
   /**
     * Adds last two chains for a fact.
@@ -136,8 +134,7 @@ private[network] object FactsFolder {
       .getOrElse(FoldState.pure(Done(fact, chains, union)))
 
     _ <- FoldState.modify(_.setFactProgress(progress))
-  }
-  yield ()
+  } yield ()
 
   /**
     * Finds first element of `nodes` that key is subset of
@@ -207,8 +204,7 @@ private[network] object FactsFolder {
           combine <- FoldState(_.addUnion(united ++ subset._1, topChain, subset._2))
           newLeft = left -- subset._1
           _ <- FoldState.modify(_.setFactProgress(head, newLeft, combine))
-        }
-        yield newLeft
+        } yield newLeft
       // TODO: Fix it
       case _: Done                                  => throw RuntimeException("Fix me!!!")
     }
