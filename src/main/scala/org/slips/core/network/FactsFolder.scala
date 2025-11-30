@@ -189,7 +189,7 @@ private[network] object FactsFolder {
   }
   private def onSubset(progressM: Option[FactProgress], head: ToProcess)(
     subset: (Set[Chain], Chain.Combine)
-  ): FoldState[Set[Chain]] = {
+  ): FoldState[Set[Chain]]                                                 = {
     def empty: FoldState[Set[Chain]] = {
       val left = head.chains -- subset._1
       FoldState
