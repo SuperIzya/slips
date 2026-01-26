@@ -28,7 +28,7 @@ jobs:
   build:
     strategy:
       matrix:
-        version: [ 11, 17, 19 ]
+        version: [ 19, 20, 21, 25 ]
 
     runs-on: ubuntu-latest
 
