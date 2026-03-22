@@ -1,3 +1,0 @@
-queue_rules:
-  - name: Steward
-    queue_branch_prefix: update/
