@@ -20,6 +20,7 @@ jobs:
       - name: merge dependency update PRs
         uses: "desbo/merge-pr-action@v0"
         with:
+          ALLOWED_UPDATE: 'any'
           MERGE_METHOD: "squash"
           GITHUB_TOKEN: "${{ secrets.MERGE_TOKEN }}"
 
