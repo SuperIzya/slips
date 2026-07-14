@@ -26,7 +26,7 @@ object BuilderTest extends ZIOSpecDefault {
   val notApple: Fact[Fruit] => Predicate                         = _.test(_.name != "apple")
   private val testFruitAndVegie: ((Fruit, Vegetable)) => Boolean = testFruitAndVegieF.tupled
   private val vegie2Fruits                                       = vegie2FruitsF.tupled
-  private val condition1                                         = for
+  private val condition1                                         = for {
     h     <- all[Herb]
     b     <- all[Herb]
     berry <- all[Berry]
@@ -43,14 +43,14 @@ object BuilderTest extends ZIOSpecDefault {
     _ <- hname =!= fname
     _5 = literal(5)
     _ <- (v, f1, f2).testMany(vegie2Fruits)
-  yield (f1, f2, v, _5)
+  } yield (f1, f2, v, _5)
 
   private val rule1: EnvRule = env ?=> {
     condition1.makeRule("Test rule 1") { case (f1, f2, v, c5) =>
-      for
+      for {
         x1 <- f1.value
         vv <- v.value
-      yield ()
+      } yield ()
     }
   }
   private val predicates     = suite("Predicates should have same signature")({
@@ -80,7 +80,7 @@ object BuilderTest extends ZIOSpecDefault {
       transparent inline def ass(a: WithSignature, b: WithSignature, inline f: (String, String) => Boolean) =
         assertTrue(f(a.signature.compute, b.signature.compute))
 
-      for
+      for {
         m       <- predicate("pure method") { all[Fruit].withFilter(method) }
         param   <- predicate("parametric method") { all[Fruit].withFilter(paramMethod("apple")) }
         partial <- predicate("function from partial application of pure method") { all[Fruit].withFilter(notAppleF) }
@@ -93,7 +93,7 @@ object BuilderTest extends ZIOSpecDefault {
           )
         })
         asserts <- State.get[Asserts]
-      yield asserts.seq
+      } yield asserts.seq
 
     }
 
@@ -139,10 +139,10 @@ object BuilderTest extends ZIOSpecDefault {
       val res = SimpleEnvironment { env ?=>
         val parsed: Result[BuildStep[env.Effect][Unit]] = Builder.parse(rule1)
         parsed.map { parseStep =>
-          val steps = for
+          val steps = for {
             _       <- parseStep
             network <- Builder.buildNetwork
-          yield network
+          } yield network
 
           steps.runA(BuildContext.empty).value
         }

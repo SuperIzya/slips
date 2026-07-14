@@ -10,12 +10,12 @@ object Data {
   object Fruit {
     val names: DGen[String] = Gen.elements("apple", "grapes", "orange", "plum")
 
-    given gen: (C: DGen[Color]) => DGen[Fruit] = for
+    given gen: (C: DGen[Color]) => DGen[Fruit] = for {
       color <- C
       sugar <- Gen.double
       juice <- Gen.double
       name  <- names
-    yield Fruit(color, sugar, juice, name)
+    } yield Fruit(color, sugar, juice, name)
   }
 
   case class Vegetable(name: String, color: Color) extends Data("Vegetable")
@@ -23,10 +23,10 @@ object Data {
   object Vegetable {
     val names: DGen[String] = Gen.elements("potato", "tomato", "onion", "cabbage")
 
-    given gen: (C: DGen[Color]) => DGen[Vegetable] = for
+    given gen: (C: DGen[Color]) => DGen[Vegetable] = for {
       color <- C
       name  <- names
-    yield Vegetable(name, color)
+    } yield Vegetable(name, color)
   }
 
   case class Leaf(name: String, size: Double) extends Data("Leaf")
@@ -34,10 +34,10 @@ object Data {
   object Leaf {
     val names: DGen[String] = Gen.elements("lettuce", "coriander", "salad", "spinach")
 
-    given gen: (C: DGen[Color]) => DGen[Leaf] = for
+    given gen: (C: DGen[Color]) => DGen[Leaf] = for {
       name <- names
       size <- Gen.double
-    yield Leaf(name, size)
+    } yield Leaf(name, size)
   }
 
   case class Berry(name: String, color: Color) extends Data("Berry")
@@ -45,10 +45,10 @@ object Data {
   object Berry {
     val names: DGen[String] = Gen.elements("blueberry", "blackberry", "cranberry", "strawberry")
 
-    given gen: (C: DGen[Color]) => DGen[Berry] = for
+    given gen: (C: DGen[Color]) => DGen[Berry] = for {
       color <- C
       name  <- names
-    yield Berry(name, color)
+    } yield Berry(name, color)
   }
 
   case class Mushroom(name: String, latin: String) extends Data("Mushroom")

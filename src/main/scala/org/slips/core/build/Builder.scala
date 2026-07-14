@@ -17,11 +17,11 @@ private[slips] object Builder {
   val materializeAlphaNetwork: EnvBuildStep[Unit] = BuildStep { ctx => ctx -> () }
 
   val buildNetwork: EnvBuildStepF[NetworkLayer] = (env: Environment) ?=> {
-    for
+    for {
       ctx <- BuildStep.get
       network: NetworkLayer[env.Effect] = NetworkLayer(ctx.allPredicates)
       _ <- ctx.addNetwork(network)
-    yield network
+    } yield network
   }
 
   def parse(using env: Environment)(rules: env.Rule*): Result[BuildStep[env.Effect][Unit]] = {
