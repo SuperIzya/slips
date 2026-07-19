@@ -4,7 +4,7 @@ object Dependencies {
   object Versions {
     val cats       = "2.13.0"
     val tests      = "3.2.20"
-    val magnolia   = "1.3.21"
+    val magnolia   = "1.3.23"
     val discipline = "2.3.0"
     val zio        = "2.1.26"
   }
