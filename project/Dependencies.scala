@@ -6,7 +6,7 @@ object Dependencies {
     val tests      = "3.2.20"
     val magnolia   = "1.3.24"
     val discipline = "2.3.0"
-    val zio        = "2.1.26"
+    val zio        = "2.1.27"
   }
 
   val libraries = List(
